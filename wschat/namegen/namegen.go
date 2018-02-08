@@ -8,6 +8,28 @@ import (
 )
 
 
+
+// syntactic categories
+// syntactic categories such as noun phrase or verb phrase, 
+// and combine these syntactic categories into trees representing the 
+// phrase structure  of sentences: nested phrases, each marked with a category.
+var consonant = []string {
+    "bl", "br", "cl", "cr", "dr",
+    "fr", "tr", "fl", "gl", "gr", "pl",
+    "pr", "sl", "sm", "sp", "st",
+    "b", "c", "d", "f",
+    "g", "h", "j", "k", "l", "m", "n", "p", "q", "r", 
+    "s", "t", "v","w", "x", "y", "z",
+}
+
+var vowel = []string {
+    "a", "e", "i", "o", "u", 
+    "ee", "ea", "ai", "oa", "igh",
+    "ay", "ue", "ie", "ow", "oo", "ew",
+    "ui", "ei", "y",
+}
+
+
 var adjectives = []string {
     "amazing",
     "thoughtful",
@@ -47,6 +69,7 @@ var adjectives = []string {
     "enchanting",
     "determined",
     "intelligent",
+    "cantankerous",
 }
 
 
@@ -131,11 +154,13 @@ var nouns = []string {
     "hare",
     "ibex",
     "mandrill",
+    "platypus",
 }
 
 
-// gimmeRandom creates 1 random byte from the crypto package,
+// gimmeRandom creates random bytes from the crypto package,
 // and then converts that into an integer within the maximum range [0, max].
+// NOTE:  0 < max < 255
 func gimmeRandom(max int) int {
     a := make([]byte, 1)
     rand.Read(a)
@@ -147,6 +172,15 @@ func GenerateUsername() string {
     n := nouns[gimmeRandom(len(nouns) - 1)]
     return a + " " + n 
 }
+
+
+
+
+
+
+// func generateTree() string {
+
+// }
 
 
 // Note: the regular pseudo-random number gen would need a seed like this:
