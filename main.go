@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/fractalbach/gamenet/wschat"
 )
 
 
@@ -17,8 +19,8 @@ func main() {
 	flag.Parse()
 
 	log.Println("Starting Hub...")
-	hub := newHub()
-	go hub.run()
+	hub := wschat.NewHub()
+	go hub.Run()
 
 
 	/* 
@@ -32,7 +34,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", serveHome)
 	mux.HandleFunc("/ws", func (w http.ResponseWriter, r *http.Request) {
-		serveWs(hub, w, r)
+		wschat.ServeWs(hub, w, r)
 	})
 
 
@@ -56,15 +58,27 @@ the server responds to requests for those files.
 */
 func serveHome(w http.ResponseWriter, r *http.Request) {
 	log.Println(r.URL)
-	if r.URL.Path != "/" {
+
+	switch r.URL.Path {
+	case "/": 		
+		http.ServeFile(w, r, "view/gamechat.html")
+		return
+
+	case "/view": 	
+		http.ServeFile(w, r, "view/gamechat.html")
+		return
+
+	default: 		
 		http.Error(w, "Not found", 404)
 		return
 	}
+
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", 405)
 		return
 	}
-	http.ServeFile(w, r, "home.html")
+
+	http.Error(w, "Bad Request.", 400)
 }
 
 
