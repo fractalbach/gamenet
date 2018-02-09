@@ -132,9 +132,9 @@ This project is licensed under the MIT License - see the [LICENSE file](LICENSE)
 ## Acknowledgments
 
 
-+------------------+-------------------+
+
 |    Server        |     Client        |
-+------------------+-------------------+
+| ---------------- | ----------------- |
 | hey, LISTEN!     | hey, LISTEN!      |
 |                  | <--- SYN          |
 | SYN-ACK --->     |                   |
@@ -145,5 +145,4 @@ This project is licensed under the MIT License - see the [LICENSE file](LICENSE)
 |                  | <--- FIN          |
 | ACK --->         |                   |
 | CLOSED           | CLOSED            |
-+------------------+-------------------+
 
