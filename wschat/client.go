@@ -78,7 +78,6 @@ func (c *Client) readPump() {
 		// See: https://golang.org/pkg/bytes/#Join
 		message = bytes.Join( [][]byte{  
 			[]byte(prettyNow()), 
-			// []byte(c.conn.RemoteAddr().String()),
 			[]byte(c.username),
 			message,
 		}, []byte(" - "));
@@ -162,7 +161,7 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 }
 
 
-//prettyNow returns a string with a human-readable time stamp.
+// prettyNow returns a string with a human-readable time stamp.
 // Useful for adding to messages.
 func prettyNow() string {
 	return time.Now().Format("_2 Jan, 3:04:05 PM")
