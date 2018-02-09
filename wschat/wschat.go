@@ -1,4 +1,4 @@
-package main
+package wschat
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/fractalbach/gamenet/wschat/namegen"
+	"github.com/fractalbach/gamenet/namegen"
 	"github.com/gorilla/websocket"
 )
 
@@ -22,6 +22,12 @@ const (
 
 	// Maximum message size allowed from peer.
 	maxMessageSize = 512
+
+	// Maximum number of active clients allowed.
+	maxActiveClients = 10
+
+	// Number of Messages saved on the server.
+	maxSave int = 30
 )
 
 var (
@@ -133,8 +139,15 @@ func (c *Client) writePump() {
 	}
 }
 
-// serveWs handles websocket requests from the peer.
-func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+// ServeWs handles websocket requests from the peer.
+func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+
+	// Check to see if there are too many active clients already.
+	if thereAreTooManyActiveClients(hub, maxActiveClients) {
+		log.Println("Too many active clients.")
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -160,6 +173,104 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	client.hub.broadcast <- []byte("Welcome, "+client.username+".")
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+// hub maintains the set of active clients and broadcasts messages to the
+// clients.
+type Hub struct {
+	// Registered clients.
+	clients map[*Client]bool
+
+	// Inbound messages from the clients.
+	broadcast chan []byte
+
+	// Register requests from the clients.
+	register chan *Client
+
+	// Unregister requests from clients.
+	unregister chan *Client
+
+	// Saved Messages
+	q savedMessageQueue
+}
+
+func NewHub() *Hub {
+	return &Hub{
+		broadcast:  make(chan []byte),
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+		clients:    make(map[*Client]bool),
+	}
+}
+
+func (h *Hub) Run() {
+	for {
+		select {
+		case client := <-h.register:
+			h.clients[client] = true
+			h.q.sendSavedMessages(client)
+
+		case client := <-h.unregister:
+			if _, ok := h.clients[client]; ok {
+				delete(h.clients, client)
+				close(client.send)
+			}
+
+		// Messages sent to the hub's broadcast channel,
+		// are sent to all other active clients.  If a message is unable
+		// to receive a broadcast message, that connection is dropped.
+		case message := <-h.broadcast:
+			h.q.add(message)
+			for client := range h.clients {
+				select {
+				case client.send <- message:
+				default:
+					close(client.send)
+					delete(h.clients, client)
+				}
+			}
+		}
+	}
+}
+
+
+
+
+// the first string in the array is the Most Recent message.
+type savedMessageQueue struct {
+	messages 	[maxSave][]byte
+}
+
+func (q *savedMessageQueue) add(msg []byte) {
+	for i := 0; i < maxSave-1; i++ {
+		q.messages[i] = q.messages[i+1]
+	}
+	q.messages[maxSave-1] = msg
+}
+
+func (q *savedMessageQueue) sendSavedMessages(c *Client) {
+	for _, m := range q.messages {
+		if (len(m) > 0) {
+			m = bytes.Join([][]byte{[]byte("**"), m}, []byte(""))
+			c.send <- m
+		}
+	}
+}
+
+func thereAreTooManyActiveClients(hub *Hub, max int) bool {
+	return len(hub.clients) > max
+}
 
 // prettyNow returns a string with a human-readable time stamp.
 // Useful for adding to messages.
