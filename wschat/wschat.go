@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"encoding/json"
 
 	"github.com/fractalbach/gamenet/namegen"
 	"github.com/gorilla/websocket"
@@ -28,6 +29,7 @@ const (
 
 	// Number of Messages saved on the server.
 	maxSave int = 30
+
 )
 
 var (
@@ -42,7 +44,7 @@ var upgrader = websocket.Upgrader{
 
 // Client is a middleman between the websocket connection and the hub.
 type Client struct {
-	hub *Hub	
+	hub *Hub
 	conn *websocket.Conn // The websocket connection.
 	send chan []byte // Buffered channel of outbound messages.
 	username string	// Username associated with a specific client.
@@ -80,13 +82,20 @@ func (c *Client) readPump() {
 		// with a bunch of duplicate timestamps and addresses in the log.
 		log.Println(c.conn.RemoteAddr(), string(message))
 
+		var jsonvalidator string
+		if (json.Valid(message)) {
+        	jsonvalidator = "Valid Json"
+    	} else {
+    		jsonvalidator = "INVALID JSON!"
+    	}
 		// Add a timestamp and IP address to the beginning of the message.
 		// See: https://golang.org/pkg/bytes/#Join
 		message = bytes.Join( [][]byte{  
 			[]byte(prettyNow()), 
 			[]byte(c.username),
+			[]byte(jsonvalidator),
 			message,
-		}, []byte(" - "));
+		}, []byte(" >> "));
 
 		// Send the message to all other players.
 		c.hub.broadcast <- message
@@ -273,7 +282,17 @@ func thereAreTooManyActiveClients(hub *Hub, max int) bool {
 }
 
 // prettyNow returns a string with a human-readable time stamp.
-// Useful for adding to messages.
+// Useful for adding to messages.  for the day, use: "_2 Jan, "
 func prettyNow() string {
-	return time.Now().Format("_2 Jan, 3:04:05 PM")
+	return time.Now().Format("3:04:05 PM")
 }
+
+
+func checkJsonMessage(incomingMessage []byte) bool {
+    if !(json.Valid(incomingMessage)) {
+        return true
+    }
+    return false
+}
+
+
