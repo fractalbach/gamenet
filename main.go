@@ -15,7 +15,7 @@ var addr = flag.String("addr", "localhost:8080", "http service address")
 
 
 func main() {
-	log.Println("Starting up Web Sockets Chat Server...")
+	log.Println("Starting up gamenet...")
 	flag.Parse()
 
 	log.Println("Starting Hub...")
@@ -61,11 +61,11 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 
 	switch r.URL.Path {
 	case "/": 		
-		http.ServeFile(w, r, "view/gamechat.html")
+		http.ServeFile(w, r, "website/gamechat.html")
 		return
 
-	case "/view": 	
-		http.ServeFile(w, r, "view/gamechat.html")
+	case "/website/": 	
+		http.ServeFile(w, r, "website/gamechat.html")
 		return
 
 	default: 		
