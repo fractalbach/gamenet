@@ -9,7 +9,12 @@ import (
 
 	"github.com/fractalbach/gamenet/namegen"
 	"github.com/gorilla/websocket"
+	"github.com/fractalbach/gamenet/game/pram"
 )
+
+
+var mypram = pram.NewPRAM()
+var myworld = pram.GenerateExampleWorld()
 
 const (
 	// Time allowed to write a message to the peer.
@@ -212,6 +217,7 @@ type Hub struct {
 
 	// Saved Messages
 	q savedMessageQueue
+
 }
 
 func NewHub() *Hub {
@@ -224,6 +230,16 @@ func NewHub() *Hub {
 }
 
 func (h *Hub) Run() {
+
+	gameStateTicker := time.NewTicker(2100 * time.Millisecond)
+    go func() {
+        for t := range gameStateTicker.C {
+        	gameState := mypram.GetFullGameStateJSON(&myworld)
+			h.broadcast <- gameState
+			log.Println("tick:", t)
+        }
+    }()
+
 	for {
 		select {
 		case client := <-h.register:
