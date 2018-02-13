@@ -87,18 +87,17 @@ func (c *Client) readPump() {
 		// with a bunch of duplicate timestamps and addresses in the log.
 		log.Println(c.conn.RemoteAddr(), string(message))
 
-		var jsonvalidator string
-		if (json.Valid(message)) {
-        	jsonvalidator = "Valid Json"
-    	} else {
-    		jsonvalidator = "INVALID JSON!"
+		// If the Json is not valid, ignore it entirely, and continue on
+		// to waiting for a new message.
+		if !(json.Valid(message)) {
+			continue
     	}
+
 		// Add a timestamp and IP address to the beginning of the message.
 		// See: https://golang.org/pkg/bytes/#Join
 		message = bytes.Join( [][]byte{  
-			[]byte(prettyNow()), 
+			[]byte(prettyNow()),
 			[]byte(c.username),
-			[]byte(jsonvalidator),
 			message,
 		}, []byte(" >> "));
 
