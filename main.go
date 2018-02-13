@@ -61,14 +61,14 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 
 	switch r.URL.Path {
 	case "/": 		
-		http.ServeFile(w, r, "website/gamechat.html")
+		http.ServeFile(w, r, "client/gamechat.html")
 		return
 
-	case "/website/": 	
-		http.ServeFile(w, r, "website/gamechat.html")
+	case "/client/": 	
+		http.ServeFile(w, r, "client/gamechat.html")
 		return
 
-	default: 		
+	default:
 		http.Error(w, "Not found", 404)
 		return
 	}
