@@ -95,8 +95,14 @@ Add additional notes about how to deploy this on a live system
 
 ## Built With
 
-* [The Go Programming Language](https://golang.org/)
-* [Gorilla web Toolkit](https://github.com/gorilla) - for Websockets in Go.
+* Server side:
+  * [The Go Programming Language](https://golang.org/)
+  * [Gorilla web Toolkit](https://github.com/gorilla) - for Websockets in Go.
+* Client side:
+  * [Kotlin](https://kotlinlang.org/)   [(git)](https://github.com/JetBrains/kotlin)
+  * [three.js](https://threejs.org/)    [(git)](https://github.com/mrdoob/three.js/)
+  * [kotlin-math](https://github.com/romainguy/kotlin-math)
+  * [uuid-random](https://github.com/jchook/uuid-random)
 
 
 ## Contributing
@@ -105,7 +111,7 @@ Please read [CONTRIBUTING.md], or just send pull request.
 
 ## Versioning
 
-We use ________ for versioning. For the versions available, see the [tags on this repository]
+We use GitHub for versioning. For the versions available, see the [tags on this repository]
 
 ## Authors
 
