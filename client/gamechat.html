@@ -8,7 +8,11 @@ window.onload = function () {
     var conn;
     var msg = document.getElementById("msg");
     var log = document.getElementById("log");
-    var cmd = document.getElementById("cmdtext");
+    var cmdMenu = document.getElementById("commandTypeMenuInput");
+    var cmdText = document.getElementById("commandTextInput");
+    var xInput = document.getElementById("xInput");
+    var yInput = document.getElementById("yInput");
+    var zInput = document.getElementById("zInput");
 
     function appendLog(item) {
         log.appendChild(item);
@@ -27,7 +31,8 @@ window.onload = function () {
             return false;
         }
         var j = {
-            "chat":msg.value
+            "Type": "chat",
+            "Body": msg.value,
         };
         conn.send(JSON.stringify(j));
         msg.value = "";
@@ -36,20 +41,41 @@ window.onload = function () {
 
 
     document.getElementById("commandForm").onsubmit = function () {
-        if (!conn) {
-            return false;
+        if (!conn) {return false;}
+        if (!cmdText.value) {return false;}
+
+        switch (cmdMenu.value) {
+        case "move": 
+            vector = cmdText.value.split(",");
+            var x = parseFloat(vector[0])
+            var y = parseFloat(vector[1])
+            var z = parseFloat(vector[2])
+            var j = {
+                "Type": "move",
+                "Body": [x, y, z]
+            }
+            break;
+
+        default:   
+            var j = {
+                "Type": cmdMenu.value,
+                "Body": cmdText.value,
+            };
         }
-        if (!cmd.value) {
-            return false;
-        }
-        var j = {
-            "cmd": cmd.value
-        };
-        conn.send(JSON.stringify(j));
-        cmd.value = "";
+
+        var messageJson = JSON.stringify(j);
+        makePersonalLogEntry(messageJson); 
+        cmdText.value = "";
+        conn.send(messageJson);
         return false;
     };
 
+    var makePersonalLogEntry = function (stuff) {
+        var item = document.createElement("div");
+        item.className = 'message personal';
+        item.innerText = stuff;
+        appendLog(item);
+    }
 
     if (window["WebSocket"]) {
         conn = new WebSocket("ws://" + document.location.host + "/ws");
@@ -72,6 +98,8 @@ window.onload = function () {
         item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
         appendLog(item);
     }
+
+
 };
 </script>
 <style type="text/css">
@@ -89,7 +117,12 @@ body {
     background: green;
 }
 
-
+.visible {
+    display: all;
+}
+.invisible {
+    display: hidden;
+}
 
 #CanvasWrap {
     height: calc(40%);
@@ -153,6 +186,9 @@ input {
     width: 80%;
 }
 
+.personal {
+    color: white;
+}
 
 </style>
 </head>
@@ -161,8 +197,9 @@ input {
 
 <div id="CanvasWrap">
     <div id="CanvasArea">
-        Canvas Area
-        <canvas id="MainCanvas"></canvas>
+        <p>InfoBox Area</p>
+        </pre>
+        <!-- <canvas id="MainCanvas"></canvas> !-->
     </div>
 </div>
 
@@ -172,7 +209,16 @@ input {
 
     <form id="commandForm">
         <input type="submit" value="Send  Command" />
-        <input type="text" id="cmdtext" size="64" autocomplete="off" />
+        <select id="commandTypeMenuInput">
+            <option value="chat">Chat</option>
+            <option value="move">Move</option>
+            <option value="create">Create</option>
+            <option value="delete">Delete</option>
+            <option value="logout">Login</option>
+            <option value="logout">Logout</option>
+        </select>
+        <input type="text" id="commandTextInput" size="64" autocomplete="off" />
+
     </form>
 
 
@@ -181,6 +227,8 @@ input {
     <form id="form">
         <input type="submit" value="Send" />
         <input type="text" id="msg" size="64" autocomplete="off" />
+
+
     </form>
 </div>
 
