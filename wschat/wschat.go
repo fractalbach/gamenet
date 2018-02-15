@@ -61,8 +61,9 @@ type Client struct {
 // reads from this goroutine.
 func (c *Client) readPump() {
 	defer func() {
+		c.hub.logout <- c
+		c.hub.broadcast <- []byte(c.username + " has logged out.")
 		log.Println("Client Un-Registered: ", c.conn.RemoteAddr())
-		c.hub.broadcast <- []byte("Goodbye, " + c.username + ".")
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
@@ -272,7 +273,7 @@ func (h *Hub) Run() {
 				delete(h.clients, client)
 				close(client.send)
 			}
-			h.logout <- client
+			
 
 		// Messages sent to the hub's broadcast channel,
 		// are sent to all other active clients.  If a message is unable
@@ -286,7 +287,6 @@ func (h *Hub) Run() {
 					delete(h.clients, client)
 				}
 			}
-
 		
 		case client := <-h.login:
 			if id, ok := myworld.GeneratePlayer(client.username); ok {
@@ -297,8 +297,9 @@ func (h *Hub) Run() {
 			}
 
 		case client := <-h.logout:
-			myworld.DeleteEntity(client.playerid)
-			log.Println("Player Id = ", client.playerid, "has logged out.")
+			if ok := myworld.DeleteEntity(client.playerid); ok {
+				log.Println("Player: ", client.playerid, "has logged out.")	
+			}
 
 		case event := <-h.eventchan:
 			myworld.DoGameEvent(event)
