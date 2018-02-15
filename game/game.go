@@ -28,6 +28,11 @@ type AdminMessage struct {
 }
 
 type Message struct {
+    Type string
+    Body interface{}
+}
+
+type AbstractEvent struct {
 
     EventId int
     EventType string
@@ -46,85 +51,79 @@ type Message struct {
 // ------------------------------------------------------
 
 
-func SendJsonToGame(gp *GamePram, jsonBlob []byte) {
-    m := Message{}
-    ParsePlayerMessage(jsonBlob, &m)
-    gp.msgchan <-&m
+func PlayerJsonToEvent(jsonBlob []byte, playerId int) (*AbstractEvent, bool) {
+    m := ParsePlayerMessage(jsonBlob)
+    if e, ok := m.ConvertToEvent(playerId); ok {
+        return e, true
+    } else {
+        // log.Println(playerId, "sent a message that can't become an event.")
+        return &AbstractEvent{}, false
+    }
 }
 
-
 // ParsePlayerMessage parses a json Message object into the specified variable.
-func ParsePlayerMessage(jsonBlob []byte, m *Message) {
+func ParsePlayerMessage(jsonBlob []byte) *Message {
+    m := &Message{}
     if !json.Valid(jsonBlob) {
-        log.Println("invalid json")
-        return
+        log.Println("Cannot Parse Player Message; Invalid Json")
+        return m
     }
     err := json.Unmarshal(jsonBlob, m)
     if err != nil {
-        log.Println("error:", err)
+        log.Println("error UnMarshalling Message:", err)
     }
+    return m
 }
 
 
-// ______________________________________________________
-//  The PRAM
-// ------------------------------------------------------
-
-type GamePram struct {
-    msgchan chan *Message
-    adminchan chan *AdminMessage
-}
-
-func NewGamePram() *GamePram {
-    storedpram := &GamePram{
-        msgchan: make(chan *Message),
-        adminchan: make(chan *AdminMessage),
+func (m *Message) ConvertToEvent(playerId int) (*AbstractEvent, bool) {
+    switch m.Type {
+    case "Move", "move":
+        if a, ok := m.intoMoveEvent(); ok {
+            a.SourceId = playerId
+            return a, true
+        }
+    case "Login":
     }
-    go storedpram.run()
-    return storedpram
+    return &AbstractEvent{}, false
 }
 
-func (gp *GamePram) run() {
-    for {
-        select {
-        case incoming := <- gp.msgchan:
-            GameEventHandler(incoming)
 
-        case incoming := <- gp.adminchan:
-            AdminEventHandler(incoming)
+func (m *Message) intoMoveEvent() (*AbstractEvent, bool) {
+    a := &AbstractEvent{EventType: "Move",}
+    var pos []float64
+    vals, ok := m.Body.([]interface{});
+    if !ok {
+        log.Println("Can't convert MOVE Message Body into []interface{}")
+        return a, false
+    }
+    for _, v := range vals {
+        if f, ok := v.(float64); ok {
+            pos = append(pos, f)
+        } else {
+            log.Println("badly formatted MOVE Message; cannot convert to float")
+            return a, false
         }
     }
+    a.Position = pos
+    return a, true
+    
 }
 
 
-// ______________________________________________________
-//  Game Event Handler
-// ------------------------------------------------------
-
-
-func GameEventHandler(m *Message) {
-
-    switch m.EventType {
-
+func (w *World) DoGameEvent(a *AbstractEvent) {
+    switch a.EventType {
     case "Move":
-        return
-
-    case "RequestGameState":
-        return
-
-    default:
-        return
+        w.ChangeLocationEntity(a.SourceId, a.Position)
+    case "Login":
+    case "Logout":
+    case "Create":
+    case "Delete":
     }
 }
 
-func AdminEventHandler(a *AdminMessage) {
-    switch a.Type {
-    case "NewPlayer":
-        return
-    }
-}
 
-func AddEntity(w *World, e *Ent, id int) bool {
+func (w *World) AddEntity(e *Ent, id int) bool {
     if _, ok := w.Ents[id]; ok {
         return false
     }
@@ -132,13 +131,13 @@ func AddEntity(w *World, e *Ent, id int) bool {
     return true
 }
 
-func DeleteEntity(w *World, id int) {
+func (w *World) DeleteEntity(id int) {
     if _, ok := w.Ents[id]; ok {
         delete(w.Ents, id)
     }
 }
 
-func ChangeLocationEntity(w *World, id int, l []float64) {
+func (w *World) ChangeLocationEntity(id int, l []float64) {
     if _, ok := w.Ents[id]; ok {
         w.Ents[id].Location = l
     }
@@ -170,7 +169,7 @@ func MakeNewWorld() *World {
 
 func (w *World) GeneratePlayer(username string) (int, bool) {
     id := w.GetNextId()
-    ok := AddEntity(w, &Ent{Name: username, Type: "player",}, id)
+    ok := w.AddEntity(&Ent{Name: username, Type: "player",}, id)
     if ok {
         return id, true
     }
@@ -189,6 +188,36 @@ func (w *World) GetNextId() int {
 
 
 
+/*
+// ______________________________________________________
+//  The PRAM
+// ------------------------------------------------------
+
+type GamePram struct {
+    msgchan chan *Message
+    adminchan chan *AdminMessage
+}
+
+func NewGamePram() *GamePram {
+    storedpram := &GamePram{
+        msgchan: make(chan *Message),
+        adminchan: make(chan *AdminMessage),
+    }
+    go storedpram.run()
+    return storedpram
+}
+
+func (gp *GamePram) run() {
+    for {
+        select {
+        case incoming := <- gp.msgchan:
+            GameEventHandler(incoming)
+
+        case incoming := <- gp.adminchan:
+            AdminEventHandler(incoming)
+        }
+    }
+}*/
 
 
 
