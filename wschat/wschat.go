@@ -9,12 +9,10 @@ import (
 
 	"github.com/fractalbach/gamenet/namegen"
 	"github.com/gorilla/websocket"
-	"github.com/fractalbach/gamenet/game/pram"
+	"github.com/fractalbach/gamenet/game"
 )
 
-
-var mypram = pram.NewPRAM()
-var myworld = pram.GenerateExampleWorld()
+var myworld game.World
 
 const (
 	// Time allowed to write a message to the peer.
@@ -53,6 +51,7 @@ type Client struct {
 	conn *websocket.Conn // The websocket connection.
 	send chan []byte // Buffered channel of outbound messages.
 	username string	// Username associated with a specific client.
+	playerid int 
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -62,8 +61,9 @@ type Client struct {
 // reads from this goroutine.
 func (c *Client) readPump() {
 	defer func() {
+		c.hub.logout <- c
+		c.hub.broadcast <- []byte(c.username + " has logged out.")
 		log.Println("Client Un-Registered: ", c.conn.RemoteAddr())
-		c.hub.broadcast <- []byte("Goodbye, " + c.username + ".")
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
@@ -85,13 +85,19 @@ func (c *Client) readPump() {
 
 		// Log the message before the additions, so you don't end up
 		// with a bunch of duplicate timestamps and addresses in the log.
-		log.Println(c.conn.RemoteAddr(), string(message))
+		log.Println(c.conn.RemoteAddr(),"Player:",c.playerid,string(message))
 
 		// If the Json is not valid, ignore it entirely, and continue on
 		// to waiting for a new message.
 		if !(json.Valid(message)) {
+			log.Println("Ignored Invalid Json from ", c.conn.RemoteAddr())
 			continue
     	}
+
+		//Process the message
+		if event, ok := game.PlayerJsonToEvent(message, c.playerid); ok {
+			c.hub.eventchan <- event
+		}
 
 		// Add a timestamp and IP address to the beginning of the message.
 		// See: https://golang.org/pkg/bytes/#Join
@@ -103,6 +109,8 @@ func (c *Client) readPump() {
 
 		// Send the message to all other players.
 		c.hub.broadcast <- message
+
+
 	}
 }
 
@@ -173,8 +181,10 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		conn: conn, 
 		send: make(chan []byte, 256),
 		username: namegen.GenerateUsername(),
-	}
+	}	
+
 	client.hub.register <- client
+	client.hub.login <- client
 	log.Println(
 		"Client Registered:", client.conn.RemoteAddr(), client.username)
 
@@ -184,6 +194,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	go client.readPump()
 
 	client.hub.broadcast <- []byte("Welcome, "+client.username+".")
+	
 }
 
 
@@ -199,8 +210,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
 
 
-// hub maintains the set of active clients and broadcasts messages to the
-// clients.
+// hub maintains the game world and the set of active clients 
 type Hub struct {
 	// Registered clients.
 	clients map[*Client]bool
@@ -214,48 +224,61 @@ type Hub struct {
 	// Unregister requests from clients.
 	unregister chan *Client
 
-	// Saved Messages
-	q savedMessageQueue
+	// Logins and Logout register Player Entity to the Client connection.
+	login chan *Client
+	logout chan *Client
+
+	// Player Action Message
+	eventchan chan *game.AbstractEvent
+
 
 }
 
 func NewHub() *Hub {
 	return &Hub{
+		clients:    make(map[*Client]bool),
 		broadcast:  make(chan []byte),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
-		clients:    make(map[*Client]bool),
+		login:		make(chan *Client),
+		logout:		make(chan *Client),
+		eventchan:	make(chan *game.AbstractEvent),
 	}
 }
 
 func (h *Hub) Run() {
 
-	gameStateTicker := time.NewTicker(2100 * time.Millisecond)
+
+	gameStateTicker := time.NewTicker(3000 * time.Millisecond)
     go func() {
         for t := range gameStateTicker.C {
-        	gameState := mypram.GetFullGameStateJSON(&myworld)
-			h.broadcast <- gameState
+			h.broadcast <- myworld.StateAllEntities()
 			log.Println("tick:", t)
         }
     }()
 
+
+    // Initialize Game World
+    myworld = *game.MakeNewWorld()
+
+    // Enter Hub Loop; waiting for messages to arrive from clients.
 	for {
 		select {
 		case client := <-h.register:
 			h.clients[client] = true
-			h.q.sendSavedMessages(client)
+
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
 			}
+			
 
 		// Messages sent to the hub's broadcast channel,
 		// are sent to all other active clients.  If a message is unable
 		// to receive a broadcast message, that connection is dropped.
 		case message := <-h.broadcast:
-			h.q.add(message)
 			for client := range h.clients {
 				select {
 				case client.send <- message:
@@ -264,33 +287,27 @@ func (h *Hub) Run() {
 					delete(h.clients, client)
 				}
 			}
+		
+		case client := <-h.login:
+			if id, ok := myworld.GeneratePlayer(client.username); ok {
+				client.playerid = id
+				log.Println(id, "logged in.")
+			} else {
+				log.Println(id, "player id Unable to be generated.")
+			}
+
+		case client := <-h.logout:
+			if ok := myworld.DeleteEntity(client.playerid); ok {
+				log.Println("Player: ", client.playerid, "has logged out.")	
+			}
+
+		case event := <-h.eventchan:
+			myworld.DoGameEvent(event)
 		}
 	}
 }
 
 
-
-
-// the first string in the array is the Most Recent message.
-type savedMessageQueue struct {
-	messages 	[maxSave][]byte
-}
-
-func (q *savedMessageQueue) add(msg []byte) {
-	for i := 0; i < maxSave-1; i++ {
-		q.messages[i] = q.messages[i+1]
-	}
-	q.messages[maxSave-1] = msg
-}
-
-func (q *savedMessageQueue) sendSavedMessages(c *Client) {
-	for _, m := range q.messages {
-		if (len(m) > 0) {
-			m = bytes.Join([][]byte{[]byte("**"), m}, []byte(""))
-			c.send <- m
-		}
-	}
-}
 
 func thereAreTooManyActiveClients(hub *Hub, max int) bool {
 	return len(hub.clients) > max
@@ -302,12 +319,5 @@ func prettyNow() string {
 	return time.Now().Format("3:04:05 PM")
 }
 
-
-func checkJsonMessage(incomingMessage []byte) bool {
-    if !(json.Valid(incomingMessage)) {
-        return true
-    }
-    return false
-}
 
 

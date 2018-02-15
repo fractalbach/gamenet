@@ -59,12 +59,13 @@ the server responds to requests for those files.
 func serveHome(w http.ResponseWriter, r *http.Request) {
 	log.Println(r.URL)
 
-	switch r.URL.Path {
-	case "/": 		
-		http.ServeFile(w, r, "client/gamechat.html")
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", 405)
 		return
+	}
 
-	case "/client/": 	
+	switch r.URL.Path {
+	case "/", "/client/": 		
 		http.ServeFile(w, r, "client/gamechat.html")
 		return
 
@@ -72,12 +73,7 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not found", 404)
 		return
 	}
-
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", 405)
-		return
-	}
-
+	
 	http.Error(w, "Bad Request.", 400)
 }
 
