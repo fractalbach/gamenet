@@ -131,10 +131,15 @@ func (w *World) AddEntity(e *Ent, id int) bool {
     return true
 }
 
-func (w *World) DeleteEntity(id int) {
+func (w *World) DeleteEntity(id int) bool {
+    if id == 0 {
+        return false
+    }
     if _, ok := w.Ents[id]; ok {
         delete(w.Ents, id)
+        return true
     }
+    return false
 }
 
 func (w *World) ChangeLocationEntity(id int, l []float64) {
