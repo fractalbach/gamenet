@@ -9,12 +9,10 @@ import (
 
 	"github.com/fractalbach/gamenet/namegen"
 	"github.com/gorilla/websocket"
-	"github.com/fractalbach/gamenet/game/pram"
+	"github.com/fractalbach/gamenet/game"
 )
 
-
-var mypram = pram.NewPRAM()
-var myworld = pram.GenerateExampleWorld()
+var myworld game.World
 
 const (
 	// Time allowed to write a message to the peer.
@@ -53,6 +51,7 @@ type Client struct {
 	conn *websocket.Conn // The websocket connection.
 	send chan []byte // Buffered channel of outbound messages.
 	username string	// Username associated with a specific client.
+	playerid int 
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -174,6 +173,15 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		send: make(chan []byte, 256),
 		username: namegen.GenerateUsername(),
 	}
+
+	// Create a Player for the Client
+	if id, ok := myworld.GeneratePlayer(client.username); ok {
+		client.playerid = id	
+	} else {
+		log.Println(client, "Player Unable to be generated.")
+	}
+	
+
 	client.hub.register <- client
 	log.Println(
 		"Client Registered:", client.conn.RemoteAddr(), client.username)
@@ -199,8 +207,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
 
 
-// hub maintains the set of active clients and broadcasts messages to the
-// clients.
+// hub maintains the game world and the set of active clients 
 type Hub struct {
 	// Registered clients.
 	clients map[*Client]bool
@@ -213,6 +220,9 @@ type Hub struct {
 
 	// Unregister requests from clients.
 	unregister chan *Client
+
+	// Player Action Message
+	playermessage chan []byte
 
 	// Saved Messages
 	q savedMessageQueue
@@ -230,20 +240,27 @@ func NewHub() *Hub {
 
 func (h *Hub) Run() {
 
-	gameStateTicker := time.NewTicker(2100 * time.Millisecond)
+
+
+	gameStateTicker := time.NewTicker(3000 * time.Millisecond)
     go func() {
         for t := range gameStateTicker.C {
-        	gameState := mypram.GetFullGameStateJSON(&myworld)
+        	gameState := myworld.StateAllEntities()
 			h.broadcast <- gameState
 			log.Println("tick:", t)
         }
     }()
 
+
+    // Initialize Game World
+    myworld = *game.MakeNewWorld()
+
+    // Enter Hub Loop; waiting for messages to arrive from clients.
 	for {
 		select {
 		case client := <-h.register:
 			h.clients[client] = true
-			h.q.sendSavedMessages(client)
+
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
