@@ -36,6 +36,10 @@ abstract class GameObject(val name: String="", id: String="") {
             threeObject.position.z = pos.z
         }
 
+    var visible: Boolean
+        get() = threeObject.visible
+        set(b) { threeObject.visible = b }
+
     /**
      * Method called each logical tic.
      */
