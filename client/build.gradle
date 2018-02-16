@@ -3,7 +3,7 @@ version '0.0.1'
 
 buildscript {
     ext.kotlin_version = '1.2.21'
-    ext.web_dir = '../web'
+    ext.web_dir = '../out/production/web'
 
     repositories {
         jcenter()
