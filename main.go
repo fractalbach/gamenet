@@ -9,10 +9,7 @@ import (
 	"github.com/fractalbach/gamenet/wschat"
 )
 
-
 var addr = flag.String("addr", "localhost:8080", "http service address")
-
-
 
 func main() {
 	log.Println("Starting up gamenet...")
@@ -22,26 +19,24 @@ func main() {
 	hub := wschat.NewHub()
 	go hub.Run()
 
+	/*
+		Create a Custom Server Multiplexer
 
-	/* 
-	Create a Custom Server Multiplexer
-
-	"servemux is an http request multiplexer. it matches the url of each 
-	incoming request against a list of registered patterns and calls the
-	handler for the pattern that most closely matches the url."
-		https://golang.org/pkg/net/http/#ServeMux
+		"servemux is an http request multiplexer. it matches the url of each
+		incoming request against a list of registered patterns and calls the
+		handler for the pattern that most closely matches the url."
+			https://golang.org/pkg/net/http/#ServeMux
 	*/
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", serveHome)
-	mux.HandleFunc("/ws", func (w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		wschat.ServeWs(hub, w, r)
 	})
-
 
 	// Define parameters for running a custom HTTP server
 	s := &http.Server{
 		Addr:           *addr,
-		Handler:   		mux,
+		Handler:        mux,
 		ReadTimeout:    5 * time.Second,
 		WriteTimeout:   5 * time.Second,
 		MaxHeaderBytes: 1 << 20,
@@ -50,7 +45,6 @@ func main() {
 	log.Println("Listening and Serving on ", *addr)
 	log.Fatal(s.ListenAndServe())
 }
-
 
 /*
 serveHome controls which files are accessible on the server based on how
@@ -65,7 +59,7 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch r.URL.Path {
-	case "/", "/client/": 		
+	case "/", "/client/":
 		http.ServeFile(w, r, "client/gamechat.html")
 		return
 
@@ -73,10 +67,6 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not found", 404)
 		return
 	}
-	
+
 	http.Error(w, "Bad Request.", 400)
 }
-
-
-
-
