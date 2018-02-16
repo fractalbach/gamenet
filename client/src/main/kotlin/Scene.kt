@@ -25,7 +25,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     val threeScene = info.laht.threekt.scenes.Scene()
     val renderer = WebGLRenderer()
     val renderWidth: Int = window.innerWidth * 9 / 10
-    val renderHeight: Int = window.innerHeight * 9 / 10
+    val renderHeight: Int = renderWidth * 7 / 10
 
     // instantiate constant game objects
     val terrain: Terrain = Terrain()
@@ -43,14 +43,14 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         // setup threeScene
         threeScene.fog = FogExp2(Color(0xf0fff0), 0.1 )
 
-        camera.position = Double3(0.0, 2.5, 6.5)
+        camera.position = Double3(0.0, 0.0, 6.5)
         sunLight.position = Double3(0.0, 100.0, 30.0)
 
         // add constant game objects
         add(terrain)
         add(camera)
         add(sunLight)
-        add(TestCube("TestCube"))
+        //add(TestCube("TestCube"))
     }
 
     /**

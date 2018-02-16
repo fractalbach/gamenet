@@ -18,7 +18,7 @@ import info.laht.threekt.objects.Mesh
 import org.khronos.webgl.Float64Array
 import org.khronos.webgl.get
 
-private const val RADIUS: Double = 6.371 //e6
+private const val RADIUS: Double = 2.0 //6.371e6
 private const val MAX_LOD: Int = 20 // any value up to 28
 private const val MAX_ENCODED_LOD: Int = 28 // max LOD able to be encoded
 
@@ -63,7 +63,7 @@ class Tile(val terrain: Terrain, val face: Int,
         Double2(2.0, 2.0)
     val subTiles: Array<Tile?> = arrayOfNulls<Tile?>(4)
 
-    override var threeObject: Object3D = makeThreeTile() // todo: set tile obj
+    override var threeObject: Object3D = makeThreeTile()
 
     /*
      * Array's first value is the index of the tile's face,
@@ -152,15 +152,17 @@ class Tile(val terrain: Terrain, val face: Int,
                 // once height array has been received, create
                 // position array.
                 val geometry = PlaneGeometry(1, 1, 8, 8)
-                val vertWidth = TILE_POLYGON_WIDTH + 1
+                val polyWidth = TILE_POLYGON_WIDTH
+                val vertWidth = polyWidth + 1
                 for (i in 0 until N_TILE_VERTICES) {
                     try {
                         val height = 0.0 //positions[i]
                         val tileRelPos = Double2(
-                                i % vertWidth.toDouble() / vertWidth,
-                                (i / vertWidth).toDouble() / vertWidth
+                                i % vertWidth.toDouble() / polyWidth,
+                                (i / vertWidth).toDouble() / polyWidth
                         )
-                        val facePos: Double2 = tileRelPos * shape
+                        //console.log("i: $i tile rel pos: $tileRelPos")
+                        val facePos: Double2 = tileRelPos * shape - 1.0
                         val cubeRelPos: Double3 = when (face) {
                             0 -> Double3(1.0, facePos.x, facePos.y)
                             1 -> Double3(-facePos.x, 1.0, facePos.y)
@@ -172,7 +174,7 @@ class Tile(val terrain: Terrain, val face: Int,
                         }
                         val pos: Double3 = normalize(cubeRelPos) *
                                 (terrain.radius + height)
-                        @Suppress("UNUSED_PARAMETER")
+                        @Suppress("UNUSED_VARIABLE") // used in js
                         val v = Vector3(pos.x, pos.y, pos.z)
                         js("geometry.vertices[i] = v")
                     } catch (e: Exception) {
@@ -193,7 +195,7 @@ class Tile(val terrain: Terrain, val face: Int,
             // work around temporary error in THREE.js wrapper
             @Suppress("CAST_NEVER_SUCCEEDS")
             (planeMaterial as Material).side = DoubleSide
-            // todo: modify
+            //planeMaterial.wireframe = true
             return planeMaterial
         }
 
