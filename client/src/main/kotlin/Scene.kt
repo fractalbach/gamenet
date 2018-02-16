@@ -1,7 +1,9 @@
-import objects.GameObject
-import objects.StaticCamera
-import objects.Terrain
-import objects.intf.Camera
+import com.curiouscreature.kotlin.math.Double3
+import info.laht.threekt.math.Color
+import info.laht.threekt.math.Vector3
+import info.laht.threekt.renderers.WebGLRenderer
+import info.laht.threekt.scenes.FogExp2
+import objects.*
 import kotlin.browser.window
 
 /**
@@ -15,24 +17,40 @@ import kotlin.browser.window
  * every game tic.
  */
 class Scene(val name: String="Unnamed", var core: Core?=null) {
+    companion object {
+        val logger = Logger.getLogger("Scene")
+    }
+
     private val gameObjects: HashMap<String, GameObject> = HashMap()
-    val threeScene = js("new THREE.Scene()")!!
-    val renderer = js("new THREE.WebGLRenderer({alpha:true})")!!
-    val renderWidth: Int = window.innerWidth
-    val renderHeight: Int = window.innerHeight
+    val threeScene = info.laht.threekt.scenes.Scene()
+    val renderer = WebGLRenderer()
+    val renderWidth: Int = window.innerWidth * 9 / 10
+    val renderHeight: Int = window.innerHeight * 9 / 10
 
     // instantiate constant game objects
-    val terrain: Terrain = Terrain()
-    val camera: Camera = StaticCamera()
+    //val terrain: Terrain = Terrain()
+    val camera: Camera = objects.Camera()
+    val sunLight = SunLight("SunLight")
 
     init {
+        logger.info("Initializing $this")
         // setup renderer
+        renderer.setClearAlpha(1)
         renderer.setClearColor(0xfffafa, 1)
-        renderer.shadowMap.enabled = true //enable shadow
-        renderer.shadowMap.type = js("THREE.PCFSoftShadowMap")!!
+        //js("this.renderer.shadowMap.enabled = true") //enable shadow
+        //js("this.renderer.shadowMap.type = PCFSoftShadowMap()")
         renderer.setSize(renderWidth, renderHeight)
         // setup threeScene
-        threeScene.fog = js("new THREE.FogExp2( 0xf0fff0, 0.14 )")!!
+        threeScene.fog = FogExp2(Color(0xf0fff0), 0.1 )
+
+        camera.position = Double3(0.0, 2.5, 6.5)
+        sunLight.position = Double3(0.0, 100.0, 30.0)
+
+        // add constant game objects
+        //add(terrain)
+        add(camera)
+        add(sunLight)
+        add(TestCube("TestCube"))
     }
 
     /**
@@ -47,16 +65,28 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     }
 
     /**
+     * Renders scene using
+     */
+    fun render(camera: info.laht.threekt.cameras.Camera=this.camera.threeCamera) {
+        renderer.render(threeScene, camera)
+    }
+
+    /**
      * Adds passed GameObject to scene.
      * Passed GameObject is given a reference to scene.
      */
     fun add(gameObject: GameObject) {
+        logger.fine("Adding $gameObject to $this")
         if (gameObject.id in gameObjects.keys) {
             throw IllegalArgumentException(
                     "$gameObject already a member of $this")
         }
         gameObject.scene = this
         gameObjects[gameObject.id] = gameObject
+        threeScene.add(gameObject.threeObject)
+        for (childObject in gameObject.childObjects) {
+            add(childObject)
+        }
     }
 
     fun get(id: String): GameObject? {

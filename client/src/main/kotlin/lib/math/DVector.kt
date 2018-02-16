@@ -24,6 +24,9 @@
 
 package com.curiouscreature.kotlin.math
 
+import info.laht.threekt.math.Vector2
+import info.laht.threekt.math.Vector3
+import info.laht.threekt.math.Vector4
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -37,6 +40,7 @@ enum class DVectorComponent {
 
 data class Double2(var x: Double = 0.0, var y: Double = 0.0) {
     constructor(v: Double2) : this(v.x, v.y)
+    constructor(v: Vector2) : this(v.x, v.y)
 
     inline var r: Double
         get() = x
@@ -154,6 +158,7 @@ data class Double2(var x: Double = 0.0, var y: Double = 0.0) {
 data class Double3(var x: Double = 0.0, var y: Double = 0.0, var z: Double = 0.0) {
     constructor(v: Double2, z: Double = 0.0) : this(v.x, v.y, z)
     constructor(v: Double3) : this(v.x, v.y, v.z)
+    constructor(v: Vector3) : this(v.x, v.y, v.z)
 
     inline var r: Double
         get() = x
@@ -343,6 +348,7 @@ data class Double4(
     constructor(v: Double2, z: Double = 0.0, w: Double = 0.0) : this(v.x, v.y, z, w)
     constructor(v: Double3, w: Double = 0.0) : this(v.x, v.y, v.z, w)
     constructor(v: Double4) : this(v.x, v.y, v.z, v.w)
+    constructor(v: Vector4) : this(v.x, v.y, v.z, v.w)
 
     inline var r: Double
         get() = x

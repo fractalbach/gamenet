@@ -17,3 +17,13 @@
 # intellij-stuff
 *.iml
 .idea/*
+
+# gradle stuff
+.gradle/*
+
+# build dir
+build/*
+client/build/*
+
+# output dir
+web/*
