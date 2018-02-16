@@ -9,7 +9,9 @@ import exception.CException
 import info.laht.threekt.THREE.DoubleSide
 import info.laht.threekt.core.Object3D
 import info.laht.threekt.geometries.PlaneGeometry
+import info.laht.threekt.materials.Material
 import info.laht.threekt.materials.MeshBasicMaterial
+import info.laht.threekt.materials.MeshStandardMaterial
 import info.laht.threekt.math.Color
 import info.laht.threekt.math.Vector3
 import info.laht.threekt.objects.Mesh
@@ -124,7 +126,7 @@ class Tile(val terrain: Terrain, val face: Int,
             scene!!.add(tile)
             subTiles[i] = tile
         }
-        //setVisibility(false)
+        // visible = false
     }
 
     /**
@@ -135,12 +137,10 @@ class Tile(val terrain: Terrain, val face: Int,
             scene!!.remove(tile!!)
             subTiles[i] = null
         }
-        //setVisibility(true)
+        // visible = true
     }
 
     private fun makeThreeTile(): Mesh {
-
-        logger.fine("verts outer: $N_TILE_VERTICES")
 
         fun makeGeometry(): PlaneGeometry {
             try {
@@ -156,7 +156,6 @@ class Tile(val terrain: Terrain, val face: Int,
                 val vertList: ArrayList<Vector3> = ArrayList(N_TILE_VERTICES)
                 for (i in 0 until N_TILE_VERTICES) {
                     try {
-                        logger.fine("hi")
                         val height = 0.0 //positions[i]
                         val tileRelPos = Double2(
                                 i % vertWidth.toDouble() / vertWidth,
@@ -181,8 +180,6 @@ class Tile(val terrain: Terrain, val face: Int,
                     }
                 }
                 geometry.vertices = vertList
-                logger.fine("$this vertices: $vertList")
-                logger.fine("$this vertices Size: ${vertList.size}")
                 return geometry
             } catch (e: Exception) {
                 logger.error("Error creating $this geometry")
@@ -190,16 +187,18 @@ class Tile(val terrain: Terrain, val face: Int,
             }
         }
 
-        fun makeMaterial(): MeshBasicMaterial {
-            val planeMaterial = MeshBasicMaterial()
+        fun makeMaterial(): Material {
+            val planeMaterial = MeshStandardMaterial()
             planeMaterial.color = Color(0xffff00)
-            planeMaterial.side = DoubleSide
+            // work around temporary error in THREE.js wrapper
+            @Suppress("CAST_NEVER_SUCCEEDS")
+            (planeMaterial as Material).side = DoubleSide
             // todo: modify
             return planeMaterial
         }
 
         val geometry: PlaneGeometry = makeGeometry()
-        val material: MeshBasicMaterial = makeMaterial()
+        val material: Material = makeMaterial()
         val threeTile = Mesh(geometry, material)
 
         return threeTile

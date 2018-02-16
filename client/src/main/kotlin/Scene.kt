@@ -28,7 +28,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     val renderHeight: Int = window.innerHeight * 9 / 10
 
     // instantiate constant game objects
-    //val terrain: Terrain = Terrain()
+    val terrain: Terrain = Terrain()
     val camera: Camera = objects.Camera()
     val sunLight = SunLight("SunLight")
 
@@ -47,7 +47,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         sunLight.position = Double3(0.0, 100.0, 30.0)
 
         // add constant game objects
-        //add(terrain)
+        add(terrain)
         add(camera)
         add(sunLight)
         add(TestCube("TestCube"))
