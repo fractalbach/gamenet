@@ -126,7 +126,7 @@ class Tile(val terrain: Terrain, val face: Int,
             scene!!.add(tile)
             subTiles[i] = tile
         }
-        // visible = false
+        // visible = false // hide tile until a lower LOD is needed again
     }
 
     /**
@@ -153,7 +153,6 @@ class Tile(val terrain: Terrain, val face: Int,
                 // position array.
                 val geometry = PlaneGeometry(1, 1, 8, 8)
                 val vertWidth = TILE_POLYGON_WIDTH + 1
-                val vertList: ArrayList<Vector3> = ArrayList(N_TILE_VERTICES)
                 for (i in 0 until N_TILE_VERTICES) {
                     try {
                         val height = 0.0 //positions[i]
@@ -173,13 +172,14 @@ class Tile(val terrain: Terrain, val face: Int,
                         }
                         val pos: Double3 = normalize(cubeRelPos) *
                                 (terrain.radius + height)
-                        vertList.add(Vector3(pos.x, pos.y, pos.z))
+                        @Suppress("UNUSED_PARAMETER")
+                        val v = Vector3(pos.x, pos.y, pos.z)
+                        js("geometry.vertices[i] = v")
                     } catch (e: Exception) {
                         logger.error("Error converting height index: $i")
                         throw e
                     }
                 }
-                geometry.vertices = vertList
                 return geometry
             } catch (e: Exception) {
                 logger.error("Error creating $this geometry")
