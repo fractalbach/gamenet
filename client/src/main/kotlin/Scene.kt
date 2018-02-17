@@ -1,6 +1,5 @@
 import com.curiouscreature.kotlin.math.Double3
 import info.laht.threekt.math.Color
-import info.laht.threekt.math.Vector3
 import info.laht.threekt.renderers.WebGLRenderer
 import info.laht.threekt.scenes.FogExp2
 import objects.*
@@ -22,6 +21,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     }
 
     private val gameObjects: HashMap<String, GameObject> = HashMap()
+    private val removalQueue: ArrayList<GameObject> = ArrayList()
     val threeScene = info.laht.threekt.scenes.Scene()
     val renderer = WebGLRenderer()
     val renderWidth: Int = window.innerWidth * 9 / 10
@@ -58,9 +58,16 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
      * Performs any regular updates on scene and
      * in turn calls update on all owned game objects.
      */
-    fun update() {
+    fun update(tic: Core.Tic) {
+        // remove items marked for removal
+        removalQueue.forEach { removeHard(it) }
         for (o: GameObject in gameObjects.values) {
-            o.update()
+            try {
+                o.update(tic)
+            } catch (e: Exception) {
+                logger.error("Error occurred calling $o .update() method.")
+                throw e
+            }
         }
     }
 
@@ -93,8 +100,27 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         return gameObjects[id]
     }
 
+    /**
+     * Marks passed game object for removal.
+     * GameObject is not actually removed until the beginning of the
+     * next logic tic.
+     */
     fun remove(gameObject: GameObject) {
-        // todo
+        logger.fine("Removing $gameObject from $this")
+        if (gameObject.id !in gameObjects.keys) {
+            throw IllegalArgumentException(
+                    "$gameObject not a member of $this")
+        }
+        removalQueue.add(gameObject)
+    }
+
+    private fun removeHard(gameObject: GameObject) {
+        gameObject.scene = null
+        gameObjects.remove(gameObject.id)
+        threeScene.remove(gameObject.threeObject)
+        for (childObject in gameObject.childObjects) {
+            remove(childObject)
+        }
     }
 
     override fun toString(): String {
