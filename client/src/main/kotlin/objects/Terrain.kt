@@ -1,22 +1,17 @@
 package objects
 
 import Logger.Companion.getLogger
-import com.curiouscreature.kotlin.math.DMat3
 import com.curiouscreature.kotlin.math.Double2
 import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.normalize
-import exception.CException
 import info.laht.threekt.THREE.DoubleSide
 import info.laht.threekt.core.Object3D
 import info.laht.threekt.geometries.PlaneGeometry
 import info.laht.threekt.materials.Material
-import info.laht.threekt.materials.MeshBasicMaterial
 import info.laht.threekt.materials.MeshStandardMaterial
 import info.laht.threekt.math.Color
 import info.laht.threekt.math.Vector3
 import info.laht.threekt.objects.Mesh
-import org.khronos.webgl.Float64Array
-import org.khronos.webgl.get
 
 private const val RADIUS: Double = 2.0 //6.371e6
 private const val MAX_LOD: Int = 20 // any value up to 28
@@ -61,7 +56,10 @@ class Tile(val terrain: Terrain, val face: Int,
     val lod: Int = if (parent == null) 1 else parent.lod + 1
     val shape: Double2 = if (parent != null) parent.shape / 2.0 else
         Double2(2.0, 2.0)
+    val relativeWidth = shape.x / 2  // 1.0 is diameter of spheroid
     val subTiles: Array<Tile?> = arrayOfNulls<Tile?>(4)
+    val subdivisionDistance = REL_SUBDIVISION_DIST * relativeWidth
+    val recombinationDistance = REL_SUBDIVISION_DIST * relativeWidth * 1.2
 
     override var threeObject: Object3D = makeThreeTile()
 
@@ -86,23 +84,34 @@ class Tile(val terrain: Terrain, val face: Int,
     val p2 = p1 + shape // upper right corner, relative to cube face
 
     init {
+        terrain.threeObject.add(threeObject) // add tile as child of terrain
         if (parent != null && quadrant == null) {
             throw IllegalArgumentException(
                     "If parent arg is passed, quadrant must also be passed.")
         }
     }
 
-    override fun update() {
+    /**
+     * Updates Tile; if distance to camera is small enough, subdivides
+     * tile to create more detail, or if already subdivided and camera
+     * is far enough, recombines sub-tiles.
+     */
+    override fun update(tic: Core.Tic) {
         val dist = distance(scene!!.camera)
-        if (dist / REL_SUBDIVISION_DIST < 1 &&
+        if (dist < subdivisionDistance &&
                 subTiles[0] == null &&
                 lod < MAX_LOD) {
             subdivide()
-        } else if (dist / REL_SUBDIVISION_DIST > 1 && subTiles[0] != null) {
+        } else if (dist > recombinationDistance && subTiles[0] != null) {
             recombine()
         }
     }
 
+    /**
+     * Finds lower left corner of tile, as a position relative to face.
+     * Ex: lowest left position is (-1, -1) center is (0, 0).
+     * Lower right corner is (1, -1).
+     */
     private fun findP1(): Double2 {
         if (parent == null) {
             return Double2(-1.0, -1.0)
@@ -126,7 +135,7 @@ class Tile(val terrain: Terrain, val face: Int,
             scene!!.add(tile)
             subTiles[i] = tile
         }
-        // visible = false // hide tile until a lower LOD is needed again
+        visible = false // hide tile until a lower LOD is needed again
     }
 
     /**
@@ -137,12 +146,16 @@ class Tile(val terrain: Terrain, val face: Int,
             scene!!.remove(tile!!)
             subTiles[i] = null
         }
-        // visible = true
+        visible = true
     }
 
     private fun makeThreeTile(): Mesh {
 
-        fun makeGeometry(): PlaneGeometry {
+        /**
+         * Creates geometry of tile.
+         * Returns Pair of PlaneGeometry, and tile center position
+         */
+        fun makeGeometry(): Pair<PlaneGeometry, Double3> {
             try {
                 //val positions = Float64Array(N_TILE_VERTICES)
                 //val result = js("_ter_HeightFromPosCode(ptr, posCode)")
@@ -154,35 +167,34 @@ class Tile(val terrain: Terrain, val face: Int,
                 val geometry = PlaneGeometry(1, 1, 8, 8)
                 val polyWidth = TILE_POLYGON_WIDTH
                 val vertWidth = polyWidth + 1
-                for (i in 0 until N_TILE_VERTICES) {
+                val sphereRelativePositions: Array<Double3> = Array(
+                        N_TILE_VERTICES, {
                     try {
                         val height = 0.0 //positions[i]
                         val tileRelPos = Double2(
-                                i % vertWidth.toDouble() / polyWidth,
-                                (i / vertWidth).toDouble() / polyWidth
+                                it % vertWidth.toDouble() / polyWidth,
+                                (it / vertWidth).toDouble() / polyWidth
                         )
-                        //console.log("i: $i tile rel pos: $tileRelPos")
                         val facePos: Double2 = tileRelPos * shape - 1.0
-                        val cubeRelPos: Double3 = when (face) {
-                            0 -> Double3(1.0, facePos.x, facePos.y)
-                            1 -> Double3(-facePos.x, 1.0, facePos.y)
-                            2 -> Double3(-1.0, -facePos.x, facePos.y)
-                            3 -> Double3(facePos.x, -1.0, facePos.y)
-                            4 -> Double3(-facePos.y, facePos.x, 1.0)
-                            5 -> Double3(facePos.y, facePos.x, -1.0)
-                            else -> throw IllegalStateException("Face: $face")
-                        }
+                        val cubeRelPos: Double3 = facePosTo3d(facePos)
                         val pos: Double3 = normalize(cubeRelPos) *
                                 (terrain.radius + height)
-                        @Suppress("UNUSED_VARIABLE") // used in js
-                        val v = Vector3(pos.x, pos.y, pos.z)
-                        js("geometry.vertices[i] = v")
+                         pos
                     } catch (e: Exception) {
-                        logger.error("Error converting height index: $i")
+                        logger.error("Error converting height index: $it")
                         throw e
                     }
+                })
+                val relativeCenter =
+                        sphereRelativePositions[N_TILE_VERTICES / 2]
+                for (i in 0 until N_TILE_VERTICES) {
+                    var pos = sphereRelativePositions[i]
+                    pos -= relativeCenter
+                    @Suppress("UNUSED_VARIABLE") // used in js
+                    val v = Vector3(pos.x, pos.y, pos.z)
+                    js("geometry.vertices[i] = v")
                 }
-                return geometry
+                return Pair(geometry, relativeCenter)
             } catch (e: Exception) {
                 logger.error("Error creating $this geometry")
                 throw e
@@ -195,15 +207,29 @@ class Tile(val terrain: Terrain, val face: Int,
             // work around temporary error in THREE.js wrapper
             @Suppress("CAST_NEVER_SUCCEEDS")
             (planeMaterial as Material).side = DoubleSide
-            //planeMaterial.wireframe = true
+            planeMaterial.wireframe = true
             return planeMaterial
         }
 
-        val geometry: PlaneGeometry = makeGeometry()
+        val (geometry: PlaneGeometry, tilePosition: Double3) = makeGeometry()
         val material: Material = makeMaterial()
-        val threeTile = Mesh(geometry, material)
+        val mesh = Mesh(geometry, material)
+        mesh.position.x = tilePosition.x
+        mesh.position.y = tilePosition.y
+        mesh.position.z = tilePosition.z
+        return mesh
+    }
 
-        return threeTile
+    private fun facePosTo3d(facePos: Double2): Double3 {
+        return when (face) {
+            0 -> Double3(1.0, facePos.x, facePos.y)
+            1 -> Double3(-facePos.x, 1.0, facePos.y)
+            2 -> Double3(-1.0, -facePos.x, facePos.y)
+            3 -> Double3(facePos.x, -1.0, facePos.y)
+            4 -> Double3(-facePos.y, facePos.x, 1.0)
+            5 -> Double3(facePos.y, facePos.x, -1.0)
+            else -> throw IllegalStateException("Face: $face")
+        }
     }
 
     // getters + setters
@@ -243,7 +269,3 @@ fun getPositionFromCode(encodedPos: Long): Pair<Int, Array<Int>> {
             nQuadrants, {i -> ((encodedPos shr 8 + 2 * i) and 0x3).toInt()})
     return Pair(face, quadrants)
 }
-
-
-// TODO: Scene.update should be able to add / remove game objects while
-// iterating over objects.

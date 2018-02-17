@@ -14,7 +14,7 @@ import info.laht.threekt.core.Object3D
  * example, logic controllers.
  */
 abstract class GameObject(val name: String="", id: String="") {
-    val id: String = if (id.isEmpty()) js("uuid()")!! else id
+    val id: String = if (id.isEmpty()) js("uuid()") as String else id
     val childObjects = HashSet<GameObject>()
     var scene: Scene? = null
         set(scene) {
@@ -39,11 +39,15 @@ abstract class GameObject(val name: String="", id: String="") {
     var visible: Boolean
         get() = threeObject.visible
         set(b) { threeObject.visible = b }
+    
+    fun translateX(value: Double) = threeObject.translateX(value)
+    fun translateY(value: Double) = threeObject.translateY(value)
+    fun translateZ(value: Double) = threeObject.translateZ(value)
 
     /**
      * Method called each logical tic.
      */
-    open fun update() {
+    open fun update(tic: Core.Tic) {
         // empty here, extended by subclasses
     }
 
