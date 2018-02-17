@@ -24,6 +24,10 @@ class InputHandler {
         H(72), I(73), J(74), K(75), L(76), M(77), N(78),
         O(79), P(80), Q(81), R(82), S(83), T(84), U(85),
         V(86), W(87), X(88), Y(89), Z(90),
+        KEY0(48), KEY1(49), KEY2(50), KEY3(51), KEY4(52),
+        KEY5(53), KEY6(54), KEY7(55), KEY8(56), KEY9(57),
+        BACK(8), TAB(9), ENTER(13), SHIFT(16), CTRL(17), ALT(18),
+        SPACE(32)
 
     }
 
