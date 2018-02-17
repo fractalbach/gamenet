@@ -18,7 +18,7 @@ private const val MAX_LOD: Int = 20 // any value up to 28
 private const val MAX_ENCODED_LOD: Int = 28 // max LOD able to be encoded
 
 // distance in tile widths at which a tile subdivides
-private const val REL_SUBDIVISION_DIST: Double = 3.0
+private const val REL_SUBDIVISION_DIST: Double = 6.0 // must be > tile radius
 private const val TILE_POLYGON_WIDTH: Int = 8 // width in polygons of tile
 private const val N_TILE_VERTICES: Int =
     (TILE_POLYGON_WIDTH + 1) * (TILE_POLYGON_WIDTH + 1)
@@ -61,8 +61,6 @@ class Tile(val terrain: Terrain, val face: Int,
     val subdivisionDistance = REL_SUBDIVISION_DIST * relativeWidth
     val recombinationDistance = REL_SUBDIVISION_DIST * relativeWidth * 1.2
 
-    override var threeObject: Object3D = makeThreeTile()
-
     /*
      * Array's first value is the index of the tile's face,
      * and each following integer is the quadrant index of each sub-tile
@@ -83,7 +81,11 @@ class Tile(val terrain: Terrain, val face: Int,
     val p1 = findP1() // lower left corner, relative to cube face
     val p2 = p1 + shape // upper right corner, relative to cube face
 
+    override var threeObject: Object3D = makeThreeTile()
+
     init {
+        logger.fine("created tile, face: $face, quad: $quadrant")
+        logger.fine("position: $position")
         terrain.threeObject.add(threeObject) // add tile as child of terrain
         if (parent != null && quadrant == null) {
             throw IllegalArgumentException(
@@ -91,7 +93,7 @@ class Tile(val terrain: Terrain, val face: Int,
         }
     }
 
-    /**
+    /**w
      * Updates Tile; if distance to camera is small enough, subdivides
      * tile to create more detail, or if already subdivided and camera
      * is far enough, recombines sub-tiles.
@@ -175,7 +177,7 @@ class Tile(val terrain: Terrain, val face: Int,
                                 it % vertWidth.toDouble() / polyWidth,
                                 (it / vertWidth).toDouble() / polyWidth
                         )
-                        val facePos: Double2 = tileRelPos * shape - 1.0
+                        val facePos: Double2 = p1 + tileRelPos * shape
                         val cubeRelPos: Double3 = facePosTo3d(facePos)
                         val pos: Double3 = normalize(cubeRelPos) *
                                 (terrain.radius + height)
