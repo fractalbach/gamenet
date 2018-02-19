@@ -164,6 +164,7 @@ class Tile(val terrain: Terrain, val face: Int,
                 //if (!result) {
                 //    throw CException("error calling ter_HeightFromPosCode()")
                 //}
+
                 // once height array has been received, create
                 // position array.
                 val geometry = PlaneGeometry(1, 1, 8, 8)
@@ -251,7 +252,7 @@ class Tile(val terrain: Terrain, val face: Int,
         }
         val faceBits: Long = face.toLong() shl 5
         var positionCode: Long = faceBits or lod.toLong()
-        for (i in 0 until lod) {
+        for (i in 1 until lod) {
             val shift = 8 + 2 * i
             val quadrant = quadrants[i]
             positionCode = (quadrant.toLong() shl shift) or positionCode
