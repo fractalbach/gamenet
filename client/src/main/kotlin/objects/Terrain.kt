@@ -13,7 +13,7 @@ import info.laht.threekt.math.Color
 import info.laht.threekt.math.Vector3
 import info.laht.threekt.objects.Mesh
 
-private const val RADIUS: Double = 6.371e6
+private const val RADIUS: Double = 6.371e3 //6.371e6
 private const val MAX_LOD: Int = 22 // any value up to 28
 private const val MAX_ENCODED_LOD: Int = 28 // max LOD able to be encoded
 
@@ -207,6 +207,7 @@ class Tile(val terrain: Terrain, val face: Int,
                     val v = Vector3(pos.x, pos.y, pos.z)
                     js("geometry.vertices[i] = v")
                 }
+                geometry.computeVertexNormals()
                 return Pair(geometry, relativeCenter)
             } catch (e: Exception) {
                 logger.error("Error creating $this geometry")
@@ -216,11 +217,11 @@ class Tile(val terrain: Terrain, val face: Int,
 
         fun makeMaterial(): Material {
             val planeMaterial = MeshStandardMaterial()
-            planeMaterial.color = Color(0xffff00)
+            planeMaterial.color = Color(0x3cff00)
             // work around temporary error in THREE.js wrapper
             @Suppress("CAST_NEVER_SUCCEEDS")
             (planeMaterial as Material).side = DoubleSide
-            planeMaterial.wireframe = true
+            //planeMaterial.wireframe = true
             return planeMaterial
         }
 

@@ -34,20 +34,18 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     val sunLight = SunLight("SunLight")
 
     init {
+        val r = renderer
         logger.info("Initializing $this")
         // setup renderer
-        renderer.setClearAlpha(1)
-        renderer.setClearColor(0xfffafa, 1)
-        //js("this.renderer.shadowMap.enabled = true") //enable shadow
-        //js("this.renderer.shadowMap.type = PCFSoftShadowMap()")
-        renderer.setSize(renderWidth, renderHeight)
+        r.setClearAlpha(1)
+        r.setClearColor(0xfffafa, 1)
+        js("r.shadowMap.enabled = true;") //enable shadow
+        js("r.shadowMap.type = THREE.PCFSoftShadowMap;")
+        r.setSize(renderWidth, renderHeight)
         // setup threeScene
-        threeScene.fog = FogExp2(Color(0xf0fff0), 0.1 )
+        threeScene.fog = FogExp2(Color(0xf0fff0), 0.01)
 
-        sunLight.position = Double3(0.0, 100.0, 30.0)
-
-        val mover = TestMover()
-        mover.position = Double3(6.0, 0.0, 0.0)
+        sunLight.position = Double3(1e9, 1e9, 30.0)
 
         // add constant game objects
         add(terrain)
@@ -55,6 +53,8 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         add(sunLight)
 
         // test obj
+        val mover = TestMover()
+        mover.position = Double3(6.0, 0.0, 0.0)
         add(mover)
         (camera as FollowCamera).follow(mover)
         val testCube = TestCube()

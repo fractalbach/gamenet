@@ -17,7 +17,7 @@ const val KEY_ARR_SIZE = 223
  * events to be read reliably, and quickly, by objects during the
  * game loop.
  */
-class InputHandler(container: Element) {
+class InputHandler(private val container: Element) {
 
     /**
      * Enum of keys that can be pressed, and their associated key codes.
@@ -62,8 +62,6 @@ class InputHandler(container: Element) {
         fun clearKeys() = boundKeys.clear()
     }
 
-    private val container = container
-
     private val keyStates: BooleanArray = BooleanArray(KEY_ARR_SIZE)
     
     private var keyPresses: BooleanArray = BooleanArray(KEY_ARR_SIZE)
@@ -85,7 +83,9 @@ class InputHandler(container: Element) {
                 "keyup",
                 { event: Event -> onKeyReleased(event as KeyboardEvent)}
         )
+        @Suppress("UNUSED_VARIABLE") // used in js
         val el = container
+        @Suppress("UNUSED_VARIABLE") // used in js
         val onclickFunc = this::capturePointer
         js("el.onclick = onclickFunc")
         document.addEventListener(

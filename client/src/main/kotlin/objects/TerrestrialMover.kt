@@ -34,7 +34,7 @@ abstract class TerrestrialMover(name: String="", id: String=""):
 
     /**
      * Rights the object, so that object Z axis points away from
-     * center of spheroid.
+     * center of spheroid. (Sets Object to perfectly upright position)
      */
     protected open fun right() {
         val axis = Vector3(0.0, 0.0, 1.0)
