@@ -36,7 +36,7 @@ class Core {
             logger.info("Set new scene: $scene")
         }
 
-    val input: InputHandler = InputHandler()
+    val input: InputHandler = InputHandler(container)
     val connection: ServerConnection = ServerConnection()
     val eventHandler: EventHandler = EventHandler()
 

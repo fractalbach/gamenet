@@ -9,8 +9,13 @@ import info.laht.threekt.objects.Mesh
 
 import Scene
 
+private const val MOUSE_TRAVERSE_COEF = 0.003
+private const val MOUSE_ELEVATION_COEF = 0.003
+
+
 class TestMover(name: String="", id: String=""): TerrestrialMover(name, id) {
     override var threeObject: Object3D = makeMesh()
+
 
     init {
         threeObject.castShadow = true
@@ -39,18 +44,25 @@ class TestMover(name: String="", id: String=""): TerrestrialMover(name, id) {
         super.update(tic)
         var moved: Boolean = false
         if (tic.core.input.cmdActive(InputHandler.Command.MOVE_UP)) {
-            val movement = 1.0 * tic.timeStep / 1000.0
+            val movement = 2.0 * tic.timeStep / 1000.0
             translateY(movement)
             moved = true
         }
         if (tic.core.input.cmdActive(InputHandler.Command.MOVE_DOWN)) {
-            val movement = -1.0 * tic.timeStep / 1000.0
+            val movement = -2.0 * tic.timeStep / 1000.0
             translateY(movement)
             moved = true
         }
         if (moved) {
             snapToSurface()
             right()
+        }
+
+        val traverse: Double = tic.core.input.mouseMotion.x
+        if (traverse != 0.0) {
+            val euler = rotation
+            euler.z -= MOUSE_TRAVERSE_COEF * tic.core.input.mouseMotion.x
+            rotation = euler
         }
     }
 }

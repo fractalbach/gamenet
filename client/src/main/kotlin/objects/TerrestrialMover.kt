@@ -4,6 +4,9 @@ import Scene
 
 import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.normalize
+import com.curiouscreature.kotlin.math.radians
+import info.laht.threekt.math.Matrix3
+import info.laht.threekt.math.Quaternion
 import info.laht.threekt.math.Vector3
 
 /**
@@ -26,7 +29,7 @@ abstract class TerrestrialMover(name: String="", id: String=""):
         get() {
             val terrain = terrain?:
                 throw IllegalStateException("$this terrain property not set")
-            return normalize(position - terrain.position)
+            return normalize(worldPosition - terrain.worldPosition)
         }
 
     /**
@@ -35,9 +38,18 @@ abstract class TerrestrialMover(name: String="", id: String=""):
      */
     protected open fun right() {
         val axis = Vector3(0.0, 0.0, 1.0)
+        val v = Vector3()
         val normal = sphereNormal
-        threeObject.quaternion.setFromUnitVectors(
-                axis, Vector3(normal.x, normal.y, normal.z))
+        val normalVector = Vector3()
+        normalVector.x = normal.x
+        normalVector.y = normal.y
+        normalVector.z = normal.z
+        val worldQuat = Quaternion()
+        threeObject.getWorldQuaternion(worldQuat)
+        v.copy(axis).applyQuaternion(worldQuat)
+        val adjustment = Quaternion()
+        adjustment.setFromUnitVectors(v, normalVector)
+        threeObject.applyQuaternion(adjustment)
     }
 
     /**

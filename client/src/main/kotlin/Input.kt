@@ -1,5 +1,9 @@
+import com.curiouscreature.kotlin.math.Double2
+import org.w3c.dom.Element
 import org.w3c.dom.events.Event
 import org.w3c.dom.events.KeyboardEvent
+import org.w3c.dom.events.MouseEvent
+import kotlin.browser.document
 import kotlin.browser.window
 
 const val KEY_ARR_SIZE = 223
@@ -13,7 +17,7 @@ const val KEY_ARR_SIZE = 223
  * events to be read reliably, and quickly, by objects during the
  * game loop.
  */
-class InputHandler {
+class InputHandler(container: Element) {
 
     /**
      * Enum of keys that can be pressed, and their associated key codes.
@@ -57,7 +61,9 @@ class InputHandler {
 
         fun clearKeys() = boundKeys.clear()
     }
-    
+
+    private val container = container
+
     private val keyStates: BooleanArray = BooleanArray(KEY_ARR_SIZE)
     
     private var keyPresses: BooleanArray = BooleanArray(KEY_ARR_SIZE)
@@ -65,8 +71,10 @@ class InputHandler {
     private var keyReleases: BooleanArray = BooleanArray(KEY_ARR_SIZE)
     private var keyReleaseBuffer: BooleanArray = BooleanArray(KEY_ARR_SIZE)
 
-    // indicates whether a tic is currently being processed
-    private var activeTic: Boolean = false
+    private var pointerCaptured: Boolean = false
+
+    var mouseMotion = Double2()
+    private var mouseMotionBuffer = Double2()
 
     init {
         window.addEventListener(
@@ -77,6 +85,15 @@ class InputHandler {
                 "keyup",
                 { event: Event -> onKeyReleased(event as KeyboardEvent)}
         )
+        val el = container
+        val onclickFunc = this::capturePointer
+        js("el.onclick = onclickFunc")
+        document.addEventListener(
+                "pointerlockchange", this::onPointerLockChange, false)
+        document.addEventListener(
+                "mozpointerlockchange", this::onPointerLockChange, false)
+        document.addEventListener(
+                "webkitpointerlockchange", this::onPointerLockChange, false)
 
         // make default key mappings.
         // if customizable command maps are implemented later, this
@@ -124,6 +141,41 @@ class InputHandler {
     fun clearKeys() = Command.values().forEach { cmd -> cmd.clearKeys() }
 
 
+    private fun capturePointer() {
+        @Suppress("UNUSED_VARIABLE") // used in js
+        val el = container // bring element into local js scope
+        js(
+                "el.requestPointerLock = " +
+                "el.requestPointerLock || " +
+                "el.mozRequestPointerLock || " +
+                "el.webkitRequestPointerLock;")
+        js("el.requestPointerLock()")
+    }
+
+    private fun onPointerLockChange(e: dynamic) {
+        @Suppress("UNUSED_VARIABLE") // used in js
+        val el = container // bring element into local js scope
+        if (js("document.pointerLockElement === el") ||
+                js("document.mozPointerLockElement === el") ||
+                js("document.webkitPointerLockElement === el")) {
+            document.addEventListener(
+                    "mousemove", this::onMouseMove, false)
+        } else {
+            document.removeEventListener(
+                    "mousemove", this::onMouseMove, false)
+        }
+    }
+
+    private fun onMouseMove(e: dynamic) {
+        mouseMotionBuffer = Double2(
+            js("e.movementX || e.mozMovementX || e.webkitMovementX || 0.0")
+                    as Double,
+            js("e.movementY || e.mozMovementY || e.webkitMovementY || 0.0")
+                    as Double
+        )
+    }
+
+
     /**
      * Called at start of logic tic, input received after this is
      * saved for the next logic tic, in order to ensure homogeneous 
@@ -142,8 +194,12 @@ class InputHandler {
         // keyPressBuffer must be able to be assigned to at any time.
         keyPressBuffer = oldKeyPresses
         keyReleaseBuffer = oldKeyReleases
-        
-        activeTic = true
+
+        // swap mouse buffer
+        val oldMouseMotion = mouseMotion
+        oldMouseMotion.x = 0.0
+        oldMouseMotion.y = 0.0
+        mouseMotion = mouseMotionBuffer
+        mouseMotionBuffer = oldMouseMotion
     }
 }
-
