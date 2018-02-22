@@ -4,11 +4,13 @@ import Scene
 import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.length
 import info.laht.threekt.core.Object3D
+import info.laht.threekt.math.Euler
+import info.laht.threekt.math.Matrix3
 
 /**
  * Abstract object from which other game types are extended.
  *
- * A GameObject is any object that is owned by a scene, and interact
+ * A GameObject is any object that is owned by a scene, and interacts
  * with other parts of the scene. This includes objects that are not
  * visually represented, and/or have no position within the scene; for
  * example, logic controllers.
@@ -16,7 +18,7 @@ import info.laht.threekt.core.Object3D
 abstract class GameObject(val name: String="", id: String="") {
     val id: String = if (id.isEmpty()) js("uuid()") as String else id
     val childObjects = HashSet<GameObject>()
-    var scene: Scene? = null
+    open var scene: Scene? = null
         set(scene) {
             if (scene == field) {
                 return
@@ -34,6 +36,18 @@ abstract class GameObject(val name: String="", id: String="") {
             threeObject.position.x = pos.x
             threeObject.position.y = pos.y
             threeObject.position.z = pos.z
+        }
+
+    var worldPosition: Double3
+        get() = Double3(threeObject.getWorldPosition())
+        set(v) = throw NotImplementedError()
+
+    var motion: Double3 = Double3()
+
+    var rotation: Euler
+        get() = threeObject.rotation
+        set(rot) {
+            threeObject.setRotationFromEuler(rot)
         }
 
     var visible: Boolean
@@ -55,7 +69,7 @@ abstract class GameObject(val name: String="", id: String="") {
 
 
     fun distance(other: GameObject): Double {
-        return length(other.position - position)
+        return length(other.worldPosition - worldPosition)
     }
 
     override fun toString(): String {

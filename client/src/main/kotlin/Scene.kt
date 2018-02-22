@@ -26,10 +26,11 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     val renderer = WebGLRenderer()
     val renderWidth: Int = window.innerWidth * 9 / 10
     val renderHeight: Int = renderWidth * 7 / 10
+    val gravity: Double = 9.806
 
     // instantiate constant game objects
     val terrain: Terrain = Terrain()
-    val camera: Camera = objects.Camera()
+    val camera: Camera = objects.FollowCamera()
     val sunLight = SunLight("SunLight")
 
     init {
@@ -43,14 +44,20 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         // setup threeScene
         threeScene.fog = FogExp2(Color(0xf0fff0), 0.1 )
 
-        camera.position = Double3(0.0, 0.0, 6.5)
+        //camera.position = Double3(0.0, 0.0, 6.5)
         sunLight.position = Double3(0.0, 100.0, 30.0)
+
+        val mover = TestMover()
+        mover.position = Double3(6.0, 0.1, 0.0)
 
         // add constant game objects
         add(terrain)
         add(camera)
         add(sunLight)
-        //add(TestCube("TestCube"))
+
+        // test obj
+        add(mover)
+        (camera as FollowCamera).follow(mover)
     }
 
     /**
