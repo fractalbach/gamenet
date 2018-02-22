@@ -30,7 +30,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
 
     // instantiate constant game objects
     val terrain: Terrain = Terrain()
-    val camera: Camera = objects.Camera()
+    val camera: Camera = objects.FollowCamera()
     val sunLight = SunLight("SunLight")
 
     init {
@@ -47,11 +47,15 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         camera.position = Double3(0.0, 0.0, 6.5)
         sunLight.position = Double3(0.0, 100.0, 30.0)
 
+        val mover = TestMover()
+        mover.position = Double3(0.0, 0.0, 10.0)
+
         // add constant game objects
         add(terrain)
         add(camera)
         add(sunLight)
-        //add(TestCube("TestCube"))
+        add(mover)
+        //(camera as FollowCamera).follow(mover)
     }
 
     /**
