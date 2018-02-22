@@ -7,6 +7,8 @@ import info.laht.threekt.materials.MeshStandardMaterial
 import info.laht.threekt.math.Color
 import info.laht.threekt.objects.Mesh
 
+import Scene
+
 class TestMover(name: String="", id: String=""): TerrestrialMover(name, id) {
     override var threeObject: Object3D = makeMesh()
 
@@ -14,6 +16,14 @@ class TestMover(name: String="", id: String=""): TerrestrialMover(name, id) {
         threeObject.castShadow = true
         threeObject.receiveShadows = true
     }
+
+    override var scene: Scene?
+        get() = super.scene
+        set(scene) {
+            super.scene = scene
+            snapToSurface()
+            right()
+        }
 
     private fun makeMesh(): Mesh {
         val geometry = BoxGeometry(1, 1, 1, 1)
