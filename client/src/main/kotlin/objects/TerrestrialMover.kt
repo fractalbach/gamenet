@@ -41,12 +41,24 @@ abstract class TerrestrialMover(name: String="", id: String=""):
     }
 
     /**
+     * Sets object elevation above terrain surface to 0.0
+     */
+    protected open fun snapToSurface() {
+        try {
+            position = normalize(sphereNormal) * terrain!!.radius // todo
+        } catch (e: NullPointerException) {
+            throw IllegalStateException("$this terrain property was not set")
+        }
+    }
+
+    /**
      * Applies gravitational acceleration to object.
      */
     protected open fun applyGravity(tic: Core.Tic) {
         val scene = scene?:
             throw IllegalStateException("$this scene property not set")
-        val deltaVelocities = sphereNormal * -scene.gravity * tic.timeStep / 1000.0
+        val deltaVelocities = sphereNormal * -scene.gravity *
+                tic.timeStep / 1000.0
         motion += deltaVelocities
     }
 }

@@ -39,6 +39,7 @@ class TestMover(name: String="", id: String=""): TerrestrialMover(name, id) {
             moved = true
         }
         if (moved) {
+            snapToSurface()
             right()
         }
     }
