@@ -48,14 +48,14 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         sunLight.position = Double3(0.0, 100.0, 30.0)
 
         val mover = TestMover()
-        mover.position = Double3(0.0, 0.0, 10.0)
+        mover.position = Double3(0.0, 0.0, 0.0)
 
         // add constant game objects
         add(terrain)
         add(camera)
         add(sunLight)
         add(mover)
-        //(camera as FollowCamera).follow(mover)
+        (camera as FollowCamera).follow(mover)
     }
 
     /**

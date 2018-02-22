@@ -1,7 +1,8 @@
 package objects
 
 import com.curiouscreature.kotlin.math.Double3
-import info.laht.threekt.extras.SceneUtils
+import com.curiouscreature.kotlin.math.radians
+import info.laht.threekt.math.Euler
 
 open class FollowCamera(name: String="", id: String=""): Camera(name, id) {
 
@@ -9,12 +10,10 @@ open class FollowCamera(name: String="", id: String=""): Camera(name, id) {
     var followed: GameObject? = null
 
     fun follow(followed: GameObject) {
-        if (this.followed != null) {
-            SceneUtils.detach(threeObject, this.followed!!.threeObject, scene!!.threeScene)
-        }
-        position = Double3(0.0, -followDistance, followDistance / 2)
-        SceneUtils.attach(threeObject, followed.threeObject, scene!!.threeScene)
+        followed.threeObject.add(threeObject)
         this.followed = followed
+        position = Double3(0.0, -followDistance, followDistance / 2)
+        rotation = Euler(radians(60.0), 0.0, 0.0)
         logger.debug("$this (pos: $position) now following " +
                 "$followed (pos: ${followed.position})")
     }

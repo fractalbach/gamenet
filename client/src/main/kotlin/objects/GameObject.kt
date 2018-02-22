@@ -4,6 +4,8 @@ import Scene
 import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.length
 import info.laht.threekt.core.Object3D
+import info.laht.threekt.math.Euler
+import info.laht.threekt.math.Matrix3
 
 /**
  * Abstract object from which other game types are extended.
@@ -37,6 +39,12 @@ abstract class GameObject(val name: String="", id: String="") {
         }
 
     var motion: Double3 = Double3()
+
+    var rotation: Euler
+        get() = threeObject.rotation
+        set(rot) {
+            threeObject.setRotationFromEuler(rot)
+        }
 
     var visible: Boolean
         get() = threeObject.visible
