@@ -26,6 +26,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     val renderer = WebGLRenderer()
     val renderWidth: Int = window.innerWidth * 9 / 10
     val renderHeight: Int = renderWidth * 7 / 10
+    val gravity: Double = 9.806
 
     // instantiate constant game objects
     val terrain: Terrain = Terrain()

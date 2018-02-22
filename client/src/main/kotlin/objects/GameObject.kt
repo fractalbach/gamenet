@@ -8,7 +8,7 @@ import info.laht.threekt.core.Object3D
 /**
  * Abstract object from which other game types are extended.
  *
- * A GameObject is any object that is owned by a scene, and interact
+ * A GameObject is any object that is owned by a scene, and interacts
  * with other parts of the scene. This includes objects that are not
  * visually represented, and/or have no position within the scene; for
  * example, logic controllers.
@@ -16,7 +16,7 @@ import info.laht.threekt.core.Object3D
 abstract class GameObject(val name: String="", id: String="") {
     val id: String = if (id.isEmpty()) js("uuid()") as String else id
     val childObjects = HashSet<GameObject>()
-    var scene: Scene? = null
+    open var scene: Scene? = null
         set(scene) {
             if (scene == field) {
                 return
@@ -35,6 +35,8 @@ abstract class GameObject(val name: String="", id: String="") {
             threeObject.position.y = pos.y
             threeObject.position.z = pos.z
         }
+
+    var motion: Double3 = Double3()
 
     var visible: Boolean
         get() = threeObject.visible
