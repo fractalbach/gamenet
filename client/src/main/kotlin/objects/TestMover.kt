@@ -10,7 +10,6 @@ import info.laht.threekt.objects.Mesh
 import Scene
 
 private const val MOUSE_TRAVERSE_COEF = 0.003
-private const val MOUSE_ELEVATION_COEF = 0.003
 
 
 class TestMover(name: String="", id: String=""): TerrestrialMover(name, id) {

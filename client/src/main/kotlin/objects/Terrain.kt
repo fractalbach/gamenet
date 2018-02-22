@@ -13,8 +13,8 @@ import info.laht.threekt.math.Color
 import info.laht.threekt.math.Vector3
 import info.laht.threekt.objects.Mesh
 
-private const val RADIUS: Double = 6371.0//6.371 //6.371e6
-private const val MAX_LOD: Int = 20 // any value up to 28
+private const val RADIUS: Double = 6.371e6
+private const val MAX_LOD: Int = 22 // any value up to 28
 private const val MAX_ENCODED_LOD: Int = 28 // max LOD able to be encoded
 
 // distance in tile widths at which a tile subdivides
