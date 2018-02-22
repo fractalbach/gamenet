@@ -38,6 +38,10 @@ abstract class GameObject(val name: String="", id: String="") {
             threeObject.position.z = pos.z
         }
 
+    var worldPosition: Double3
+        get() = Double3(threeObject.getWorldPosition())
+        set(v) = throw NotImplementedError()
+
     var motion: Double3 = Double3()
 
     var rotation: Euler
@@ -65,7 +69,7 @@ abstract class GameObject(val name: String="", id: String="") {
 
 
     fun distance(other: GameObject): Double {
-        return length(other.position - position)
+        return length(other.worldPosition - worldPosition)
     }
 
     override fun toString(): String {

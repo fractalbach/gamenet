@@ -13,15 +13,17 @@ import info.laht.threekt.math.Color
 import info.laht.threekt.math.Vector3
 import info.laht.threekt.objects.Mesh
 
-private const val RADIUS: Double = 2.0 //6.371e6
+private const val RADIUS: Double = 6.371 //6.371e6
 private const val MAX_LOD: Int = 20 // any value up to 28
 private const val MAX_ENCODED_LOD: Int = 28 // max LOD able to be encoded
 
 // distance in tile widths at which a tile subdivides
-private const val REL_SUBDIVISION_DIST: Double = 6.0 // must be > tile radius
+private const val REL_SUBDIVISION_DIST: Double = 3 * RADIUS // must be > tile w
 private const val TILE_POLYGON_WIDTH: Int = 8 // width in polygons of tile
 private const val N_TILE_VERTICES: Int =
     (TILE_POLYGON_WIDTH + 1) * (TILE_POLYGON_WIDTH + 1)
+
+private const val MAX_TILE_DIVISIONS_PER_TIC = 32
 
 
 /**
@@ -37,9 +39,15 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     val radius = RADIUS
     val faces: Array<Tile> = Array(6, {i -> Tile(this, i)})
 
+    var subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
+
     init {
         // add each face to scene
         faces.forEach {face -> addChild(face) }
+    }
+
+    override fun update(tic: Core.Tic) {
+        subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
     }
 
     fun get(index: Int): Tile = faces[index]
@@ -93,7 +101,7 @@ class Tile(val terrain: Terrain, val face: Int,
         }
     }
 
-    /**w
+    /**
      * Updates Tile; if distance to camera is small enough, subdivides
      * tile to create more detail, or if already subdivided and camera
      * is far enough, recombines sub-tiles.
@@ -102,8 +110,10 @@ class Tile(val terrain: Terrain, val face: Int,
         val dist = distance(scene!!.camera)
         if (dist < subdivisionDistance &&
                 subTiles[0] == null &&
-                lod < MAX_LOD) {
+                lod < MAX_LOD &&
+                terrain.subdivisionCounter > 0) {
             subdivide()
+            terrain.subdivisionCounter -= 1
         } else if (dist > recombinationDistance && subTiles[0] != null) {
             recombine()
         }

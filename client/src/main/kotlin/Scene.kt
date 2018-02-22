@@ -44,16 +44,18 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         // setup threeScene
         threeScene.fog = FogExp2(Color(0xf0fff0), 0.1 )
 
-        camera.position = Double3(0.0, 0.0, 6.5)
+        //camera.position = Double3(0.0, 0.0, 6.5)
         sunLight.position = Double3(0.0, 100.0, 30.0)
 
         val mover = TestMover()
-        mover.position = Double3(0.0, 0.0, 0.0)
+        mover.position = Double3(7.0, 0.1, 0.0)
 
         // add constant game objects
         add(terrain)
         add(camera)
         add(sunLight)
+
+        // test obj
         add(mover)
         (camera as FollowCamera).follow(mover)
     }

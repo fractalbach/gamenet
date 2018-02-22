@@ -7,7 +7,7 @@ import kotlin.browser.window
 const val LOGIC_HZ: Double = 60.0 // logic tics per second
 const val STEP_DELTA_MS: Double = 1000.0 / LOGIC_HZ // simulation ms per tic
 
-const val DELTA_T_LIMIT_MS: Double = 1000.0
+const val DELTA_T_LIMIT_MS: Double = 1e4
 
 
 /**
