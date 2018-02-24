@@ -1,6 +1,8 @@
+import exception.CException
 import exception.DocumentError
 import exception.GameException
 import org.w3c.dom.Element
+import org.w3c.dom.WindowOrWorkerGlobalScope
 import kotlin.browser.document
 import kotlin.browser.window
 
@@ -44,6 +46,8 @@ class Core {
     var lastFrameTimeMs: Double = 0.0 // timestamp of last loop start
 
     init {
+        Logger.getLogger("Core").info("Initializing Core")
+
         // call setter (I hope there's a less weird way to do this)
         scene = scene
     }
@@ -101,6 +105,15 @@ lateinit var core: Core
  * Main function; called at startup
  */
 fun main(args: Array<String>) {
+    if (js("Module.ready") != true) {
+
+        Logger.getLogger("Core").info("Module not yet ready.")
+        window.setTimeout(
+                { main(args)},
+                500
+        )
+        return // come back later
+    }
     core = Core()
     Logger.getLogger("Core").info("Began main loop")
     core.update(0.0)

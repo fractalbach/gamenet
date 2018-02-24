@@ -4,6 +4,7 @@ import Logger.Companion.getLogger
 import com.curiouscreature.kotlin.math.Double2
 import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.normalize
+import exception.CException
 import info.laht.threekt.THREE.DoubleSide
 import info.laht.threekt.core.Object3D
 import info.laht.threekt.geometries.PlaneGeometry
@@ -12,8 +13,16 @@ import info.laht.threekt.materials.MeshStandardMaterial
 import info.laht.threekt.math.Color
 import info.laht.threekt.math.Vector3
 import info.laht.threekt.objects.Mesh
+import org.khronos.webgl.ArrayBuffer
+import org.khronos.webgl.Float64Array
+import org.khronos.webgl.Uint8Array
+import org.khronos.webgl.get
 
-private const val RADIUS: Double = 6.371e3 //6.371e6
+private const val SIZE_OF_DOUBLE = 8
+
+private const val TERRAIN_SEED: Int = 124
+private const val RADIUS: Double = 6.371 //6.371e6
+private const val HEIGHT_SCALE: Double = 0.0
 private const val MAX_LOD: Int = 22 // any value up to 28
 private const val MAX_ENCODED_LOD: Int = 28 // max LOD able to be encoded
 
@@ -22,6 +31,8 @@ private const val REL_SUBDIVISION_DIST: Double = 3 * RADIUS // must be > tile w
 private const val TILE_POLYGON_WIDTH: Int = 8 // width in polygons of tile
 private const val N_TILE_VERTICES: Int =
     (TILE_POLYGON_WIDTH + 1) * (TILE_POLYGON_WIDTH + 1)
+
+private const val POS_ARR_SIZE: Int = N_TILE_VERTICES * SIZE_OF_DOUBLE
 
 private const val MAX_TILE_DIVISIONS_PER_TIC = 32
 
@@ -44,6 +55,15 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     init {
         // add each face to scene
         faces.forEach {face -> addChild(face) }
+
+        // initialize terrain module
+        val echo: Int = js("_ter_TestEcho(4)") as Int
+        if (echo != 4) {
+            throw CException("Test Function call to C failed. " +
+                    "Is Module set up?")
+        }
+
+        js("_ter_Init($TERRAIN_SEED, $RADIUS, $HEIGHT_SCALE)")
     }
 
     override fun update(tic: Core.Tic) {
@@ -169,11 +189,30 @@ class Tile(val terrain: Terrain, val face: Int,
          */
         fun makeGeometry(): Pair<PlaneGeometry, Double3> {
             try {
-                //val positions = Float64Array(N_TILE_VERTICES)
-                //val result = js("_ter_HeightFromPosCode(ptr, posCode)")
-                //if (!result) {
-                //    throw CException("error calling ter_HeightFromPosCode()")
-                //}
+                @Suppress("UNUSED_VARIABLE") // used in js
+                val ptr = js("Module._malloc($POS_ARR_SIZE)")
+                val data = Float64Array(N_TILE_VERTICES)
+                // copy to emscripten heap
+                val dataHeap = js("new Uint8Array(" +
+                        "Module.HEAPU8.buffer, ptr, $POS_ARR_SIZE)")
+                dataHeap.set(Uint8Array(data.buffer))
+
+                // call C++ function
+                @Suppress("UNUSED_VARIABLE") // used in js
+                val posCode = getPositionCode()
+                val result = js("_ter_GetTileHeightValues(ptr, posCode)")
+                if (result != 1) {
+                    throw CException("error calling ter_GetTileHeightValues()")
+                }
+
+                // get result
+                val positions = Float64Array(
+                        dataHeap.buffer as ArrayBuffer,
+                        dataHeap.byteOffset as Int,
+                        data.length)
+
+                // free allocated memory
+                js("Module._free(dataHeap.byteOffset)")
 
                 // once height array has been received, create
                 // position array.
@@ -183,7 +222,8 @@ class Tile(val terrain: Terrain, val face: Int,
                 val sphereRelativePositions: Array<Double3> = Array(
                         N_TILE_VERTICES, {
                     try {
-                        val height = 0.0 //positions[i]
+                        val height = positions[it]
+                        logger.fine("height: $height")
                         val tileRelPos = Double2(
                                 it % vertWidth.toDouble() / polyWidth,
                                 (it / vertWidth).toDouble() / polyWidth
@@ -221,7 +261,7 @@ class Tile(val terrain: Terrain, val face: Int,
             // work around temporary error in THREE.js wrapper
             @Suppress("CAST_NEVER_SUCCEEDS")
             (planeMaterial as Material).side = DoubleSide
-            //planeMaterial.wireframe = true
+            //planeMaterial.wireframe = true // for debugging
             return planeMaterial
         }
 
