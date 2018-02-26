@@ -55,6 +55,7 @@ compileTestKotlin2Js {
 
 clean.doFirst() {
     delete("${web_dir}")
+    delete("${test_dir}")
 }
 
 //noinspection GroovyAssignabilityCheck
