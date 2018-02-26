@@ -1,5 +1,7 @@
 package objects
 
+import Core
+import Logger
 import Logger.Companion.getLogger
 import com.curiouscreature.kotlin.math.Double2
 import com.curiouscreature.kotlin.math.Double3
@@ -45,13 +47,13 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     override var threeObject: Object3D = Object3D() // nothing special
 
     val radius = RADIUS
-    val faces: Array<Tile> = Array(6, {Tile(this, it)})
+    val faces: Array<Tile> = Array(6, { Tile(this, it) })
 
     var subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
 
     init {
         // add each face to scene
-        faces.forEach {face -> addChild(face) }
+        faces.forEach { face -> addChild(face) }
 
         // initialize terrain module
         val echo: Int = js("_ter_TestEcho(4)") as Int
@@ -132,6 +134,7 @@ class Tile(val terrain: Terrain, val face: Int,
             return Pair(y * TILE_HEIGHT_ROW_SIZE + x, isLip)
         }
     }
+
     val lod: Int = if (parent == null) 1 else parent.lod + 1
     val shape: Double2 = if (parent != null) parent.shape / 2.0 else
         Double2(2.0, 2.0)
@@ -148,7 +151,7 @@ class Tile(val terrain: Terrain, val face: Int,
      */
     val quadrants: Array<Int> = Array(
             lod,
-            {i ->
+            { i ->
                 when {
                     i < lod - 1 -> parent!!.quadrants[i]
                     i == 0 -> face
@@ -204,7 +207,7 @@ class Tile(val terrain: Terrain, val face: Int,
             1 -> Double2(parent.p1.x, parent.p1.y + shape.y)
             2 -> parent.p1
             3 -> Double2(parent.p1.x + shape.x, parent.p1.y)
-            else ->throw IllegalArgumentException()
+            else -> throw IllegalArgumentException()
         }
     }
 
@@ -250,7 +253,7 @@ class Tile(val terrain: Terrain, val face: Int,
                         val cubeRelPos: Double3 = facePosTo3d(facePos)
                         val normPos: Double3 = normalize(cubeRelPos)
                         @Suppress("UNUSED_VARIABLE") // used in js
-                        val x: Double = normPos.x;
+                        val x: Double = normPos.x
                         @Suppress("UNUSED_VARIABLE") // used in js
                         val y: Double = normPos.y
                         @Suppress("UNUSED_VARIABLE") // used in js
@@ -362,6 +365,6 @@ fun getPositionFromCode(encodedPos: Long): Pair<Int, Array<Int>> {
     val nQuadrants: Int = (encodedPos and 0x1F).toInt()
     val face: Int = ((encodedPos shr 5) and 0x7).toInt()
     val quadrants: Array<Int> = Array(
-            nQuadrants, {i -> ((encodedPos shr 8 + 2 * i) and 0x3).toInt()})
+            nQuadrants, { i -> ((encodedPos shr 8 + 2 * i) and 0x3).toInt() })
     return Pair(face, quadrants)
 }

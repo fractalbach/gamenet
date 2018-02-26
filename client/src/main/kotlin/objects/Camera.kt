@@ -1,5 +1,6 @@
 package objects
 
+import Logger
 import info.laht.threekt.cameras.PerspectiveCamera
 import info.laht.threekt.core.Object3D
 

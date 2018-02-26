@@ -57,6 +57,7 @@ clean.doFirst() {
     delete("${web_dir}")
 }
 
+//noinspection GroovyAssignabilityCheck
 task compileJS(type: JavaExec) {
 
     classpath configurations.closureCompiler
@@ -67,6 +68,7 @@ task compileJS(type: JavaExec) {
     closureArgs << "--language_in=ECMASCRIPT_2017"
     closureArgs << "--js_output_file=$web_dir/client.js"
     closureArgs << "build/js/client.js"
+    //noinspection GroovyAssignabilityCheck
     args closureArgs
 
     dependsOn build

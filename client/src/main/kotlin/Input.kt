@@ -2,7 +2,6 @@ import com.curiouscreature.kotlin.math.Double2
 import org.w3c.dom.Element
 import org.w3c.dom.events.Event
 import org.w3c.dom.events.KeyboardEvent
-import org.w3c.dom.events.MouseEvent
 import kotlin.browser.document
 import kotlin.browser.window
 
@@ -156,9 +155,9 @@ class InputHandler(private val container: Element) {
     private fun onPointerLockChange(e: dynamic) {
         @Suppress("UNUSED_VARIABLE") // used in js
         val el = container // bring element into local js scope
-        if (js("document.pointerLockElement === el") ||
-                js("document.mozPointerLockElement === el") ||
-                js("document.webkitPointerLockElement === el")) {
+        if (js("document.pointerLockElement === el ||" +
+                "document.mozPointerLockElement === el" +
+                "document.webkitPointerLockElement === el") as Boolean) {
             document.addEventListener(
                     "mousemove", this::onMouseMove, false)
         } else {

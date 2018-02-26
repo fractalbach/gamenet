@@ -1,8 +1,6 @@
-import exception.CException
 import exception.DocumentError
 import exception.GameException
 import org.w3c.dom.Element
-import org.w3c.dom.WindowOrWorkerGlobalScope
 import kotlin.browser.document
 import kotlin.browser.window
 
@@ -23,8 +21,9 @@ class Core {
     companion object {
         val logger = Logger.getLogger("Core")
     }
-    val container: Element = document.getElementById("container")?:
-        throw DocumentError("Could not find 'container' for game Core.")
+
+    val container: Element = document.getElementById("container")
+            ?: throw DocumentError("Could not find 'container' for game Core.")
 
     var scene: Scene = Scene("Main Scene", this)
         // setter for scene switches out scene object, adjusts document,
@@ -91,7 +90,7 @@ class Core {
         }
 
         scene.render()
-        window.requestAnimationFrame({t -> update(t)}) // request next frame
+        window.requestAnimationFrame({ t -> update(t) }) // request next frame
     }
 
     override fun toString() = "GameCore"
@@ -109,7 +108,7 @@ fun main(args: Array<String>) {
 
         Logger.getLogger("Core").info("Module not yet ready.")
         window.setTimeout(
-                { main(args)},
+                { main(args) },
                 500
         )
         return // come back later

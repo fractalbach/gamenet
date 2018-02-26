@@ -1,13 +1,14 @@
 package objects
 
+import Core
+import InputHandler
+import Scene
 import info.laht.threekt.core.Object3D
 import info.laht.threekt.geometries.BoxGeometry
 import info.laht.threekt.materials.Material
 import info.laht.threekt.materials.MeshStandardMaterial
 import info.laht.threekt.math.Color
 import info.laht.threekt.objects.Mesh
-
-import Scene
 
 private const val MOUSE_TRAVERSE_COEF = 0.003
 

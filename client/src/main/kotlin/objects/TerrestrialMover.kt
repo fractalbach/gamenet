@@ -1,11 +1,9 @@
 package objects
 
+import Core
 import Scene
-
 import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.normalize
-import com.curiouscreature.kotlin.math.radians
-import info.laht.threekt.math.Matrix3
 import info.laht.threekt.math.Quaternion
 import info.laht.threekt.math.Vector3
 
