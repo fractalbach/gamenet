@@ -7,7 +7,7 @@ class Logger private constructor(val name: String) {
     companion object {
         private val loggers = HashMap<String, Logger>()
         private val logger = getLogger("Logger")
-        var logLevel: LogLevel = LogLevel.FINE
+        var logLevel: LogLevel = LogLevel.INFO
             set(level) {
                 field = level
                 logger.info("Log level changed to: ${logLevel.name}")
