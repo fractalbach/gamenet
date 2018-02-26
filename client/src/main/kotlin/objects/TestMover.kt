@@ -43,12 +43,12 @@ class TestMover(name: String="", id: String=""): TerrestrialMover(name, id) {
         super.update(tic)
         var moved: Boolean = false
         if (tic.core.input.cmdActive(InputHandler.Command.MOVE_UP)) {
-            val movement = 2.0 * tic.timeStep / 1000.0
+            val movement = 8.0 * tic.timeStep / 1000.0
             translateY(movement)
             moved = true
         }
         if (tic.core.input.cmdActive(InputHandler.Command.MOVE_DOWN)) {
-            val movement = -2.0 * tic.timeStep / 1000.0
+            val movement = -8.0 * tic.timeStep / 1000.0
             translateY(movement)
             moved = true
         }

@@ -43,7 +43,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         js("r.shadowMap.type = THREE.PCFSoftShadowMap;")
         r.setSize(renderWidth, renderHeight)
         // setup threeScene
-        threeScene.fog = FogExp2(Color(0xf0fff0), 0.01)
+        threeScene.fog = FogExp2(Color(0xf0fff0), 0.002)
 
         sunLight.position = Double3(1e9, 1e9, 30.0)
 

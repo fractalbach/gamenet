@@ -4,6 +4,7 @@ version '0.0.1'
 buildscript {
     ext.kotlin_version = '1.2.21'
     ext.web_dir = '../web'
+    ext.test_dir = '../test'
 
     repositories {
         jcenter()
@@ -66,6 +67,18 @@ build.doLast() {
             }
         }
     }
+    configurations.testCompile.each { File file ->
+        copy {
+            includeEmptyDirs = false
+
+            from zipTree(file.absolutePath)
+            into "${projectDir}/${test_dir}/lib"
+            include { fileTreeElement ->
+                def path = fileTreeElement.path
+                path.endsWith(".js") && (path.startsWith("META-INF/resources/") || !path.startsWith("META-INF/"))
+            }
+        }
+    }
 
     // Unpack build contents
     copy {
@@ -79,17 +92,10 @@ build.doLast() {
             !(path.startsWith("META-INF/") || path.startsWith("${project.name}"))
         }
     }
-
     // Copy scripts to web directory
     copy {
         includeEmptyDirs = false
         from new File("build/js/client.js")
-        into "${web_dir}"
-    }
-
-    copy {
-        includeEmptyDirs = false
-        from new File("build/resources/test")
         into "${web_dir}"
     }
 
@@ -100,11 +106,36 @@ build.doLast() {
         from new File("src/main/js")
         into "${web_dir}/lib"
     }
-
+    copy {
+        includeEmptyDirs = false
+        from new File("src/main/js")
+        into "${test_dir}/lib"
+    }
     copy {
         includeEmptyDirs = false
         from new File("src/test/js")
-        into "${web_dir}/lib"
+        into "${test_dir}/lib"
+    }
+
+    // copy tests
+
+    copy {
+        includeEmptyDirs = false
+        from new File("build/js-tests/")
+        into "${test_dir}"
+    }
+
+    copy {
+        includeEmptyDirs = false
+        from new File("build/resources/test/")
+        into "${test_dir}"
+    }
+
+    // copy files from main output into test
+    copy {
+        includeEmptyDirs = false
+        from new File("${web_dir}/client.js")
+        into "${test_dir}"
     }
 
 }

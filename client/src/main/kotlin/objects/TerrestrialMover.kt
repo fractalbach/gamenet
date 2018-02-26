@@ -57,7 +57,9 @@ abstract class TerrestrialMover(name: String="", id: String=""):
      */
     protected open fun snapToSurface() {
         try {
-            position = normalize(sphereNormal) * terrain!!.radius // todo
+            val norm_position:Double3 = normalize(sphereNormal)
+            position = norm_position * (terrain!!.radius +
+                    terrain!!.heightAtVector(norm_position))
         } catch (e: NullPointerException) {
             throw IllegalStateException("$this terrain property was not set")
         }

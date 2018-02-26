@@ -114,7 +114,11 @@ fun main(args: Array<String>) {
         )
         return // come back later
     }
-    core = Core()
+    try {
+        core = Core()
+    } catch (e: DocumentError) {
+        return // don't execute, but don't quit
+    }
     Logger.getLogger("Core").info("Began main loop")
     core.update(0.0)
 }
