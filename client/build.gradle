@@ -21,11 +21,15 @@ apply plugin: 'kotlin2js'
 repositories {
     jcenter()
 }
+configurations {
+    closureCompiler
+}
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-js:$kotlin_version"
     testCompile "org.jetbrains.kotlin:kotlin-test-js:$kotlin_version"
     compile group: 'info.laht.threekt', name: 'wrapper', version: '0.88-ALPHA-3'
+    closureCompiler 'com.google.javascript:closure-compiler:v20180204'
 }
 
 sourceSets {
@@ -51,6 +55,21 @@ compileTestKotlin2Js {
 
 clean.doFirst() {
     delete("${web_dir}")
+}
+
+task compileJS(type: JavaExec) {
+
+    classpath configurations.closureCompiler
+    main = 'com.google.javascript.jscomp.CommandLineRunner'
+
+    def closureArgs = []
+    closureArgs << "--compilation_level=SIMPLE_OPTIMIZATIONS"
+    closureArgs << "--language_in=ECMASCRIPT_2017"
+    closureArgs << "--js_output_file=$web_dir/client.js"
+    closureArgs << "build/js/client.js"
+    args closureArgs
+
+    dependsOn build
 }
 
 build.doLast() {
