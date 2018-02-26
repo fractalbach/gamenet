@@ -152,6 +152,7 @@ class InputHandler(private val container: Element) {
         js("el.requestPointerLock()")
     }
 
+    @Suppress("UNUSED_PARAMETER")
     private fun onPointerLockChange(e: dynamic) {
         @Suppress("UNUSED_VARIABLE") // used in js
         val el = container // bring element into local js scope
@@ -166,6 +167,7 @@ class InputHandler(private val container: Element) {
         }
     }
 
+    @Suppress("UNUSED_PARAMETER") // used in js
     private fun onMouseMove(e: dynamic) {
         mouseMotionBuffer = Double2(
             js("e.movementX || e.mozMovementX || e.webkitMovementX || 0.0")
