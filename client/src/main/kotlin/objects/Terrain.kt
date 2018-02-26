@@ -245,7 +245,7 @@ class Tile(val terrain: Terrain, val face: Int,
             try {
                 // create position array.
                 val geometry = PlaneGeometry(1, 1, 10, 10)
-                val sphereRelativePositions: Array<Double3> = Array(
+                val spherePositions: Array<Double3> = Array(
                         N_TILE_HEIGHTS, {
                     try {
                         val tileRelPos = tilePosFromHeightIndex(it)
@@ -279,7 +279,7 @@ class Tile(val terrain: Terrain, val face: Int,
                     val heightRatio: Double = if (isLip)
                         1.0 - shape.x * TILE_LIP_BASE_SCALE else 1.0
                     val vertexPosition: Double3 =
-                            sphereRelativePositions[heightIndex] * heightRatio
+                            spherePositions[heightIndex] * heightRatio
                     vertexPosition
                 })
 
@@ -291,7 +291,6 @@ class Tile(val terrain: Terrain, val face: Int,
                     val v = Vector3(pos.x, pos.y, pos.z)
                     js("geometry.vertices[i] = v")
                 }
-                geometry.computeVertexNormals() // TODO: REPLACE W/ CALC NORMS
                 return Pair(geometry, relativeCenter)
             } catch (e: Exception) {
                 logger.error("Error creating $this geometry")
@@ -306,6 +305,7 @@ class Tile(val terrain: Terrain, val face: Int,
             @Suppress("CAST_NEVER_SUCCEEDS")
             (planeMaterial as Material).side = BackSide
             //planeMaterial.wireframe = true // for debugging
+            planeMaterial.flatShading = true
             return planeMaterial
         }
 
