@@ -156,7 +156,7 @@ class InputHandler(private val container: Element) {
         @Suppress("UNUSED_VARIABLE") // used in js
         val el = container // bring element into local js scope
         if (js("document.pointerLockElement === el ||" +
-                "document.mozPointerLockElement === el" +
+                "document.mozPointerLockElement === el ||" +
                 "document.webkitPointerLockElement === el") as Boolean) {
             pointerCaptured = true
             document.addEventListener(
