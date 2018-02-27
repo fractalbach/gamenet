@@ -65,6 +65,8 @@ Add additional notes about how to deploy this on a live system
 * Client side:
   * [Kotlin](https://kotlinlang.org/)   [(git)](https://github.com/JetBrains/kotlin)
   * [three.js](https://threejs.org/)    [(git)](https://github.com/mrdoob/three.js/)
+  * [WebAssemby](http://webassembly.org/) 
+  * [emscripten](http://kripken.github.io/emscripten-site/) [(git)](https://github.com/kripken/emscripten)
   * [kotlin-math](https://github.com/romainguy/kotlin-math)
   * [uuid-random](https://github.com/jchook/uuid-random)
 
