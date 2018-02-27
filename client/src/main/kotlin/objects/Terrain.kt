@@ -312,6 +312,7 @@ class Tile(val terrain: Terrain, val face: Int,
         val (geometry: PlaneGeometry, tilePosition: Double3) = makeGeometry()
         val material: Material = makeMaterial()
         val mesh = Mesh(geometry, material)
+        mesh.matrixAutoUpdate = false // tile won't be moving anywhere
         mesh.position.x = tilePosition.x
         mesh.position.y = tilePosition.y
         mesh.position.z = tilePosition.z
