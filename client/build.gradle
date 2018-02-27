@@ -3,8 +3,8 @@ version '0.0.1'
 
 buildscript {
     ext.kotlin_version = '1.2.21'
-    ext.web_dir = '../web'
-    ext.test_dir = '../test'
+    ext.web_dir = '../out/production/web'
+    ext.test_dir = '../out/test/client'
 
     repositories {
         jcenter()
@@ -114,6 +114,7 @@ build.doLast() {
             !(path.startsWith("META-INF/") || path.startsWith("${project.name}"))
         }
     }
+
     // Copy scripts to web directory
     copy {
         includeEmptyDirs = false

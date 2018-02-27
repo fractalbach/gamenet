@@ -1,47 +1,11 @@
-# gamenet
+# GAMENET
 
-Networking for multiplayer games!
-
-
-
-## view 
-
-All the public web pages are found in this directory.
-
-###  gamechat.html
-
-New game client with built in chatroom.
-
-###  justchat.html 
-
-Simple Chatroom using websockets, based on https://github.com/gorilla/websocket/tree/master/examples/chat
-
-## wschat
-
-public chatroom were messages to are broadcast to everyone else in the room.
-
-## namegen
-
-Random username generator!  {adjective} + {animal}
-
-
-
-
-
-
------
-
-
-
-# A Better README Template
-
-template from https://gist.github.com/PurpleBooth/109311bb0361f32d87a2
-
-One Paragraph of project description goes here
+* Networking Server and Client for Multiplayer Games!
 
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+
 
 ### Prerequisites
 
@@ -152,3 +116,8 @@ This project is licensed under the MIT License - see the [LICENSE file](LICENSE)
 | ACK --->         |                   |
 | CLOSED           | CLOSED            |
 
+
+
+---
+
+Readme template from https://gist.github.com/PurpleBooth/109311bb0361f32d87a2
