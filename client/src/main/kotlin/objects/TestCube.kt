@@ -1,11 +1,8 @@
 package objects
 
-import info.laht.threekt.THREE.DoubleSide
 import info.laht.threekt.core.Object3D
 import info.laht.threekt.geometries.BoxGeometry
 import info.laht.threekt.materials.Material
-import info.laht.threekt.materials.MeshBasicMaterial
-import info.laht.threekt.materials.MeshPhongMaterial
 import info.laht.threekt.materials.MeshStandardMaterial
 import info.laht.threekt.math.Color
 import info.laht.threekt.objects.Mesh

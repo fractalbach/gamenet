@@ -1,9 +1,10 @@
 package objects
 
+import Logger
 import info.laht.threekt.cameras.PerspectiveCamera
 import info.laht.threekt.core.Object3D
 
-const val DEFAULT_FAR_PLANE: Double = 1e4
+const val DEFAULT_FAR_PLANE: Double = 2e5
 const val DEFAULT_NEAR_PLANE: Double = 0.25
 
 

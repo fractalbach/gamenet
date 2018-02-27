@@ -1,13 +1,14 @@
 package objects
 
+import Core
+import InputHandler
+import Scene
 import info.laht.threekt.core.Object3D
 import info.laht.threekt.geometries.BoxGeometry
 import info.laht.threekt.materials.Material
 import info.laht.threekt.materials.MeshStandardMaterial
 import info.laht.threekt.math.Color
 import info.laht.threekt.objects.Mesh
-
-import Scene
 
 private const val MOUSE_TRAVERSE_COEF = 0.003
 
@@ -43,12 +44,12 @@ class TestMover(name: String="", id: String=""): TerrestrialMover(name, id) {
         super.update(tic)
         var moved: Boolean = false
         if (tic.core.input.cmdActive(InputHandler.Command.MOVE_UP)) {
-            val movement = 2.0 * tic.timeStep / 1000.0
+            val movement = 8.0 * tic.timeStep / 1000.0
             translateY(movement)
             moved = true
         }
         if (tic.core.input.cmdActive(InputHandler.Command.MOVE_DOWN)) {
-            val movement = -2.0 * tic.timeStep / 1000.0
+            val movement = -8.0 * tic.timeStep / 1000.0
             translateY(movement)
             moved = true
         }

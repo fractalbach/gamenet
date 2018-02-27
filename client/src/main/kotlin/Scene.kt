@@ -1,6 +1,7 @@
 import com.curiouscreature.kotlin.math.Double3
 import info.laht.threekt.math.Color
 import info.laht.threekt.renderers.WebGLRenderer
+import info.laht.threekt.scenes.Fog
 import info.laht.threekt.scenes.FogExp2
 import objects.*
 import kotlin.browser.window
@@ -32,6 +33,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     val terrain: Terrain = Terrain()
     val camera: Camera = objects.FollowCamera()
     val sunLight = SunLight("SunLight")
+    val ambientLight = AmbientLight("AmbientLight")
 
     init {
         val r = renderer
@@ -43,7 +45,11 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         js("r.shadowMap.type = THREE.PCFSoftShadowMap;")
         r.setSize(renderWidth, renderHeight)
         // setup threeScene
-        threeScene.fog = FogExp2(Color(0xf0fff0), 0.01)
+        threeScene.fog = Fog()
+        threeScene.fog.color = Color(0xf0fff0)
+        threeScene.fog.near = 500
+        threeScene.fog.far = 120000 // 1e5
+
 
         sunLight.position = Double3(1e9, 1e9, 30.0)
 
@@ -51,15 +57,14 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         add(terrain)
         add(camera)
         add(sunLight)
+        add(ambientLight)
+        js("Module.openscene = this")
 
         // test obj
         val mover = TestMover()
         mover.position = Double3(6.0, 0.0, 0.0)
         add(mover)
         (camera as FollowCamera).follow(mover)
-        val testCube = TestCube()
-        testCube.position = Double3(terrain.radius, 0.0, 0.0)
-        add(testCube)
     }
 
     /**

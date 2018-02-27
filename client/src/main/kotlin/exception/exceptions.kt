@@ -6,7 +6,7 @@ package exception
  */
 class DocumentError(
         override var message: String,
-        override var cause: Throwable?=null): Exception(message, cause)
+        override var cause: Throwable? = null) : Exception(message, cause)
 
 
 /**
@@ -15,7 +15,7 @@ class DocumentError(
  */
 class CException(
         override var message: String,
-        override var cause: Throwable?=null): Exception(message, cause)
+        override var cause: Throwable? = null) : Exception(message, cause)
 
 
 /**
@@ -24,4 +24,4 @@ class CException(
  */
 class GameException(
         override var message: String,
-        override var cause: Throwable?=null): Exception(message, cause)
+        override var cause: Throwable? = null) : Exception(message, cause)

@@ -21,8 +21,9 @@ class Core {
     companion object {
         val logger = Logger.getLogger("Core")
     }
-    val container: Element = document.getElementById("container")?:
-        throw DocumentError("Could not find 'container' for game Core.")
+
+    val container: Element = document.getElementById("container")
+            ?: throw DocumentError("Could not find 'container' for game Core.")
 
     var scene: Scene = Scene("Main Scene", this)
         // setter for scene switches out scene object, adjusts document,
@@ -44,6 +45,8 @@ class Core {
     var lastFrameTimeMs: Double = 0.0 // timestamp of last loop start
 
     init {
+        Logger.getLogger("Core").info("Initializing Core")
+
         // call setter (I hope there's a less weird way to do this)
         scene = scene
     }
@@ -87,7 +90,7 @@ class Core {
         }
 
         scene.render()
-        window.requestAnimationFrame({t -> update(t)}) // request next frame
+        window.requestAnimationFrame({ t -> update(t) }) // request next frame
     }
 
     override fun toString() = "GameCore"
@@ -101,7 +104,20 @@ lateinit var core: Core
  * Main function; called at startup
  */
 fun main(args: Array<String>) {
-    core = Core()
+    if (js("Module.ready") != true) {
+
+        Logger.getLogger("Core").info("Module not yet ready.")
+        window.setTimeout(
+                { main(args) },
+                500
+        )
+        return // come back later
+    }
+    try {
+        core = Core()
+    } catch (e: DocumentError) {
+        return // don't execute, but don't quit
+    }
     Logger.getLogger("Core").info("Began main loop")
     core.update(0.0)
 }

@@ -1,5 +1,6 @@
 package objects
 
+import Core
 import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.radians
 import info.laht.threekt.math.Euler

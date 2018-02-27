@@ -391,6 +391,7 @@ fun transpose(m: DMat4) = DMat4(
         Double4(m.x.z, m.y.z, m.z.z, m.w.z),
         Double4(m.x.w, m.y.w, m.z.w, m.w.w)
 )
+@Suppress("UNUSED_PARAMETER") // not a priority
 fun inverse(m: DMat4): DMat4 {
     TODO("Implement inverse(DMat4)") // TODO
 }

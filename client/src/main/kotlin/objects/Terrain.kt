@@ -1,10 +1,13 @@
 package objects
 
+import Core
+import Logger
 import Logger.Companion.getLogger
 import com.curiouscreature.kotlin.math.Double2
 import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.normalize
-import info.laht.threekt.THREE.DoubleSide
+import exception.CException
+import info.laht.threekt.THREE.BackSide
 import info.laht.threekt.core.Object3D
 import info.laht.threekt.geometries.PlaneGeometry
 import info.laht.threekt.materials.Material
@@ -13,16 +16,23 @@ import info.laht.threekt.math.Color
 import info.laht.threekt.math.Vector3
 import info.laht.threekt.objects.Mesh
 
-private const val RADIUS: Double = 6.371e3 //6.371e6
-private const val MAX_LOD: Int = 22 // any value up to 28
+private const val TERRAIN_SEED: Int = 124
+private const val RADIUS: Double = 6.371e6
+private const val HEIGHT_SCALE: Double = 1e4
+private const val MAX_LOD: Int = 24 // any value up to 28
 private const val MAX_ENCODED_LOD: Int = 28 // max LOD able to be encoded
 
 // distance in tile widths at which a tile subdivides
 private const val REL_SUBDIVISION_DIST: Double = 3 * RADIUS // must be > tile w
 private const val TILE_POLYGON_WIDTH: Int = 8 // width in polygons of tile
+private const val TILE_HEIGHT_ROW_SIZE = TILE_POLYGON_WIDTH + 1
+private const val TILE_VERTICES_ROW_SIZE = TILE_HEIGHT_ROW_SIZE + 2
+private const val N_TILE_HEIGHTS: Int =
+        TILE_HEIGHT_ROW_SIZE * TILE_HEIGHT_ROW_SIZE
 private const val N_TILE_VERTICES: Int =
-    (TILE_POLYGON_WIDTH + 1) * (TILE_POLYGON_WIDTH + 1)
+        TILE_VERTICES_ROW_SIZE * TILE_VERTICES_ROW_SIZE
 
+private const val TILE_LIP_BASE_SCALE: Double = 1.0 / TILE_POLYGON_WIDTH
 private const val MAX_TILE_DIVISIONS_PER_TIC = 32
 
 
@@ -37,13 +47,22 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     override var threeObject: Object3D = Object3D() // nothing special
 
     val radius = RADIUS
-    val faces: Array<Tile> = Array(6, {i -> Tile(this, i)})
+    val faces: Array<Tile> = Array(6, { Tile(this, it) })
 
     var subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
 
     init {
         // add each face to scene
-        faces.forEach {face -> addChild(face) }
+        faces.forEach { face -> addChild(face) }
+
+        // initialize terrain module
+        val echo: Int = js("_ter_TestEcho(4)") as Int
+        if (echo != 4) {
+            throw CException("Test Function call to C failed. " +
+                    "Is Module set up?")
+        }
+
+        js("_ter_Init($TERRAIN_SEED, $RADIUS, $HEIGHT_SCALE)")
     }
 
     override fun update(tic: Core.Tic) {
@@ -51,6 +70,13 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     }
 
     fun get(index: Int): Tile = faces[index]
+
+    @Suppress("UNUSED_PARAMETER") // used in js
+    fun heightAtVector(vector: Double3): Double {
+        return js("_ter_GetHeight(" +
+                "vector.x, vector.y, vector.z, $MAX_LOD)") as Double *
+                HEIGHT_SCALE
+    }
 }
 
 
@@ -60,7 +86,55 @@ class Tile(val terrain: Terrain, val face: Int,
 {
     companion object {
         val logger = Logger.getLogger("Tile")
+
+        /**
+         * Gets tile-relative position from tile vertex index
+         */
+        fun tilePosFromHeightIndex(i: Int): Double2 {
+            if (i < 0 || i >= N_TILE_HEIGHTS) {
+                throw IllegalArgumentException(
+                        "index $i outside ${0 until N_TILE_HEIGHTS}")
+            }
+            return Double2(
+                    i % TILE_HEIGHT_ROW_SIZE.toDouble() / TILE_POLYGON_WIDTH,
+                    (i / TILE_HEIGHT_ROW_SIZE).toDouble() / TILE_POLYGON_WIDTH
+            )
+        }
+
+        /**
+         * Returns x and y position of passed vertex index in a tile,
+         * followed by boolean indicating whether index is on a tile lip.
+         *
+         * Helper function for makeGeometry()
+         */
+        fun vertexData(i: Int): Pair<Int, Boolean> {
+            if (i < 0 || i >= N_TILE_VERTICES) {
+                throw IllegalArgumentException(
+                        "index $i outside ${0 until N_TILE_VERTICES}")
+            }
+            var x: Int = i % TILE_VERTICES_ROW_SIZE
+            var y: Int = i / TILE_VERTICES_ROW_SIZE
+            var isLip: Boolean = false
+            if (x == 0) {
+                x++
+                isLip = true
+            } else if (x == TILE_VERTICES_ROW_SIZE - 1) {
+                x--
+                isLip = true
+            }
+            if (y == 0) {
+                y++
+                isLip = true
+            } else if (y == TILE_VERTICES_ROW_SIZE - 1) {
+                y--
+                isLip = true
+            }
+            x--
+            y--
+            return Pair(y * TILE_HEIGHT_ROW_SIZE + x, isLip)
+        }
     }
+
     val lod: Int = if (parent == null) 1 else parent.lod + 1
     val shape: Double2 = if (parent != null) parent.shape / 2.0 else
         Double2(2.0, 2.0)
@@ -77,7 +151,7 @@ class Tile(val terrain: Terrain, val face: Int,
      */
     val quadrants: Array<Int> = Array(
             lod,
-            {i ->
+            { i ->
                 when {
                     i < lod - 1 -> parent!!.quadrants[i]
                     i == 0 -> face
@@ -133,7 +207,7 @@ class Tile(val terrain: Terrain, val face: Int,
             1 -> Double2(parent.p1.x, parent.p1.y + shape.y)
             2 -> parent.p1
             3 -> Double2(parent.p1.x + shape.x, parent.p1.y)
-            else ->throw IllegalArgumentException()
+            else -> throw IllegalArgumentException()
         }
     }
 
@@ -169,45 +243,54 @@ class Tile(val terrain: Terrain, val face: Int,
          */
         fun makeGeometry(): Pair<PlaneGeometry, Double3> {
             try {
-                //val positions = Float64Array(N_TILE_VERTICES)
-                //val result = js("_ter_HeightFromPosCode(ptr, posCode)")
-                //if (!result) {
-                //    throw CException("error calling ter_HeightFromPosCode()")
-                //}
-
-                // once height array has been received, create
-                // position array.
-                val geometry = PlaneGeometry(1, 1, 8, 8)
-                val polyWidth = TILE_POLYGON_WIDTH
-                val vertWidth = polyWidth + 1
-                val sphereRelativePositions: Array<Double3> = Array(
-                        N_TILE_VERTICES, {
+                // create position array.
+                val geometry = PlaneGeometry(1, 1, 10, 10)
+                val spherePositions: Array<Double3> = Array(
+                        N_TILE_HEIGHTS, {
                     try {
-                        val height = 0.0 //positions[i]
-                        val tileRelPos = Double2(
-                                it % vertWidth.toDouble() / polyWidth,
-                                (it / vertWidth).toDouble() / polyWidth
-                        )
+                        val tileRelPos = tilePosFromHeightIndex(it)
                         val facePos: Double2 = p1 + tileRelPos * shape
                         val cubeRelPos: Double3 = facePosTo3d(facePos)
-                        val pos: Double3 = normalize(cubeRelPos) *
-                                (terrain.radius + height)
-                         pos
+                        val normPos: Double3 = normalize(cubeRelPos)
+                        @Suppress("UNUSED_VARIABLE") // used in js
+                        val x: Double = normPos.x
+                        @Suppress("UNUSED_VARIABLE") // used in js
+                        val y: Double = normPos.y
+                        @Suppress("UNUSED_VARIABLE") // used in js
+                        val z: Double = normPos.z
+                        val height: Double =
+                            js("_ter_GetHeight(x, y, z, $MAX_LOD)") as Double
+                        val pos = normPos * (RADIUS + height * HEIGHT_SCALE)
+                        pos
                     } catch (e: Exception) {
                         logger.error("Error converting height index: $it")
                         throw e
                     }
                 })
-                val relativeCenter =
-                        sphereRelativePositions[N_TILE_VERTICES / 2]
+
+                val vertPositions: Array<Double3> = Array(
+                        N_TILE_VERTICES, {
+                    val (heightIndex: Int, isLip: Boolean) = vertexData(it)
+                    // sanity check
+                    if (heightIndex < 0 || heightIndex >= N_TILE_HEIGHTS) {
+                        throw IllegalStateException(
+                                "bad height index: $heightIndex. vert: $it")
+                    }
+                    val heightRatio: Double = if (isLip)
+                        1.0 - shape.x * TILE_LIP_BASE_SCALE else 1.0
+                    val vertexPosition: Double3 =
+                            spherePositions[heightIndex] * heightRatio
+                    vertexPosition
+                })
+
+                val relativeCenter: Double3 = vertPositions[N_TILE_VERTICES / 2]
                 for (i in 0 until N_TILE_VERTICES) {
-                    var pos = sphereRelativePositions[i]
+                    var pos = vertPositions[i]
                     pos -= relativeCenter
                     @Suppress("UNUSED_VARIABLE") // used in js
                     val v = Vector3(pos.x, pos.y, pos.z)
                     js("geometry.vertices[i] = v")
                 }
-                geometry.computeVertexNormals()
                 return Pair(geometry, relativeCenter)
             } catch (e: Exception) {
                 logger.error("Error creating $this geometry")
@@ -220,17 +303,20 @@ class Tile(val terrain: Terrain, val face: Int,
             planeMaterial.color = Color(0x3cff00)
             // work around temporary error in THREE.js wrapper
             @Suppress("CAST_NEVER_SUCCEEDS")
-            (planeMaterial as Material).side = DoubleSide
-            //planeMaterial.wireframe = true
+            (planeMaterial as Material).side = BackSide
+            //planeMaterial.wireframe = true // for debugging
+            planeMaterial.flatShading = true
             return planeMaterial
         }
 
         val (geometry: PlaneGeometry, tilePosition: Double3) = makeGeometry()
         val material: Material = makeMaterial()
         val mesh = Mesh(geometry, material)
+        mesh.matrixAutoUpdate = false // tile won't be moving anywhere
         mesh.position.x = tilePosition.x
         mesh.position.y = tilePosition.y
         mesh.position.z = tilePosition.z
+        mesh.updateMatrix()
         return mesh
     }
 
@@ -280,6 +366,6 @@ fun getPositionFromCode(encodedPos: Long): Pair<Int, Array<Int>> {
     val nQuadrants: Int = (encodedPos and 0x1F).toInt()
     val face: Int = ((encodedPos shr 5) and 0x7).toInt()
     val quadrants: Array<Int> = Array(
-            nQuadrants, {i -> ((encodedPos shr 8 + 2 * i) and 0x3).toInt()})
+            nQuadrants, { i -> ((encodedPos shr 8 + 2 * i) and 0x3).toInt() })
     return Pair(face, quadrants)
 }

@@ -2,7 +2,6 @@ import com.curiouscreature.kotlin.math.Double2
 import org.w3c.dom.Element
 import org.w3c.dom.events.Event
 import org.w3c.dom.events.KeyboardEvent
-import org.w3c.dom.events.MouseEvent
 import kotlin.browser.document
 import kotlin.browser.window
 
@@ -12,7 +11,7 @@ const val KEY_ARR_SIZE = 223
 /**
  * Handles user key presses, and sets flags that can be checked
  * by various game objects when .update() is called.
- * 
+ *
  * The purpose of this class is to allow asynchronous user input via
  * events to be read reliably, and quickly, by objects during the
  * game loop.
@@ -63,7 +62,7 @@ class InputHandler(private val container: Element) {
     }
 
     private val keyStates: BooleanArray = BooleanArray(KEY_ARR_SIZE)
-    
+
     private var keyPresses: BooleanArray = BooleanArray(KEY_ARR_SIZE)
     private var keyPressBuffer: BooleanArray = BooleanArray(KEY_ARR_SIZE)
     private var keyReleases: BooleanArray = BooleanArray(KEY_ARR_SIZE)
@@ -152,21 +151,28 @@ class InputHandler(private val container: Element) {
         js("el.requestPointerLock()")
     }
 
+    @Suppress("UNUSED_PARAMETER")
     private fun onPointerLockChange(e: dynamic) {
         @Suppress("UNUSED_VARIABLE") // used in js
         val el = container // bring element into local js scope
-        if (js("document.pointerLockElement === el") ||
-                js("document.mozPointerLockElement === el") ||
-                js("document.webkitPointerLockElement === el")) {
+        if (js("document.pointerLockElement === el ||" +
+                "document.mozPointerLockElement === el ||" +
+                "document.webkitPointerLockElement === el") as Boolean) {
+            pointerCaptured = true
             document.addEventListener(
                     "mousemove", this::onMouseMove, false)
         } else {
+            pointerCaptured = false
             document.removeEventListener(
                     "mousemove", this::onMouseMove, false)
         }
     }
 
+    @Suppress("UNUSED_PARAMETER") // used in js
     private fun onMouseMove(e: dynamic) {
+        if (!pointerCaptured) {
+            return
+        }
         mouseMotionBuffer = Double2(
             js("e.movementX || e.mozMovementX || e.webkitMovementX || 0.0")
                     as Double,
@@ -178,7 +184,7 @@ class InputHandler(private val container: Element) {
 
     /**
      * Called at start of logic tic, input received after this is
-     * saved for the next logic tic, in order to ensure homogeneous 
+     * saved for the next logic tic, in order to ensure homogeneous
      * input given to all objects that need to check input, and to
      * ensure no input is cleared before being read.
      */
