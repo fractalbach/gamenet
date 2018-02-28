@@ -61,7 +61,7 @@ clean.doFirst() {
 }
 
 //noinspection GroovyAssignabilityCheck
-task compileJS(type: JavaExec) {
+task compileClientJS(type: JavaExec) {
 
     classpath configurations.closureCompiler
     main = 'com.google.javascript.jscomp.CommandLineRunner'
@@ -78,7 +78,7 @@ task compileJS(type: JavaExec) {
 }
 
 //noinspection GroovyAssignabilityCheck
-task compileTerrainJS(type: JavaExec) {
+task compileKotlinJS(type: JavaExec) {
 
     classpath configurations.closureCompiler
     main = 'com.google.javascript.jscomp.CommandLineRunner'
@@ -86,12 +86,17 @@ task compileTerrainJS(type: JavaExec) {
     def closureArgs = []
     closureArgs << "--compilation_level=SIMPLE_OPTIMIZATIONS"
     closureArgs << "--language_in=ECMASCRIPT_2017"
-    closureArgs << "--js_output_file=$web_dir/terrain.js"
-    closureArgs << "src/main/resources/terrain.js"
+    closureArgs << "--js_output_file=$web_dir/lib/kotlin.js"
+    closureArgs << "./${web_dir}/lib/kotlin.js"
     //noinspection GroovyAssignabilityCheck
     args closureArgs
 
     dependsOn build
+}
+
+//noinspection GroovyAssignabilityCheck
+task compileJS() {
+    dependsOn compileClientJS, compileKotlinJS
 }
 
 dokka {
