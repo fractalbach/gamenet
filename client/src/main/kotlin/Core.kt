@@ -103,21 +103,18 @@ lateinit var core: Core
 /**
  * Main function; called at startup
  */
-fun main(args: Array<String>) {
+@JsName("startCore")
+fun startCore(args: Array<String>) {
     if (js("Module.ready") != true) {
 
         Logger.getLogger("Core").info("Module not yet ready.")
         window.setTimeout(
-                { main(args) },
+                { startCore(args) },
                 500
         )
         return // come back later
     }
-    try {
-        core = Core()
-    } catch (e: DocumentError) {
-        return // don't execute, but don't quit
-    }
+    core = Core()
     Logger.getLogger("Core").info("Began main loop")
     core.update(0.0)
 }
