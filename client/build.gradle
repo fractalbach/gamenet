@@ -75,6 +75,23 @@ task compileJS(type: JavaExec) {
     dependsOn build
 }
 
+//noinspection GroovyAssignabilityCheck
+task compileTerrainJS(type: JavaExec) {
+
+    classpath configurations.closureCompiler
+    main = 'com.google.javascript.jscomp.CommandLineRunner'
+
+    def closureArgs = []
+    closureArgs << "--compilation_level=SIMPLE_OPTIMIZATIONS"
+    closureArgs << "--language_in=ECMASCRIPT_2017"
+    closureArgs << "--js_output_file=$web_dir/terrain.js"
+    closureArgs << "src/main/resources/terrain.js"
+    //noinspection GroovyAssignabilityCheck
+    args closureArgs
+
+    dependsOn build
+}
+
 build.doLast() {
     // Copy kotlin.js and kotlin-meta.js from jar into web directory
     configurations.compile.each { File file ->
