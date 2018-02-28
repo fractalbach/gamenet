@@ -73,7 +73,7 @@ abstract class TerrestrialMover(name: String="", id: String=""):
                 "$this has no terrain set towards which gravitational " +
                 "acceleration can be applied.")
         val gravity: Double = terrain.gravity
-        val deltaVelocities = sphereNormal * -gravity
+        val deltaVelocities = sphereNormal * -gravity *
                 tic.timeStep / 1000.0
         motion += deltaVelocities
     }
