@@ -5,7 +5,7 @@ import org.w3c.dom.events.KeyboardEvent
 import kotlin.browser.document
 import kotlin.browser.window
 
-const val KEY_ARR_SIZE = 223
+private const val KEY_ARR_SIZE = 223
 
 
 /**
@@ -42,23 +42,23 @@ class InputHandler(private val container: Element) {
 
         private val boundKeys: HashSet<Key> = HashSet()
 
-        fun isPressed(input: InputHandler): Boolean {
+        internal fun isPressed(input: InputHandler): Boolean {
             return boundKeys.any { input.keyPresses[it.i] }
         }
 
-        fun isActive(input: InputHandler): Boolean {
+        internal fun isActive(input: InputHandler): Boolean {
             return boundKeys.any { input.keyStates[it.i] }
         }
 
-        fun isReleased(input: InputHandler): Boolean {
+        internal fun isReleased(input: InputHandler): Boolean {
             return boundKeys.any { input.keyReleases[it.i] }
         }
 
-        fun bindKey(key: Key) = boundKeys.add(key)
+        internal fun bindKey(key: Key) = boundKeys.add(key)
 
-        fun removeKey(key: Key) = boundKeys.remove(key)
+        internal fun removeKey(key: Key) = boundKeys.remove(key)
 
-        fun clearKeys() = boundKeys.clear()
+        internal fun clearKeys() = boundKeys.clear()
     }
 
     private val keyStates: BooleanArray = BooleanArray(KEY_ARR_SIZE)
@@ -133,10 +133,13 @@ class InputHandler(private val container: Element) {
     /** Tests whether a command has been deactivated since the last logic tic */
     fun cmdReleased(cmd: Command): Boolean = cmd.isReleased(this)
 
+    /** Binds passed key to passed command. */
     fun bindKey(key: Key, cmd: Command) = cmd.bindKey(key)
 
+    /** Removes binding of passed key to passed command. */
     fun removeKey(key: Key, cmd: Command) = cmd.removeKey(key)
 
+    /** Removes all key bindings. */
     fun clearKeys() = Command.values().forEach { cmd -> cmd.clearKeys() }
 
 
@@ -180,7 +183,6 @@ class InputHandler(private val container: Element) {
                     as Double
         )
     }
-
 
     /**
      * Called at start of logic tic, input received after this is

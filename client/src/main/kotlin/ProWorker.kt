@@ -1,6 +1,6 @@
 /**
  * This file contains the startup function and base class for
- * A WebWorker which handles procedural generation of objects which
+ * a WebWorker which handles procedural generation of objects which
  * are to then be passed on to the main loop.
  */
 

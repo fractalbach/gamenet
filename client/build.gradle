@@ -13,10 +13,12 @@ buildscript {
 
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.dokka:dokka-gradle-plugin:0.9.13"
     }
 }
 
 apply plugin: 'kotlin2js'
+apply plugin: 'org.jetbrains.dokka'
 
 repositories {
     jcenter()
@@ -90,6 +92,11 @@ task compileTerrainJS(type: JavaExec) {
     args closureArgs
 
     dependsOn build
+}
+
+dokka {
+    outputFormat = 'html'
+    outputDirectory = "$buildDir/javadoc"
 }
 
 build.doLast() {

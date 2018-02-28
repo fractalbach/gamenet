@@ -37,7 +37,10 @@ private const val MAX_TILE_DIVISIONS_PER_TIC = 32
 
 
 /**
- * Terrain
+ * Terrain GameObject that manages and acts as parent to terrain tiles.
+ *
+ * Terrain will maintain a hierarchy of terrain Tiles that provide
+ * varying levels of detail depending on camera distance.
  */
 open class Terrain(id: String=""): GameObject("Terrain", id) {
     companion object {
@@ -51,9 +54,12 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
 
     var subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
 
+    /** Gravitational acceleration of terrestrial objects */
+    val gravity: Double = 9.806
+
     init {
         // add each face to scene
-        faces.forEach { face -> addChild(face) }
+        faces.forEach { addChild(it) }
 
         // initialize terrain module
         val echo: Int = js("_ter_TestEcho(4)") as Int
@@ -65,12 +71,30 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
         js("_ter_Init($TERRAIN_SEED, $RADIUS, $HEIGHT_SCALE)")
     }
 
+    /**
+     * Updates terrain, checking to see which tiles owned by Terrain
+     * require subdivision, and which can be recombined.
+     * @param tic: Core.Tic
+     */
     override fun update(tic: Core.Tic) {
         subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
     }
 
+    /**
+     * Gets tile identified by passed index.
+     * 0 - 3 are tiles describing the equator of the spheroid, with 0
+     * index being the Tile centered on the x+ axis direction, and 1,
+     * 2, and 3 proceding counter-clockwise, when viewed from the top
+     * (tile 1 being at y+, and so on.) Tile 4 is the z+ tile, and
+     * Tile 5 is the z- tile.
+     * @param index: Int index of tile which serves as the
+     *              associated face.
+     */
     fun get(index: Int): Tile = faces[index]
 
+    /**
+     * Gets height at surface position
+     */
     @Suppress("UNUSED_PARAMETER") // used in js
     fun heightAtVector(vector: Double3): Double {
         return js("_ter_GetHeight(" +
@@ -80,6 +104,11 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
 }
 
 
+/**
+ * Tiles are procedurally generated segments of Terrain surface that
+ * subdivide and recombine to provide varying levels of detail
+ * depending on distance to camera.
+ */
 class Tile(val terrain: Terrain, val face: Int,
            val parent: Tile?=null, val quadrant: Int?=null):
         GameObject()
@@ -88,7 +117,9 @@ class Tile(val terrain: Terrain, val face: Int,
         val logger = Logger.getLogger("Tile")
 
         /**
-         * Gets tile-relative position from tile vertex index
+         * Gets tile-relative position from tile vertex index.
+         * @param i: Int index of height value in height array.
+         * @return Double2 with ranges from (0.0,0.0) to (1.0,1.0)
          */
         fun tilePosFromHeightIndex(i: Int): Double2 {
             if (i < 0 || i >= N_TILE_HEIGHTS) {
@@ -105,7 +136,11 @@ class Tile(val terrain: Terrain, val face: Int,
          * Returns x and y position of passed vertex index in a tile,
          * followed by boolean indicating whether index is on a tile lip.
          *
-         * Helper function for makeGeometry()
+         * Helper function for makeGeometry().
+         * @param i: Index of vertex in vertex array.
+         * @return Int index of height value in height array, and
+         *              Boolean indicating whether or not passed
+         *              vertex index is on a Tile lip.
          */
         fun vertexData(i: Int): Pair<Int, Boolean> {
             if (i < 0 || i >= N_TILE_VERTICES) {
@@ -135,7 +170,16 @@ class Tile(val terrain: Terrain, val face: Int,
         }
     }
 
+    /**
+     * Tile level of detail, with Terrain Face being 1, the first face
+     * subdivision being 2, etc.
+     */
     val lod: Int = if (parent == null) 1 else parent.lod + 1
+    /**
+     * Relative shape of tile as compared to face. (1.0,1.0 indicates
+     * that the Tile is the same size as the cube face, (0.5,0.5)
+     * indicates it is half that, etc.
+     */
     val shape: Double2 = if (parent != null) parent.shape / 2.0 else
         Double2(2.0, 2.0)
     val relativeWidth = shape.x / 2  // 1.0 is diameter of spheroid
@@ -179,6 +223,7 @@ class Tile(val terrain: Terrain, val face: Int,
      * Updates Tile; if distance to camera is small enough, subdivides
      * tile to create more detail, or if already subdivided and camera
      * is far enough, recombines sub-tiles.
+     * @param tic: Core.Tic
      */
     override fun update(tic: Core.Tic) {
         val dist = distance(scene!!.camera)
@@ -341,6 +386,7 @@ class Tile(val terrain: Terrain, val face: Int,
      * This is intended to be used both as a unique identifier for a
      * tile, to be used when caching data, as well as a means of
      * communicating position of the tile to C++.
+     * @return Long (int64) encoded position code.
      */
     fun getPositionCode(): Long {
         // 5b: lod, 3b: face, 2b * LOD: quadrants

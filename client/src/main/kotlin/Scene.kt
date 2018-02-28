@@ -1,8 +1,10 @@
 import com.curiouscreature.kotlin.math.Double3
 import info.laht.threekt.math.Color
+import info.laht.threekt.renderers.WebGL2Renderer
 import info.laht.threekt.renderers.WebGLRenderer
 import info.laht.threekt.scenes.Fog
 import info.laht.threekt.scenes.FogExp2
+import info.laht.threekt.scenes.Scene
 import objects.*
 import kotlin.browser.window
 
@@ -15,24 +17,37 @@ import kotlin.browser.window
  *
  * Scene instances are responsible for updating their owned GameObjects
  * every game tic.
+ *
+ * @see GameObject
  */
 class Scene(val name: String="Unnamed", var core: Core?=null) {
+    // store logger in a companion
     companion object {
-        val logger = Logger.getLogger("Scene")
+        private val logger = Logger.getLogger("Scene")
     }
 
     private val gameObjects: HashMap<String, GameObject> = HashMap()
     private val removalQueue: ArrayList<GameObject> = ArrayList()
-    val threeScene = info.laht.threekt.scenes.Scene()
+    /** THREE scene which is wrapped by this Scene */
+    val threeScene: Scene = info.laht.threekt.scenes.Scene()
+    /** THREE renderer that is the default for rendering to view */
     val renderer = WebGLRenderer()
+    /** Width of render result */
     val renderWidth: Int = window.innerWidth * 9 / 10
+    /** Height of render result */
     val renderHeight: Int = renderWidth * 7 / 10
-    val gravity: Double = 9.806
 
     // instantiate constant game objects
+    /** World Terrain instance - owner of procedural land tiles */
     val terrain: Terrain = Terrain()
+    /** Main Camera which is used to see the world from */
     val camera: Camera = objects.FollowCamera()
+    /** Overhead mono-directional light source. */
     val sunLight = SunLight("SunLight")
+    /**
+     * Ambient, omni-present light cast on all objects in scene.
+     * Will be adjusted depending on surroundings.
+     */
     val ambientLight = AmbientLight("AmbientLight")
 
     init {
@@ -58,7 +73,6 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         add(camera)
         add(sunLight)
         add(ambientLight)
-        js("Module.openscene = this")
 
         // test obj
         val mover = TestMover()
@@ -71,6 +85,11 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
      * Update method; called once per logical tic.
      * Performs any regular updates on scene and
      * in turn calls update on all owned game objects.
+     *
+     * @param tic: Core.Tic containing information about the current
+     *          game tic, such as timestamp and elapsed time.
+     * @see Core.update
+     * @see GameObject.update
      */
     fun update(tic: Core.Tic) {
         // remove items marked for removal
@@ -86,7 +105,10 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     }
 
     /**
-     * Renders scene using
+     * Renders scene using passed camera, or main scene camera if none
+     * is passed.
+     * @param camera: THREE.Camera to be used for rendering scene.
+     *              Must be a member of the scene.
      */
     fun render(camera: info.laht.threekt.cameras.Camera=this.camera.threeCamera) {
         renderer.render(threeScene, camera)
@@ -95,6 +117,9 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     /**
      * Adds passed GameObject to scene.
      * Passed GameObject is given a reference to scene.
+     * @param gameObject: GameObject to be added.
+     * @throws IllegalArgumentException if gameObject is already a
+     *              member of the Scene.
      */
     fun add(gameObject: GameObject) {
         logger.fine("Adding $gameObject to $this")
@@ -110,6 +135,12 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         }
     }
 
+    /**
+     * Retrieves GameObject owned by this scene, using the
+     * object's UUID
+     * @param id: UUID String
+     * @return GameObject of passed UUID or null, if none was found.
+     */
     fun get(id: String): GameObject? {
         return gameObjects[id]
     }
@@ -118,6 +149,9 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
      * Marks passed game object for removal.
      * GameObject is not actually removed until the beginning of the
      * next logic tic.
+     * @param gameObject: GameObject to remove.
+     * @throws IllegalArgumentException If GameObject was not a member
+     *              of this Scene.
      */
     fun remove(gameObject: GameObject) {
         logger.fine("Removing $gameObject from $this")
@@ -128,6 +162,13 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         removalQueue.add(gameObject)
     }
 
+    /**
+     * This function is what actually removes an object from
+     * scene. It is not to be called directly from outside Scene.
+     * Instead, GameObjects will be queued for removal by calling the
+     * public remove() method, and then this method will be called
+     * between updates.
+     */
     private fun removeHard(gameObject: GameObject) {
         gameObject.scene = null
         gameObjects.remove(gameObject.id)
@@ -137,9 +178,8 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         }
     }
 
-    override fun toString(): String {
-        return "Scene[$name]"
-    }
+    /** @suppress Gives String representation */
+    override fun toString(): String = "Scene[$name]"
 }
 
 // Notes: If any more kinds of scenes need to be added (that would

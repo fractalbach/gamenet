@@ -65,11 +65,15 @@ abstract class TerrestrialMover(name: String="", id: String=""):
 
     /**
      * Applies gravitational acceleration to object.
+     * @param tic: Core.Tic containing logic tic information used in
+     *              motion calculations.
      */
     protected open fun applyGravity(tic: Core.Tic) {
-        val scene = scene?:
-            throw IllegalStateException("$this scene property not set")
-        val deltaVelocities = sphereNormal * -scene.gravity *
+        val terrain: Terrain = terrain?: throw IllegalStateException(
+                "$this has no terrain set towards which gravitational " +
+                "acceleration can be applied.")
+        val gravity: Double = terrain.gravity
+        val deltaVelocities = sphereNormal * -gravity
                 tic.timeStep / 1000.0
         motion += deltaVelocities
     }
