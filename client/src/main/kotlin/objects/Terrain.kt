@@ -9,11 +9,10 @@ import com.curiouscreature.kotlin.math.normalize
 import exception.CException
 import info.laht.threekt.THREE.BackSide
 import info.laht.threekt.core.Object3D
-import info.laht.threekt.geometries.PlaneGeometry
+import info.laht.threekt.geometries.PlaneBufferGeometry
 import info.laht.threekt.materials.Material
 import info.laht.threekt.materials.MeshStandardMaterial
 import info.laht.threekt.math.Color
-import info.laht.threekt.math.Vector3
 import info.laht.threekt.objects.Mesh
 
 private const val TERRAIN_SEED: Int = 124
@@ -51,6 +50,8 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
 
     val radius = RADIUS
     val faces: Array<Tile> = Array(6, { Tile(this, it) })
+    /** Stores tiles no longer in use, but whose geometry can be reused */
+    val tilePile: ArrayList<Tile> = ArrayList()
 
     var subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
 
@@ -114,7 +115,7 @@ class Tile(val terrain: Terrain, val face: Int,
         GameObject()
 {
     companion object {
-        val logger = Logger.getLogger("Tile")
+        private val logger = Logger.getLogger("Tile")
 
         /**
          * Gets tile-relative position from tile vertex index.
@@ -182,12 +183,13 @@ class Tile(val terrain: Terrain, val face: Int,
      */
     val shape: Double2 = if (parent != null) parent.shape / 2.0 else
         Double2(2.0, 2.0)
-    val relativeWidth = shape.x / 2  // 1.0 is diameter of spheroid
-    val subTiles: Array<Tile?> = arrayOfNulls<Tile?>(4)
-    val subdivisionDistance = REL_SUBDIVISION_DIST * relativeWidth
-    val recombinationDistance = REL_SUBDIVISION_DIST * relativeWidth * 1.2
+    private val relativeWidth = shape.x / 2  // 1.0 is diameter of spheroid
+    private val subTiles: Array<Tile?> = arrayOfNulls<Tile?>(4)
+    private val subdivisionDistance = REL_SUBDIVISION_DIST * relativeWidth
+    private val recombinationDistance =
+            REL_SUBDIVISION_DIST * relativeWidth * 1.2
 
-    /*
+    /**
      * Array's first value is the index of the tile's face,
      * and each following integer is the quadrant index of each sub-tile
      * containing the Tile, until the last index, which indicates the
@@ -204,9 +206,12 @@ class Tile(val terrain: Terrain, val face: Int,
             }
     )
 
-    val p1 = findP1() // lower left corner, relative to cube face
-    val p2 = p1 + shape // upper right corner, relative to cube face
+    /** lower left corner, relative to cube face */
+    val p1 = findP1()
+    /** upper right corner, relative to cube face */
+    val p2 = p1 + shape
 
+    /** THREE.js Plane mesh object */
     override var threeObject: Object3D = makeThreeTile()
 
     init {
@@ -242,6 +247,7 @@ class Tile(val terrain: Terrain, val face: Int,
      * Finds lower left corner of tile, as a position relative to face.
      * Ex: lowest left position is (-1, -1) center is (0, 0).
      * Lower right corner is (1, -1).
+     * @return Double2
      */
     private fun findP1(): Double2 {
         if (parent == null) {
@@ -280,16 +286,20 @@ class Tile(val terrain: Terrain, val face: Int,
         visible = true
     }
 
+    /**
+     * Creates THREE.js Mesh for this Tile
+     * @return Mesh
+     */
     private fun makeThreeTile(): Mesh {
 
         /**
          * Creates geometry of tile.
          * Returns Pair of PlaneGeometry, and tile center position
          */
-        fun makeGeometry(): Pair<PlaneGeometry, Double3> {
+        fun makeGeometry(): Pair<PlaneBufferGeometry, Double3> {
             try {
                 // create position array.
-                val geometry = PlaneGeometry(1, 1, 10, 10)
+                val geometry = PlaneBufferGeometry(1, 1, 10, 10)
                 val spherePositions: Array<Double3> = Array(
                         N_TILE_HEIGHTS, {
                     try {
@@ -329,12 +339,17 @@ class Tile(val terrain: Terrain, val face: Int,
                 })
 
                 val relativeCenter: Double3 = vertPositions[N_TILE_VERTICES / 2]
+                @Suppress("UNUSED_VARIABLE") // used in js
+                val positionArray =
+                        js("geometry.getAttribute(\"position\")").array
                 for (i in 0 until N_TILE_VERTICES) {
                     var pos = vertPositions[i]
                     pos -= relativeCenter
                     @Suppress("UNUSED_VARIABLE") // used in js
-                    val v = Vector3(pos.x, pos.y, pos.z)
-                    js("geometry.vertices[i] = v")
+                    val vertexStartIndex: Int = i * 3
+                    js("positionsArray[vertexStartIndex] = pos.x")
+                    js("positionsArray[vertexStartIndex + 1] = pos.y")
+                    js("positionsArray[vertexStartIndex + 2] = pos.z")
                 }
                 return Pair(geometry, relativeCenter)
             } catch (e: Exception) {
@@ -354,7 +369,7 @@ class Tile(val terrain: Terrain, val face: Int,
             return planeMaterial
         }
 
-        val (geometry: PlaneGeometry, tilePosition: Double3) = makeGeometry()
+        val (geometry: PlaneBufferGeometry, tilePosition: Double3) = makeGeometry()
         val material: Material = makeMaterial()
         val mesh = Mesh(geometry, material)
         mesh.matrixAutoUpdate = false // tile won't be moving anywhere
