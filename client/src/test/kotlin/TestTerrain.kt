@@ -136,6 +136,13 @@ class TestTerrain {
     @Test
     fun testHeightIndexFromVertexIndexGivesCorrectRightEdgeData2() {
         val (hIndex: Int, lip: Boolean) = Tile.Companion.vertexData(109)
+        assertEquals(80, hIndex)
+        assertEquals(true, lip)
+    }
+
+    @Test
+    fun testHeightIndexFromVertexIndexGivesCorrectRightEdgeData3() {
+        val (hIndex: Int, lip: Boolean) = Tile.Companion.vertexData(98)
         assertEquals(71, hIndex)
         assertEquals(true, lip)
     }
@@ -151,7 +158,7 @@ class TestTerrain {
     fun testHeightIndexFromVertexIndexGivesCorrectPositionNotOnEdge() {
         val (hIndex: Int, lip: Boolean) = Tile.Companion.vertexData(30)
         assertEquals(16, hIndex)
-        assertEquals(true, lip)
+        assertFalse(lip)
     }
 
     @Test
