@@ -1,6 +1,7 @@
 package objects
 
 import Core
+import Scene
 import Logger
 import Logger.Companion.getLogger
 import com.curiouscreature.kotlin.math.Double2
@@ -22,7 +23,7 @@ private const val MAX_LOD: Int = 24 // any value up to 28
 private const val MAX_ENCODED_LOD: Int = 28 // max LOD able to be encoded
 
 // distance in tile widths at which a tile subdivides
-private const val REL_SUBDIVISION_DIST: Double = 3 * RADIUS // must be > tile w
+private const val REL_SUBDIVISION_DIST: Double = 2 * RADIUS // must be > tile w
 private const val TILE_POLYGON_WIDTH: Int = 8 // width in polygons of tile
 private const val TILE_HEIGHT_ROW_SIZE = TILE_POLYGON_WIDTH + 1
 private const val TILE_VERTICES_ROW_SIZE = TILE_HEIGHT_ROW_SIZE + 2
@@ -43,7 +44,7 @@ private const val MAX_TILE_DIVISIONS_PER_TIC = 32
  */
 open class Terrain(id: String=""): GameObject("Terrain", id) {
     companion object {
-        val logger = getLogger("Terrain")
+        private val logger = getLogger("Terrain")
     }
 
     override var threeObject: Object3D = Object3D() // nothing special
@@ -51,7 +52,8 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     val radius = RADIUS
     val faces: Array<Tile> = Array(6, { Tile(this, it) })
     /** Stores tiles no longer in use, but whose geometry can be reused */
-    val tilePile: ArrayList<Tile> = ArrayList()
+    private val tilePile: ArrayList<Tile> = ArrayList()
+    private var tileCounter: Int = 0
 
     var subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
 
@@ -59,6 +61,7 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     val gravity: Double = 9.806
 
     init {
+        js("Module.terrain = this")
         // add each face to scene
         faces.forEach { addChild(it) }
 
@@ -94,6 +97,35 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     fun get(index: Int): Tile = faces[index]
 
     /**
+     * Adds passed tile to discard bin, from which tiles can be re-used
+     * instead of letting them be garbage collected.
+     */
+    fun addTileToBin(tile: Tile) {
+        tilePile.add(tile)
+    }
+
+    /**
+     * Gets a Tile for use.
+     * Will return a previously created, but unused tile if one is
+     * available, otherwise a new Tile is created.
+     */
+    fun getTile(face: Int, parent: Tile? = null, quadrant: Int? = null): Tile {
+        val tile: Tile
+        if (tilePile.isEmpty()) {
+            // create new
+            tile = Tile(this, face, parent, quadrant)
+            tileCounter++
+            logger.debug("Generated Tile #$tileCounter")
+        } else {
+            // recycle
+            tile = tilePile.removeAt(tilePile.size - 1)
+            tile.setGeometry(face, parent, quadrant)
+            logger.fine("recycled Tile #$tileCounter")
+        }
+        return tile
+    }
+
+    /**
      * Gets height at surface position
      */
     @Suppress("UNUSED_PARAMETER") // used in js
@@ -110,10 +142,11 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
  * subdivide and recombine to provide varying levels of detail
  * depending on distance to camera.
  */
-class Tile(val terrain: Terrain, val face: Int,
-           val parent: Tile?=null, val quadrant: Int?=null):
+class Tile(private val terrain: Terrain, face: Int,
+           parent: Tile? = null, quadrant: Int? = null) :
         GameObject()
 {
+
     companion object {
         private val logger = Logger.getLogger("Tile")
 
@@ -171,23 +204,27 @@ class Tile(val terrain: Terrain, val face: Int,
         }
     }
 
+    var parent: Tile? = null
+    var face: Int = -1
+    var quadrant: Int? = null
+
     /**
      * Tile level of detail, with Terrain Face being 1, the first face
      * subdivision being 2, etc.
      */
-    val lod: Int = if (parent == null) 1 else parent.lod + 1
+    private var lod: Int = -1
     /**
      * Relative shape of tile as compared to face. (1.0,1.0 indicates
      * that the Tile is the same size as the cube face, (0.5,0.5)
      * indicates it is half that, etc.
      */
-    val shape: Double2 = if (parent != null) parent.shape / 2.0 else
-        Double2(2.0, 2.0)
-    private val relativeWidth = shape.x / 2  // 1.0 is diameter of spheroid
+    var shape: Double2 = Double2()
+    private var relativeWidth: Double = -1.0  // 1.0 is diameter of spheroid
     private val subTiles: Array<Tile?> = arrayOfNulls<Tile?>(4)
-    private val subdivisionDistance = REL_SUBDIVISION_DIST * relativeWidth
-    private val recombinationDistance =
-            REL_SUBDIVISION_DIST * relativeWidth * 1.2
+    private var subdivisionDistance: Double = -1.0
+    private var recombinationDistance: Double = -1.0
+
+    var geometry: PlaneBufferGeometry? = null
 
     /**
      * Array's first value is the index of the tile's face,
@@ -195,32 +232,138 @@ class Tile(val terrain: Terrain, val face: Int,
      * containing the Tile, until the last index, which indicates the
      * quadrant of the Tile.
      */
-    val quadrants: Array<Int> = Array(
-            lod,
-            { i ->
-                when {
-                    i < lod - 1 -> parent!!.quadrants[i]
-                    i == 0 -> face
-                    else -> quadrant!!
-                }
-            }
-    )
+    private lateinit var quadrants: Array<Int>
 
     /** lower left corner, relative to cube face */
-    val p1 = findP1()
+    var p1 = Double2()
     /** upper right corner, relative to cube face */
-    val p2 = p1 + shape
+    var p2 = Double2()
 
     /** THREE.js Plane mesh object */
     override var threeObject: Object3D = makeThreeTile()
 
     init {
-        logger.fine("created tile, face: $face, quad: $quadrant")
-        logger.fine("position: $position")
+        setGeometry(face, parent, quadrant)
         terrain.threeObject.add(threeObject) // add tile as child of terrain
         if (parent != null && quadrant == null) {
             throw IllegalArgumentException(
                     "If parent arg is passed, quadrant must also be passed.")
+        }
+    }
+
+    /**
+     * Creates Geometry given passed information.
+     * @param face: Int index of face on which Tile resides
+     * @param parent: Tile?
+     * @param quadrant: Int
+     */
+    fun setGeometry(face: Int, parent: Tile? = null, quadrant: Int? = null) {
+        try {
+            logger.fine("creating tile geometry, face: $face, " +
+                    "quad: $quadrant, pos: $position")
+            this.face = face
+            this.parent = parent
+            this.quadrant = quadrant
+
+            if (!subTiles.all { it == null }) {
+                throw IllegalStateException()
+            }
+
+            lod = if (parent == null) 1 else parent.lod + 1
+
+            quadrants = Array<Int>(lod, { i: Int ->
+                when {
+                    i < lod - 1 -> parent!!.quadrants[i]
+                    i == 0 -> face
+                    else -> quadrant!!
+                }
+            })
+
+            shape = if (parent != null) parent.shape / 2.0 else
+                Double2(2.0, 2.0)
+            relativeWidth = shape.x / 2  // 1.0 is diameter of spheroid
+            subdivisionDistance = REL_SUBDIVISION_DIST * relativeWidth
+            recombinationDistance =
+                    REL_SUBDIVISION_DIST * relativeWidth * 1.2
+            p1 = findP1(parent, shape)
+            p2 = p1 + shape
+
+            val geometry: dynamic = this.geometry ?: throw IllegalStateException("Geometry is null")
+            geometry.verticesNeedUpdate = true
+            geometry.attributes.position.needsUpdate = true
+
+            val pos: Double3 = setVertices()
+
+            threeObject.position.set(pos.x, pos.y, pos.z)
+            threeObject.updateMatrix()
+        } catch (e: Exception) {
+            logger.error("Error occurred in Tile.setGeometry() method", e)
+            throw e
+        }
+    }
+
+    /**
+     * Sets geometry positions
+     */
+    private fun setVertices(): Double3 {
+        try {
+            val spherePositions: Array<Double3> = Array(
+                    N_TILE_HEIGHTS, {
+                try {
+                    val tileRelPos = tilePosFromHeightIndex(it)
+                    val facePos: Double2 = p1 + tileRelPos * shape
+                    val cubeRelPos: Double3 = facePosTo3d(facePos)
+                    val normPos: Double3 = normalize(cubeRelPos)
+                    @Suppress("UNUSED_VARIABLE") // used in js
+                    val x: Double = normPos.x
+                    @Suppress("UNUSED_VARIABLE") // used in js
+                    val y: Double = normPos.y
+                    @Suppress("UNUSED_VARIABLE") // used in js
+                    val z: Double = normPos.z
+                    val height: Double =
+                            js("_ter_GetHeight(x, y, z, $MAX_LOD)") as Double
+                    val pos = normPos * (RADIUS + height * HEIGHT_SCALE)
+                    pos
+                } catch (e: Exception) {
+                    logger.error("Error converting height index: $it")
+                    throw e
+                }
+            })
+
+            val vertPositions: Array<Double3> = Array(
+                    N_TILE_VERTICES, {
+                val (heightIndex: Int, isLip: Boolean) = vertexData(it)
+                // sanity check
+                if (heightIndex < 0 || heightIndex >= N_TILE_HEIGHTS) {
+                    throw IllegalStateException(
+                            "bad height index: $heightIndex. vert: $it")
+                }
+                val heightRatio: Double = if (isLip)
+                    1.0 - shape.x * TILE_LIP_BASE_SCALE else 1.0
+                val vertexPosition: Double3 =
+                        spherePositions[heightIndex] * heightRatio
+                vertexPosition
+            })
+
+            val relativeCenter: Double3 = vertPositions[N_TILE_VERTICES / 2]
+            @Suppress("UNUSED_VARIABLE") // used in js
+            val geometry = this.geometry
+            @Suppress("UNUSED_VARIABLE") // used in js
+            val positionsArray =
+                    js("geometry.getAttribute(\"position\")").array
+            for (i in 0 until N_TILE_VERTICES) {
+                var pos = vertPositions[i]
+                pos -= relativeCenter
+                @Suppress("UNUSED_VARIABLE") // used in js
+                val vertexStartIndex: Int = i * 3
+                js("positionsArray[vertexStartIndex] = pos.x")
+                js("positionsArray[vertexStartIndex + 1] = pos.y")
+                js("positionsArray[vertexStartIndex + 2] = pos.z")
+            }
+            return relativeCenter
+        } catch (e: Exception) {
+            logger.error("Error setting $this vertices")
+            throw e
         }
     }
 
@@ -249,11 +392,13 @@ class Tile(val terrain: Terrain, val face: Int,
      * Lower right corner is (1, -1).
      * @return Double2
      */
-    private fun findP1(): Double2 {
+    private fun findP1(parent: Tile?, shape: Double2): Double2 {
         if (parent == null) {
             return Double2(-1.0, -1.0)
         }
-        return when (quadrant!!) {
+        val quadrant: Int = this.quadrant ?: throw NullPointerException(
+                "Tile.findP1() called when Tile quadrant is null")
+        return when (quadrant) {
             0 -> parent.p1 + shape // middlepoint
             1 -> Double2(parent.p1.x, parent.p1.y + shape.y)
             2 -> parent.p1
@@ -266,24 +411,47 @@ class Tile(val terrain: Terrain, val face: Int,
      * Subdivides tile into quadrants with higher LOD
      */
     private fun subdivide() {
-        var tile: Tile
-        for (i in subTiles.indices) {
-            tile = Tile(terrain, face=face, parent=this, quadrant=i)
-            scene!!.add(tile)
-            subTiles[i] = tile
+        try {
+            var tile: Tile
+            val scene: Scene = this.scene ?: throw IllegalStateException(
+                    "Tile.subdivide(): No scene set.")
+            for (i in subTiles.indices) {
+                tile = terrain.getTile(face, this, i)
+                tile.setGeometry(face, this, i)
+                tile.visible = true
+                if (!scene.contains(tile)) {
+                    scene.add(tile)
+                }
+                subTiles[i] = tile
+            }
+            visible = false // hide tile until a lower LOD is needed again
+        } catch (e: Exception) {
+            logger.error("Error occurred while subdividing $this", e)
+            throw e
         }
-        visible = false // hide tile until a lower LOD is needed again
     }
 
     /**
      * Recombines tile, removing sub-tiles
      */
     private fun recombine() {
-        for ((i, tile) in subTiles.withIndex()) {
-            scene!!.remove(tile!!)
-            subTiles[i] = null
+        // this may be called when no sub-tiles exist, if the parent
+        // tile is being recombined.
+        try {
+            for ((i, tile) in subTiles.withIndex()) {
+                if (tile != null) {
+                    tile.recombine()
+                    tile.visible = false
+                    tile.position = Double3()
+                    terrain.addTileToBin(tile)
+                }
+                subTiles[i] = null
+            }
+            visible = true
+        } catch (e: Exception) {
+            logger.error("Error occurred while recombining $this", e)
+            throw e
         }
-        visible = true
     }
 
     /**
@@ -296,66 +464,9 @@ class Tile(val terrain: Terrain, val face: Int,
          * Creates geometry of tile.
          * Returns Pair of PlaneGeometry, and tile center position
          */
-        fun makeGeometry(): Pair<PlaneBufferGeometry, Double3> {
-            try {
-                // create position array.
-                val geometry = PlaneBufferGeometry(1, 1, 10, 10)
-                val spherePositions: Array<Double3> = Array(
-                        N_TILE_HEIGHTS, {
-                    try {
-                        val tileRelPos = tilePosFromHeightIndex(it)
-                        val facePos: Double2 = p1 + tileRelPos * shape
-                        val cubeRelPos: Double3 = facePosTo3d(facePos)
-                        val normPos: Double3 = normalize(cubeRelPos)
-                        @Suppress("UNUSED_VARIABLE") // used in js
-                        val x: Double = normPos.x
-                        @Suppress("UNUSED_VARIABLE") // used in js
-                        val y: Double = normPos.y
-                        @Suppress("UNUSED_VARIABLE") // used in js
-                        val z: Double = normPos.z
-                        val height: Double =
-                            js("_ter_GetHeight(x, y, z, $MAX_LOD)") as Double
-                        val pos = normPos * (RADIUS + height * HEIGHT_SCALE)
-                        pos
-                    } catch (e: Exception) {
-                        logger.error("Error converting height index: $it")
-                        throw e
-                    }
-                })
-
-                val vertPositions: Array<Double3> = Array(
-                        N_TILE_VERTICES, {
-                    val (heightIndex: Int, isLip: Boolean) = vertexData(it)
-                    // sanity check
-                    if (heightIndex < 0 || heightIndex >= N_TILE_HEIGHTS) {
-                        throw IllegalStateException(
-                                "bad height index: $heightIndex. vert: $it")
-                    }
-                    val heightRatio: Double = if (isLip)
-                        1.0 - shape.x * TILE_LIP_BASE_SCALE else 1.0
-                    val vertexPosition: Double3 =
-                            spherePositions[heightIndex] * heightRatio
-                    vertexPosition
-                })
-
-                val relativeCenter: Double3 = vertPositions[N_TILE_VERTICES / 2]
-                @Suppress("UNUSED_VARIABLE") // used in js
-                val positionArray =
-                        js("geometry.getAttribute(\"position\")").array
-                for (i in 0 until N_TILE_VERTICES) {
-                    var pos = vertPositions[i]
-                    pos -= relativeCenter
-                    @Suppress("UNUSED_VARIABLE") // used in js
-                    val vertexStartIndex: Int = i * 3
-                    js("positionsArray[vertexStartIndex] = pos.x")
-                    js("positionsArray[vertexStartIndex + 1] = pos.y")
-                    js("positionsArray[vertexStartIndex + 2] = pos.z")
-                }
-                return Pair(geometry, relativeCenter)
-            } catch (e: Exception) {
-                logger.error("Error creating $this geometry")
-                throw e
-            }
+        fun makeGeometry(): PlaneBufferGeometry {
+            // create position array.
+            return PlaneBufferGeometry(1, 1, 10, 10)
         }
 
         fun makeMaterial(): Material {
@@ -369,14 +480,11 @@ class Tile(val terrain: Terrain, val face: Int,
             return planeMaterial
         }
 
-        val (geometry: PlaneBufferGeometry, tilePosition: Double3) = makeGeometry()
+        val geometry: PlaneBufferGeometry = makeGeometry()
+        this.geometry = geometry
         val material: Material = makeMaterial()
         val mesh = Mesh(geometry, material)
-        mesh.matrixAutoUpdate = false // tile won't be moving anywhere
-        mesh.position.x = tilePosition.x
-        mesh.position.y = tilePosition.y
-        mesh.position.z = tilePosition.z
-        mesh.updateMatrix()
+        mesh.matrixAutoUpdate = false // tile won't be moving very often
         return mesh
     }
 

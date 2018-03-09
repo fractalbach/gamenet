@@ -18,7 +18,7 @@ class Logger private constructor(val name: String) {
          * level at which events are being logged.
          * Events with a lower level are simply ignored.
          */
-        var logLevel: LogLevel = LogLevel.INFO
+        var logLevel: LogLevel = LogLevel.FINE
             set(level) {
                 field = level
                 logger.info("Log level changed to: ${logLevel.name}")

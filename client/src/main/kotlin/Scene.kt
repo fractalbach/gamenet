@@ -27,7 +27,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     }
 
     private val gameObjects: HashMap<String, GameObject> = HashMap()
-    private val removalQueue: ArrayList<GameObject> = ArrayList()
+    private val removalQueue: HashSet<GameObject> = HashSet()
     /** THREE scene which is wrapped by this Scene */
     val threeScene: Scene = info.laht.threekt.scenes.Scene()
     /** THREE renderer that is the default for rendering to view */
@@ -118,21 +118,34 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
      * Adds passed GameObject to scene.
      * Passed GameObject is given a reference to scene.
      * @param gameObject: GameObject to be added.
-     * @throws IllegalArgumentException if gameObject is already a
-     *              member of the Scene.
+     * @return Boolean indicating whether object was added.
+     *          Will be false if object is already present.
      */
-    fun add(gameObject: GameObject) {
-        logger.fine("Adding $gameObject to $this")
-        if (gameObject.id in gameObjects.keys) {
-            throw IllegalArgumentException(
-                    "$gameObject already a member of $this")
+    fun add(gameObject: GameObject): Boolean {
+        try {
+            logger.fine("Adding $gameObject to $this")
+            if (gameObject in removalQueue) {
+                removalQueue.remove(gameObject)
+            } else if (gameObject.id in gameObjects.keys) {
+                return false
+            } else {
+                gameObjects[gameObject.id] = gameObject
+                threeScene.add(gameObject.threeObject)
+            }
+            gameObject.scene = this
+            for (childObject in gameObject.childObjects) {
+                add(childObject)
+            }
+            return true
+        } catch (e: Exception) {
+            logger.error("Error occurred while attempting to add " +
+                    "$gameObject to $this", e)
+            throw e
         }
-        gameObject.scene = this
-        gameObjects[gameObject.id] = gameObject
-        threeScene.add(gameObject.threeObject)
-        for (childObject in gameObject.childObjects) {
-            add(childObject)
-        }
+    }
+
+    fun contains(gameObject: GameObject): Boolean {
+        return gameObjects.containsKey(gameObject.id);
     }
 
     /**
@@ -150,16 +163,25 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
      * GameObject is not actually removed until the beginning of the
      * next logic tic.
      * @param gameObject: GameObject to remove.
-     * @throws IllegalArgumentException If GameObject was not a member
-     *              of this Scene.
+     * @return Boolean of whether object was removed.
+     *          Will be false if object has already been removed.
      */
-    fun remove(gameObject: GameObject) {
-        logger.fine("Removing $gameObject from $this")
-        if (gameObject.id !in gameObjects.keys) {
-            throw IllegalArgumentException(
-                    "$gameObject not a member of $this")
+    fun remove(gameObject: GameObject): Boolean {
+        try {
+            logger.fine("Removing $gameObject from $this")
+            if (gameObject.id !in gameObjects.keys) {
+                return false
+            }
+            if (gameObject in removalQueue) {
+                return false
+            }
+            removalQueue.add(gameObject)
+            return true
+        } catch (e: Exception) {
+            logger.error("Error occurred while attempting to remove " +
+                    "$gameObject from $this", e)
+            throw e
         }
-        removalQueue.add(gameObject)
     }
 
     /**
@@ -174,7 +196,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         gameObjects.remove(gameObject.id)
         threeScene.remove(gameObject.threeObject)
         for (childObject in gameObject.childObjects) {
-            remove(childObject)
+            removeHard(childObject)
         }
     }
 

@@ -6,58 +6,6 @@ import kotlin.test.*
 class TestTerrain {
 
     // ----------------------------------------------------------------
-    // POS CODE TESTS
-    // ----------------------------------------------------------------
-
-    @Test
-    fun testTileReturnsPosCode0() {
-        val terrain: Terrain = Terrain()
-        val tile: Tile = Tile(terrain=terrain, face=0)
-
-        assertEquals(1L,tile.getPositionCode())
-    }
-
-    @Test
-    fun testTileReturnsPosCode1() {
-        val terrain: Terrain = Terrain()
-        val tile: Tile = Tile(terrain=terrain, face=1)
-
-        assertEquals(33L,tile.getPositionCode())
-    }
-
-    @Test
-    fun testTileReturnsPosCode2() {
-        val terrain: Terrain = Terrain()
-        val tile: Tile = Tile(terrain=terrain, face=2)
-
-        assertEquals(65L,tile.getPositionCode())
-    }
-
-    @Test
-    fun testTileReturnsPosCode3() {
-        val terrain: Terrain = Terrain()
-        val tile: Tile = Tile(terrain=terrain, face=3)
-
-        assertEquals(97L,tile.getPositionCode())
-    }
-
-    @Test
-    fun testTileReturnsPosCode4() {
-        val terrain: Terrain = Terrain()
-        val tile: Tile = Tile(terrain=terrain, face=4)
-
-        assertEquals(129L,tile.getPositionCode())
-    }
-
-    @Test
-    fun testTileReturnsPosCode5() {
-        val terrain: Terrain = Terrain()
-        val tile: Tile = Tile(terrain=terrain, face=5)
-
-        assertEquals(161L,tile.getPositionCode())
-    }
-
-    // ----------------------------------------------------------------
     // Transformations
     // ----------------------------------------------------------------
 
