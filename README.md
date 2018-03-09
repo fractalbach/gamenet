@@ -4,58 +4,23 @@
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
-
 
 ### Prerequisites
 
-What things you need to install the software and how to install them
-
-```
-Give examples
-```
+JDK 8 or higher is required to run gradle. All other dependencies should be handled by gradle.
+Dependencies downloaded by gradle are listed under "Built With".
 
 ### Installing
 
-A step by step series of examples that tell you have to get a development env running
-
-Say what the step will be
-
-```
-Give the example
-```
-
-And repeat
-
-```
-until finished
-```
-
-End with an example of getting some data out of the system or using it for a little demo
+To build the project, run `$ ./gradlew build` in the project root directory.
 
 ## Running the tests
 
-Explain how to run the automated tests for this system
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
+To run client QUnit tests, open out/test/client/client-tests.html in any relatively modern browser.
 
 ## Deployment
 
-Add additional notes about how to deploy this on a live system
+TODO: Add additional notes about how to deploy this on a live system
 
 ## Built With
 
@@ -65,59 +30,30 @@ Add additional notes about how to deploy this on a live system
 * Client side:
   * [Kotlin](https://kotlinlang.org/)   [(git)](https://github.com/JetBrains/kotlin)
   * [three.js](https://threejs.org/)    [(git)](https://github.com/mrdoob/three.js/)
+  * [WebAssemby](http://webassembly.org/) 
+  * [emscripten](http://kripken.github.io/emscripten-site/) [(git)](https://github.com/kripken/emscripten)
   * [kotlin-math](https://github.com/romainguy/kotlin-math)
   * [uuid-random](https://github.com/jchook/uuid-random)
 
 
 ## Contributing
 
-Please read [CONTRIBUTING.md], or just send pull request.
+Pull requests are always welcome, particularly if they resolve any of the 
+[current issues](https://github.com/fractalbach/gamenet/issues) .
+
+
 
 ## Versioning
 
-We use GitHub for versioning. For the versions available, see the [tags on this repository]
+We use GitHub for version control. Until basic usability is reached, no releases are being made.
 
 ## Authors
 
-* Just some guy, you know?
-* industrious kitten.
-* excellent owl.
-* swanky lynx.
-* dizzy chimpanzee.
-* electric ferret.
-* intelligent cougar.
-* quarrelsome leopard.
-* unusual beaver.
-* neighborly iguana.
-* fearless warthog.
-* psychotic mongoose.
-* dangerous gopher.
+* Fractalbach
+* TryExceptElse
 
-See also the list of [contributors] who participated in this project.
+See also the list of [contributors](https://github.com/fractalbach/gamenet/graphs/contributors) who participated in this project.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE file](LICENSE) for details.
-
-## Acknowledgments
-
-
-
-|    Server        |     Client        |
-| ---------------- | ----------------- |
-| hey, LISTEN!     | hey, LISTEN!      |
-|                  | <--- SYN          |
-| SYN-ACK --->     |                   |
-|                  | <--- ACK          |
-| ESTABLISHED      | ESTABLISHED       |
-| FIN --->         |                   |
-|                  | <--- ACK          |
-|                  | <--- FIN          |
-| ACK --->         |                   |
-| CLOSED           | CLOSED            |
-
-
-
----
-
-Readme template from https://gist.github.com/PurpleBooth/109311bb0361f32d87a2

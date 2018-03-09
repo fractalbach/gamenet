@@ -11,7 +11,7 @@ private const val DEFAULT_SHADOW_MAP_SIZE = 256
  */
 class SunLight(name:String="", id:String="") : GameObject(name, id) {
 
-    var light = js("new THREE.DirectionalLight(0xFDB813, 0.5);") as Light
+    var light = js("new THREE.DirectionalLight(0xFDB813, 0.7);") as Light
     override var threeObject: Object3D = light
 
     init {

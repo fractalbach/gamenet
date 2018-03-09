@@ -385,6 +385,7 @@ fun transpose(m: Mat4) = Mat4(
         Float4(m.x.z, m.y.z, m.z.z, m.w.z),
         Float4(m.x.w, m.y.w, m.z.w, m.w.w)
 )
+@Suppress("UNUSED_PARAMETER") // not a priority
 fun inverse(m: Mat4): Mat4 {
     TODO("Implement inverse(Mat4)") // TODO
 }
