@@ -30,7 +30,7 @@ configurations {
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-js:$kotlin_version"
     testCompile "org.jetbrains.kotlin:kotlin-test-js:$kotlin_version"
-    compile group: 'info.laht.threekt', name: 'wrapper', version: '0.88-ALPHA-3'
+    compile group: 'info.laht.threekt', name: 'wrapper', version: '0.88-ALPHA-5'
     closureCompiler 'com.google.javascript:closure-compiler:v20180204'
 }
 
