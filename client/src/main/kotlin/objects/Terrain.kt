@@ -265,10 +265,6 @@ class Tile(private val terrain: Terrain, face: Int,
             this.parent = parent
             this.quadrant = quadrant
 
-            if (!subTiles.all { it == null }) {
-                throw IllegalStateException()
-            }
-
             lod = if (parent == null) 1 else parent.lod + 1
 
             quadrants = Array<Int>(lod, { i: Int ->
@@ -288,7 +284,8 @@ class Tile(private val terrain: Terrain, face: Int,
             p1 = findP1(parent, shape)
             p2 = p1 + shape
 
-            val geometry: dynamic = this.geometry ?: throw IllegalStateException("Geometry is null")
+            val geometry: dynamic = this.geometry
+                    ?: throw IllegalStateException("Geometry is null")
             geometry.verticesNeedUpdate = true
             geometry.attributes.position.needsUpdate = true
 
@@ -472,9 +469,7 @@ class Tile(private val terrain: Terrain, face: Int,
         fun makeMaterial(): Material {
             val planeMaterial = MeshStandardMaterial()
             planeMaterial.color = Color(0x3cff00)
-            // work around temporary error in THREE.js wrapper
-            @Suppress("CAST_NEVER_SUCCEEDS")
-            (planeMaterial as Material).side = BackSide
+            planeMaterial.side = BackSide
             //planeMaterial.wireframe = true // for debugging
             planeMaterial.flatShading = true
             return planeMaterial
