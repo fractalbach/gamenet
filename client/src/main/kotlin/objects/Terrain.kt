@@ -265,10 +265,6 @@ class Tile(private val terrain: Terrain, face: Int,
             this.parent = parent
             this.quadrant = quadrant
 
-            if (!subTiles.all { it == null }) {
-                throw IllegalStateException()
-            }
-
             lod = if (parent == null) 1 else parent.lod + 1
 
             quadrants = Array<Int>(lod, { i: Int ->
