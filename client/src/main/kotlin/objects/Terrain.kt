@@ -22,11 +22,11 @@ import util.ObjectPool
 private const val TERRAIN_SEED: Int = 124
 private const val RADIUS: Double = 6.371e6
 private const val HEIGHT_SCALE: Double = 1e4
-private const val MAX_LOD: Int = 24 // any value up to 28
+private const val MAX_LOD: Int = 23 // any value up to 28
 private const val MAX_ENCODED_LOD: Int = 28 // max LOD able to be encoded
 
 // distance in tile widths at which a tile subdivides
-private const val REL_SUBDIVISION_DIST: Double = 2 * RADIUS // must be > tile w
+private const val REL_SUBDIVISION_DIST: Double = 5 * RADIUS // must be > tile w
 private const val TILE_POLYGON_WIDTH: Int = 8 // width in polygons of tile
 private const val TILE_HEIGHT_ROW_SIZE = TILE_POLYGON_WIDTH + 1
 private const val TILE_VERTICES_ROW_SIZE = TILE_HEIGHT_ROW_SIZE + 2
