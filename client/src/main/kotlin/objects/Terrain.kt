@@ -7,6 +7,8 @@ import Logger.Companion.getLogger
 import com.curiouscreature.kotlin.math.Double2
 import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.normalize
+import com.curiouscreature.kotlin.math.length
+import com.curiouscreature.kotlin.math.cross
 import exception.CException
 import info.laht.threekt.THREE.BackSide
 import info.laht.threekt.core.Object3D
@@ -156,12 +158,55 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
 
     /**
      * Gets height at surface position
+     *
+     * Returned height is relative to mean surface level.
      */
     @Suppress("UNUSED_PARAMETER") // used in js
     fun heightAtVector(vector: Double3): Double {
         return js("_ter_GetHeight(" +
                 "vector.x, vector.y, vector.z, $MAX_LOD)") as Double *
                 HEIGHT_SCALE
+    }
+
+    /**
+     * Gets normal at surface position.
+     *
+     * Expects input to be normalized.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    fun normalAtVector(v0: Double3, r: Double): Double3 {
+        // Hardly a perfect sampling method, but much cheaper in
+        // cpu time.
+        val v1: Double3 = normalize(Double3(v0.x + r, v0.y, v0.z))
+        val v2: Double3 = normalize(Double3(v0.x, v0.y + r, v0.z))
+        val v3: Double3 = normalize(Double3(v0.x, v0.y, v0.z + r))
+
+        // Find distance of each point from v0
+        val d1 = length(v1 - v0)
+        val d2 = length(v2 - v0)
+        val d3 = length(v3 - v0)
+
+        // Find sample positions.
+        val sample0: Double3  = normalize(v0) * (heightAtVector(v0) + radius)
+        val sample1: Double3
+        val sample2: Double3
+        if (d1 < d2 && d1 < d3) {
+            sample1 = v2 * (heightAtVector(v2) + radius)
+            sample2 = v3 * (heightAtVector(v3) + radius)
+        } else if (d2 < d1 && d2 < d3) {
+            sample1 = v1 * (heightAtVector(v1) + radius)
+            sample2 = v3 * (heightAtVector(v3) + radius)
+        } else {
+            sample1 = v1 * (heightAtVector(v1) + radius)
+            sample2 = v2 * (heightAtVector(v2) + radius)
+        }
+
+        // Get direction from sample0 to sample1 and sample2
+        val dir0 = normalize(sample1 - sample0)
+        val dir1 = normalize(sample2 - sample0)
+
+        // Get perpendicular vector
+        return cross(dir0, dir1) * -1.0
     }
 }
 
@@ -322,6 +367,7 @@ class Tile(private val terrain: Terrain, face: Int,
                     ?: throw IllegalStateException("Geometry is null")
             geometry.verticesNeedUpdate = true
             geometry.attributes.position.needsUpdate = true
+            geometry.attributes.normal.needsUpdate = true
 
             val pos: Double3 = setVertices()
             geometry.computeBoundingSphere()
@@ -341,9 +387,7 @@ class Tile(private val terrain: Terrain, face: Int,
         try {
             val spherePositions: Array<Double3> = Array(N_TILE_HEIGHTS) {
                 try {
-                    val tileRelPos = tilePosFromHeightIndex(it)
-                    val facePos: Double2 = p1 + tileRelPos * shape
-                    val cubeRelPos: Double3 = facePosTo3d(facePos)
+                    val cubeRelPos: Double3 = cubeRelPosFromHeightIndex(it)
                     val normPos: Double3 = normalize(cubeRelPos)
                     @Suppress("UNUSED_VARIABLE") // used in js
                     val x: Double = normPos.x
@@ -375,16 +419,35 @@ class Tile(private val terrain: Terrain, face: Int,
                 vertexPosition
             }
 
+            val vertNormals: Array<Double3> = Array(N_TILE_VERTICES) {
+                val (heightIndex: Int, isLip: Boolean) = vertexData(it)
+                // Sanity check
+                if (heightIndex < 0 || heightIndex >= N_TILE_HEIGHTS) {
+                    throw IllegalStateException(
+                            "bad height index: $heightIndex. vert: $it")
+                }
+                val normVec = normalize(cubeRelPosFromHeightIndex(heightIndex))
+                val r: Double = relativeWidth / TILE_POLYGON_WIDTH / 4 * RADIUS
+                terrain.normalAtVector(normVec, r / RADIUS)
+            }
+
             val relativeCenter: Double3 = vertPositions[N_TILE_VERTICES / 2]
-            val geometry = this.geometry
-            val positionsArray = geometry!!.getAttribute("position").array
+            val geometry = this.geometry ?: throw IllegalStateException(
+                    "Tile geometry is null in setGeometry")
+            val positionsArray = geometry.getAttribute("position").array
+            val normalArray = geometry.getAttribute("normal").array
             for (i in 0 until N_TILE_VERTICES) {
                 var pos = vertPositions[i]
                 pos -= relativeCenter
+                val normal = vertNormals[i]
+
                 val vertexStartIndex: Int = i * 3
                 positionsArray[vertexStartIndex] = pos.x
                 positionsArray[vertexStartIndex + 1] = pos.y
                 positionsArray[vertexStartIndex + 2] = pos.z
+                normalArray[vertexStartIndex] = normal.x
+                normalArray[vertexStartIndex + 1] = normal.y
+                normalArray[vertexStartIndex + 2] = normal.z
             }
             return relativeCenter
         } catch (e: Exception) {
@@ -504,8 +567,10 @@ class Tile(private val terrain: Terrain, face: Int,
             val planeMaterial = MeshStandardMaterial()
             planeMaterial.color = Color(0x3cff00)
             planeMaterial.side = BackSide
+            planeMaterial.metalness = 0.2
+            planeMaterial.roughness = 0.6
             //planeMaterial.wireframe = true // for debugging
-            planeMaterial.flatShading = true
+            //planeMaterial.flatShading = true
             return planeMaterial
         }
 
@@ -650,6 +715,12 @@ class Tile(private val terrain: Terrain, face: Int,
     fun subTile(q: Int): Tile {
         return subTiles[q] ?: throw IllegalStateException("Tile not subdivided")
     }
+
+    fun cubeRelPosFromHeightIndex(i: Int): Double3 {
+        val tileRelPos = tilePosFromHeightIndex(i)
+        val facePos: Double2 = p1 + tileRelPos * shape
+        return facePosTo3d(facePos)
+    }
 }
 
 /**
@@ -659,7 +730,8 @@ fun getPositionFromCode(encodedPos: Long): Pair<Int, Array<Int>> {
     // 5b: lod, 3b: face, 2b * LOD: quadrants
     val nQuadrants: Int = (encodedPos and 0x1F).toInt()
     val face: Int = ((encodedPos shr 5) and 0x7).toInt()
-    val quadrants: Array<Int> = Array(
-            nQuadrants, { i -> ((encodedPos shr 8 + 2 * i) and 0x3).toInt() })
+    val quadrants: Array<Int> = Array(nQuadrants) {
+        i -> ((encodedPos shr 8 + 2 * i) and 0x3).toInt()
+    }
     return Pair(face, quadrants)
 }
