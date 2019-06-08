@@ -376,19 +376,15 @@ class Tile(private val terrain: Terrain, face: Int,
             }
 
             val relativeCenter: Double3 = vertPositions[N_TILE_VERTICES / 2]
-            @Suppress("UNUSED_VARIABLE") // used in js
             val geometry = this.geometry
-            @Suppress("UNUSED_VARIABLE") // used in js
-            val positionsArray =
-                    js("geometry.getAttribute(\"position\")").array
+            val positionsArray = geometry!!.getAttribute("position").array
             for (i in 0 until N_TILE_VERTICES) {
                 var pos = vertPositions[i]
                 pos -= relativeCenter
-                @Suppress("UNUSED_VARIABLE") // used in js
                 val vertexStartIndex: Int = i * 3
-                js("positionsArray[vertexStartIndex] = pos.x")
-                js("positionsArray[vertexStartIndex + 1] = pos.y")
-                js("positionsArray[vertexStartIndex + 2] = pos.z")
+                positionsArray[vertexStartIndex] = pos.x
+                positionsArray[vertexStartIndex + 1] = pos.y
+                positionsArray[vertexStartIndex + 2] = pos.z
             }
             return relativeCenter
         } catch (e: Exception) {
