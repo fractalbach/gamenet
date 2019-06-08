@@ -135,6 +135,7 @@ class Core {
  *
  * This function appears in JavaScript without name-mangling
  */
+@Suppress("unused")  // Called from js at program start.
 @JsName("startCore")
 fun startCore(args: Array<String>) {
 
