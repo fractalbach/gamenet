@@ -78,6 +78,18 @@ abstract class GameObject(val name: String="", id: String="") {
     fun translateZ(value: Double) = threeObject.translateZ(value)
 
     /**
+     * Method called at the beginning of each update tic.
+     *
+     * This class is for any initialization required at the start of
+     * each update tic. Objects should not interact with each other
+     * within this function.
+     *
+     * @see update
+     * @see updateEnd
+     */
+    open fun updateStart(tic: Core.Tic) {}  // Extended by subclasses.
+
+    /**
      * Method called each logical tic.
      * @see Scene.update
      * @see Core.update
@@ -87,6 +99,18 @@ abstract class GameObject(val name: String="", id: String="") {
     open fun update(tic: Core.Tic) {
         // empty here, extended by subclasses
     }
+
+    /**
+     * Method called at the end of each update tic.
+     *
+     * This class is for any initialization required at the start of
+     * each update tic. Objects should not interact with each other
+     * within this function.
+     *
+     * @see update
+     * @see updateStart
+     */
+    open fun updateEnd(tic: Core.Tic) {}  // Extended by subclasses.
 
     /**
      * Adds a child GameObject to the instance.
