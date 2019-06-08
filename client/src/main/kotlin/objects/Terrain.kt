@@ -48,19 +48,23 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
         private val logger = getLogger("Terrain")
     }
 
+    // Member variables -----------------------------------------------
+
     override var threeObject: Object3D = Object3D() // nothing special
 
     val radius = RADIUS
     val faces: Array<Tile> = Array(6) { Tile(this, it) }
     /** Stores tiles no longer in use, but whose geometry can be reused */
     private val tilePile: ObjectPool<Tile> = ObjectPool {
-        Tile(this, 0)
+        Tile(this, 0)  // Factory callback.
     }
 
     var subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
 
     /** Gravitational acceleration of terrestrial objects */
     val gravity: Double = 9.806
+
+    // Init -----------------------------------------------------------
 
     init {
         js("Module.terrain = this")
@@ -76,6 +80,8 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
 
         js("_ter_Init($TERRAIN_SEED, $RADIUS, $HEIGHT_SCALE)")
     }
+
+    // Actions --------------------------------------------------------
 
     /**
      * Updates terrain, checking to see which tiles owned by Terrain
@@ -94,6 +100,8 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     override fun updateEnd(tic: Core.Tic) {
         tilePile.upkeep()
     }
+
+    // Getters and Setters --------------------------------------------
 
     /**
      * Gets tile identified by passed index.
@@ -127,6 +135,22 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
         val tile: Tile = tilePile.get()
         tile.active = true
         tile.setGeometry(face, parent, quadrant)
+        return tile
+    }
+
+    /**
+     * Gets Tile identified by quadrants.
+     */
+    fun getTileFromQuadrants(quadrants: Array<Int>): Tile? {
+        var i = 0
+        var tile: Tile = faces[i]
+        i++
+        while (i < quadrants.size) {
+            if (!tile.isSubdivided()) {
+                return null
+            }
+            tile = tile.subTile(quadrants[i])
+        }
         return tile
     }
 
@@ -509,6 +533,35 @@ class Tile(private val terrain: Terrain, face: Int,
         }
     }
 
+    /**
+     * Modify passed height array to blend edges with neighbors.
+     */
+    private fun blendEdges(positions: Array<Double3>) {
+        // No point blending at lowest lod.
+        if (lod < 2) {
+            return
+        }
+
+        // Find neighbors
+        val above: Tile? = getAboveTile()
+        val left: Tile? = getLeftTile()
+        val below: Tile? = getBelowTile()
+        val right: Tile? = getRightTile()
+
+        var i: Int = 1
+        while (i < TILE_HEIGHT_ROW_SIZE) {
+            // Blend top edge
+            if (above == null) {
+                positions[i] = (positions[i - 1] + positions[i + 1]) / 2.0
+            }
+
+            // Blend lower edge
+            // Blend left edge
+            // Blend right edge
+            i += 2
+        }
+    }
+
     // getters + setters
 
     /**
@@ -533,6 +586,73 @@ class Tile(private val terrain: Terrain, face: Int,
             positionCode = (quadrant.toLong() shl shift) or positionCode
         }
         return positionCode
+    }
+
+    fun getAboveTile(): Tile? {
+        if (lod < 2) {
+            return null
+        }
+
+        // Make quadrant copy which will be modified
+        val neighborQuadrants: Array<Int> = quadrants.copyOf()
+
+        // Walk upwards until we can switch to a quadrant 'above'
+        var i: Int = lod - 1
+        var q: Int
+        while (i > 0) {
+            q = quadrants[i]
+            if (q >= 2) {
+                if (q == 2) {
+                    neighborQuadrants[i] = 1
+                } else if (q == 3) {
+                    neighborQuadrants[i] = 0
+                }
+                i++
+                while (i < lod) {
+                    q = quadrants[i]
+                    if (q == 1) {
+                        neighborQuadrants[i] = 2
+                    } else if (q == 0) {
+                        neighborQuadrants[i] = 3
+                    }
+                    i++
+                }
+                return terrain.getTileFromQuadrants(neighborQuadrants)
+            }
+            i--
+        }
+
+        // If no tile above this Tile was found, return null.
+        return null
+    }
+
+    fun getLeftTile(): Tile? {
+        if (lod < 2) {
+            return null
+        }
+        return null
+    }
+
+    fun getBelowTile(): Tile? {
+        if (lod < 2) {
+            return null
+        }
+        return null
+    }
+
+    fun getRightTile(): Tile? {
+        if (lod < 2) {
+            return null
+        }
+        return null
+    }
+
+    fun isSubdivided(): Boolean {
+        return subTiles[0] != null
+    }
+
+    fun subTile(q: Int): Tile {
+        return subTiles[q] ?: throw IllegalStateException("Tile not subdivided")
     }
 }
 
