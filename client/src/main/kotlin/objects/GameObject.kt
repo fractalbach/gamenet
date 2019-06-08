@@ -6,6 +6,7 @@ import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.length
 import info.laht.threekt.core.Object3D
 import info.laht.threekt.math.Euler
+import info.laht.threekt.math.Vector3
 
 /**
  * Abstract object from which other game types are extended.
@@ -53,7 +54,11 @@ abstract class GameObject(val name: String="", id: String="") {
 
     /** Position relative to world origin */
     var worldPosition: Double3
-        get() = Double3(threeObject.getWorldPosition())
+        get() {
+            val v3 = Vector3()
+            threeObject.getWorldPosition(v3)
+            return Double3(v3)
+        }
         set(v) = throw NotImplementedError()
 
     /** Motion of object in m/s */
@@ -78,6 +83,18 @@ abstract class GameObject(val name: String="", id: String="") {
     fun translateZ(value: Double) = threeObject.translateZ(value)
 
     /**
+     * Method called at the beginning of each update tic.
+     *
+     * This class is for any initialization required at the start of
+     * each update tic. Objects should not interact with each other
+     * within this function.
+     *
+     * @see update
+     * @see updateEnd
+     */
+    open fun updateStart(tic: Core.Tic) {}  // Extended by subclasses.
+
+    /**
      * Method called each logical tic.
      * @see Scene.update
      * @see Core.update
@@ -87,6 +104,18 @@ abstract class GameObject(val name: String="", id: String="") {
     open fun update(tic: Core.Tic) {
         // empty here, extended by subclasses
     }
+
+    /**
+     * Method called at the end of each update tic.
+     *
+     * This class is for any initialization required at the start of
+     * each update tic. Objects should not interact with each other
+     * within this function.
+     *
+     * @see update
+     * @see updateStart
+     */
+    open fun updateEnd(tic: Core.Tic) {}  // Extended by subclasses.
 
     /**
      * Adds a child GameObject to the instance.

@@ -96,9 +96,25 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         removalQueue.forEach { removeHard(it) }
         for (o: GameObject in gameObjects.values) {
             try {
+                o.updateStart(tic)
+            } catch (e: Exception) {
+                logger.error("Error occurred in $o .updateStart() method.")
+                throw e
+            }
+        }
+        for (o: GameObject in gameObjects.values) {
+            try {
                 o.update(tic)
             } catch (e: Exception) {
                 logger.error("Error occurred calling $o .update() method.")
+                throw e
+            }
+        }
+        for (o: GameObject in gameObjects.values) {
+            try {
+                o.updateEnd(tic)
+            } catch (e: Exception) {
+                logger.error("Error occurred in $o .updateEnd() method.")
                 throw e
             }
         }
