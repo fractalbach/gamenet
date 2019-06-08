@@ -15,6 +15,7 @@ import info.laht.threekt.materials.Material
 import info.laht.threekt.materials.MeshStandardMaterial
 import info.laht.threekt.math.Color
 import info.laht.threekt.objects.Mesh
+import util.ObjectPool
 
 private const val TERRAIN_SEED: Int = 124
 private const val RADIUS: Double = 6.371e6
@@ -52,8 +53,9 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     val radius = RADIUS
     val faces: Array<Tile> = Array(6, { Tile(this, it) })
     /** Stores tiles no longer in use, but whose geometry can be reused */
-    private val tilePile: ArrayList<Tile> = ArrayList()
-    private var tileCounter: Int = 0
+    private val tilePile: ObjectPool<Tile> = ObjectPool {
+        Tile(this, 0)
+    }
 
     var subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
 
@@ -85,12 +87,23 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     }
 
     /**
+     * Cleans up at end of update tic.
+     *
+     * Performs needed upkeep.
+     */
+    override fun updateEnd(tic: Core.Tic) {
+        tilePile.upkeep()
+    }
+
+    /**
      * Gets tile identified by passed index.
+     *
      * 0 - 3 are tiles describing the equator of the spheroid, with 0
      * index being the Tile centered on the x+ axis direction, and 1,
-     * 2, and 3 proceding counter-clockwise, when viewed from the top
+     * 2, and 3 proceeding counter-clockwise, when viewed from the top
      * (tile 1 being at y+, and so on.) Tile 4 is the z+ tile, and
      * Tile 5 is the z- tile.
+     *
      * @param index: Int index of tile which serves as the
      *              associated face.
      */
@@ -101,7 +114,8 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
      * instead of letting them be garbage collected.
      */
     fun addTileToBin(tile: Tile) {
-        tilePile.add(tile)
+        tile.active = false
+        tilePile.recycle(tile)
     }
 
     /**
@@ -110,18 +124,9 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
      * available, otherwise a new Tile is created.
      */
     fun getTile(face: Int, parent: Tile? = null, quadrant: Int? = null): Tile {
-        val tile: Tile
-        if (tilePile.isEmpty()) {
-            // create new
-            tile = Tile(this, face, parent, quadrant)
-            tileCounter++
-            logger.debug("Generated Tile #$tileCounter")
-        } else {
-            // recycle
-            tile = tilePile.removeAt(tilePile.size - 1)
-            tile.setGeometry(face, parent, quadrant)
-            logger.fine("recycled Tile #$tileCounter")
-        }
+        val tile: Tile = tilePile.get()
+        tile.active = true
+        tile.setGeometry(face, parent, quadrant)
         return tile
     }
 
@@ -183,7 +188,7 @@ class Tile(private val terrain: Terrain, face: Int,
             }
             var x: Int = i % TILE_VERTICES_ROW_SIZE
             var y: Int = i / TILE_VERTICES_ROW_SIZE
-            var isLip: Boolean = false
+            var isLip = false
             if (x == 0) {
                 x++
                 isLip = true
@@ -207,6 +212,7 @@ class Tile(private val terrain: Terrain, face: Int,
     var parent: Tile? = null
     var face: Int = -1
     var quadrant: Int? = null
+    var active: Boolean = true
 
     /**
      * Tile level of detail, with Terrain Face being 1, the first face
@@ -259,21 +265,25 @@ class Tile(private val terrain: Terrain, face: Int,
      */
     fun setGeometry(face: Int, parent: Tile? = null, quadrant: Int? = null) {
         try {
-            logger.fine("creating tile geometry, face: $face, " +
-                    "quad: $quadrant, pos: $position")
+            logger.fine(
+                    "creating tile geometry, face: $face, quad: $quadrant")
+            if (parent === this) {
+                throw IllegalArgumentException("Passed parent $parent == this.")
+            }
+
             this.face = face
             this.parent = parent
             this.quadrant = quadrant
 
             lod = if (parent == null) 1 else parent.lod + 1
 
-            quadrants = Array<Int>(lod, { i: Int ->
+            quadrants = Array(lod) { i: Int ->
                 when {
                     i < lod - 1 -> parent!!.quadrants[i]
                     i == 0 -> face
                     else -> quadrant!!
                 }
-            })
+            }
 
             shape = if (parent != null) parent.shape / 2.0 else
                 Double2(2.0, 2.0)
@@ -304,8 +314,7 @@ class Tile(private val terrain: Terrain, face: Int,
      */
     private fun setVertices(): Double3 {
         try {
-            val spherePositions: Array<Double3> = Array(
-                    N_TILE_HEIGHTS, {
+            val spherePositions: Array<Double3> = Array(N_TILE_HEIGHTS) {
                 try {
                     val tileRelPos = tilePosFromHeightIndex(it)
                     val facePos: Double2 = p1 + tileRelPos * shape
@@ -325,10 +334,9 @@ class Tile(private val terrain: Terrain, face: Int,
                     logger.error("Error converting height index: $it")
                     throw e
                 }
-            })
+            }
 
-            val vertPositions: Array<Double3> = Array(
-                    N_TILE_VERTICES, {
+            val vertPositions: Array<Double3> = Array(N_TILE_VERTICES) {
                 val (heightIndex: Int, isLip: Boolean) = vertexData(it)
                 // sanity check
                 if (heightIndex < 0 || heightIndex >= N_TILE_HEIGHTS) {
@@ -340,7 +348,7 @@ class Tile(private val terrain: Terrain, face: Int,
                 val vertexPosition: Double3 =
                         spherePositions[heightIndex] * heightRatio
                 vertexPosition
-            })
+            }
 
             val relativeCenter: Double3 = vertPositions[N_TILE_VERTICES / 2]
             @Suppress("UNUSED_VARIABLE") // used in js
@@ -371,6 +379,9 @@ class Tile(private val terrain: Terrain, face: Int,
      * @param tic: Core.Tic
      */
     override fun update(tic: Core.Tic) {
+        if (!active) {
+            return
+        }
         val dist = distance(scene!!.camera)
         if (dist < subdivisionDistance &&
                 subTiles[0] == null &&
@@ -414,7 +425,9 @@ class Tile(private val terrain: Terrain, face: Int,
                     "Tile.subdivide(): No scene set.")
             for (i in subTiles.indices) {
                 tile = terrain.getTile(face, this, i)
-                tile.setGeometry(face, this, i)
+                if (tile == this) {
+                    throw IllegalStateException("Identity Crisis.")
+                }
                 tile.visible = true
                 if (!scene.contains(tile)) {
                     scene.add(tile)
