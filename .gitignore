@@ -23,4 +23,5 @@
 
 # build dir
 build/*
+out/*
 client/build/*
