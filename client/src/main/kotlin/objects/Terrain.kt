@@ -51,7 +51,7 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     override var threeObject: Object3D = Object3D() // nothing special
 
     val radius = RADIUS
-    val faces: Array<Tile> = Array(6, { Tile(this, it) })
+    val faces: Array<Tile> = Array(6) { Tile(this, it) }
     /** Stores tiles no longer in use, but whose geometry can be reused */
     private val tilePile: ObjectPool<Tile> = ObjectPool {
         Tile(this, 0)
@@ -300,6 +300,7 @@ class Tile(private val terrain: Terrain, face: Int,
             geometry.attributes.position.needsUpdate = true
 
             val pos: Double3 = setVertices()
+            geometry.computeBoundingSphere()
 
             threeObject.position.set(pos.x, pos.y, pos.z)
             threeObject.updateMatrix()
