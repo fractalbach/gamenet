@@ -25,7 +25,7 @@ open class FollowCamera(name: String="", id: String=""): Camera(name, id) {
     override fun update(tic: Core.Tic) {
         super.update(tic)
 
-        val traverse: Double = tic.core.input.mouseMotion.x
+        val traverse: Double = tic.core.input.mouseMotion.y
         if (traverse != 0.0) {
             val euler = rotation
             euler.x -= MOUSE_ELEVATION_COEF * tic.core.input.mouseMotion.y
