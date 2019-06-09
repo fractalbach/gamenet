@@ -335,10 +335,17 @@ class Tile(private val terrain: Terrain, face: Int,
     }
 
     /**
-     * Sets geometry positions
+     * Sets geometry vertex data.
+     *
+     * Generates and sets vertex positions and normals.
+     *
+     * @return Center position of the Tile's vertices. This can be
+     *          thought of as the 'visual center' of the Tile. This is
+     *          distinct from the Tile's origin.
      */
     private fun setVertices(): Double3 {
         try {
+            // Produce positions of each 'surface' vertex in Tile.
             val spherePositions: Array<Double3> = Array(N_TILE_HEIGHTS) {
                 try {
                     val tileRelPos = tilePosFromHeightIndex(it)
@@ -361,6 +368,7 @@ class Tile(private val terrain: Terrain, face: Int,
                 }
             }
 
+            // Produce vertex position for each vertex.
             val vertPositions: Array<Double3> = Array(N_TILE_VERTICES) {
                 val (heightIndex: Int, isLip: Boolean) = vertexData(it)
                 // sanity check
@@ -401,6 +409,7 @@ class Tile(private val terrain: Terrain, face: Int,
      * Updates Tile; if distance to camera is small enough, subdivides
      * tile to create more detail, or if already subdivided and camera
      * is far enough, recombines sub-tiles.
+     *
      * @param tic: Core.Tic
      */
     override fun update(tic: Core.Tic) {
@@ -571,6 +580,7 @@ class Tile(private val terrain: Terrain, face: Int,
      * This is intended to be used both as a unique identifier for a
      * tile, to be used when caching data, as well as a means of
      * communicating position of the tile to C++.
+     *
      * @return Long (int64) encoded position code.
      */
     fun getPositionCode(): Long {
@@ -664,6 +674,6 @@ fun getPositionFromCode(encodedPos: Long): Pair<Int, Array<Int>> {
     val nQuadrants: Int = (encodedPos and 0x1F).toInt()
     val face: Int = ((encodedPos shr 5) and 0x7).toInt()
     val quadrants: Array<Int> = Array(
-            nQuadrants, { i -> ((encodedPos shr 8 + 2 * i) and 0x3).toInt() })
+            nQuadrants) { i -> ((encodedPos shr 8 + 2 * i) and 0x3).toInt() }
     return Pair(face, quadrants)
 }

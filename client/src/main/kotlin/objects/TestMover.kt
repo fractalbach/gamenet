@@ -42,7 +42,7 @@ class TestMover(name: String="", id: String=""): TerrestrialMover(name, id) {
 
     override fun update(tic: Core.Tic) {
         super.update(tic)
-        var moved: Boolean = false
+        var moved = false
         if (tic.core.input.cmdActive(InputHandler.Command.MOVE_UP)) {
             val movement = 8.0 * tic.timeStep / 1000.0
             translateY(movement)
