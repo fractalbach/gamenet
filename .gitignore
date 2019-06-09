@@ -25,3 +25,7 @@
 build/*
 out/*
 client/build/*
+
+# Rust
+procede/Cargo.lock
+procede/target/*

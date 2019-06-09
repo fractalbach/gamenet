@@ -1,0 +1,11 @@
+[package]
+name = "procede"
+version = "0.0.1"
+authors = []
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+cgmath = "0.17.0"
+noise = "0.5.1"
