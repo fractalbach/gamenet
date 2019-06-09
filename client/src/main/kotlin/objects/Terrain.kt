@@ -25,7 +25,7 @@ private const val HEIGHT_SCALE: Double = 1e4
 private const val MAX_LOD: Int = 23 // any value up to 28
 private const val MAX_ENCODED_LOD: Int = 28 // max LOD able to be encoded
 
-// distance in tile widths at which a tile subdivides
+// Distance in tile widths at which a tile subdivides
 private const val REL_SUBDIVISION_DIST: Double = 5 * RADIUS // must be > tile w
 private const val TILE_POLYGON_WIDTH: Int = 8 // width in polygons of tile
 private const val TILE_HEIGHT_ROW_SIZE = TILE_POLYGON_WIDTH + 1
@@ -420,7 +420,7 @@ class Tile(private val terrain: Terrain, face: Int,
             }
 
             val vertNormals: Array<Double3> = Array(N_TILE_VERTICES) {
-                val (heightIndex: Int, isLip: Boolean) = vertexData(it)
+                val (heightIndex: Int, _: Boolean) = vertexData(it)
                 // Sanity check
                 if (heightIndex < 0 || heightIndex >= N_TILE_HEIGHTS) {
                     throw IllegalStateException(
@@ -609,7 +609,7 @@ class Tile(private val terrain: Terrain, face: Int,
         val below: Tile? = getBelowTile()
         val right: Tile? = getRightTile()
 
-        var i: Int = 1
+        var i = 1
         while (i < TILE_HEIGHT_ROW_SIZE) {
             // Blend top edge
             if (above == null) {
