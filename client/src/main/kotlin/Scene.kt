@@ -63,7 +63,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         threeScene.fog = Fog()
         threeScene.fog.color = Color(0xf0fff0)
         threeScene.fog.near = 500
-        threeScene.fog.far = 120000 // 1e5
+        threeScene.fog.far = 120000 // 1.2e5
 
 
         sunLight.position = Double3(1e9, 1e9, 30.0)
