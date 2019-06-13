@@ -44,8 +44,8 @@ SIMPLEX!
 
 vec3 sun_color() {
     float theta = max(
-    dot(normalize(v_normal), normalize(u_dir_light.xyz)),
-    0.0
+        dot(normalize(v_normal), normalize(u_dir_light.xyz)),
+        0.0
     );
     return RAW_SUN_COLOR * theta;
 }
@@ -107,7 +107,8 @@ fun getTerrainMat(
     uniforms["u_fog_far"] = uValue(fog_far)
     uniforms["u_grass_fog_far"] = uValue(100)
     val options: dynamic = object{}
-    options["uniforms"] = js("THREE.UniformsUtils.merge([uniforms, THREE.UniformsLib[\"lights\"]])")
+    options["uniforms"] = js("THREE.UniformsUtils.merge(" +
+                    "[uniforms, THREE.UniformsLib[\"lights\"]])")
     options["vertexShader"] = terrainVert
     options["fragmentShader"] = terrainFrag.replace("SIMPLEX!", simplex)
     options["lights"] = true

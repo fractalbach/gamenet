@@ -185,7 +185,6 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
      *
      * Expects input to be normalized.
      */
-    @Suppress("UNUSED_PARAMETER")
     fun normalAtVector(v0: Double3, r: Double): Double3 {
         // Hardly a perfect sampling method, but much cheaper in
         // cpu time.
