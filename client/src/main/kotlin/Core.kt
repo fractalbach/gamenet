@@ -17,7 +17,7 @@ const val DELTA_T_LIMIT_MS: Double = 1e4
  * The game Core object contains the game main loop, and handles timing,
  * and calling of logic updates, and rendering.
  */
-class Core {
+class Core(val args: Array<String>) {
 
     /**
      * Data-Class whose instances store information about specific
@@ -120,7 +120,7 @@ class Core {
         }
 
         scene.render()
-        window.requestAnimationFrame({ update(it) }) // request next frame
+        window.requestAnimationFrame { update(it) } // request next frame
     }
 
     /** @suppress */
@@ -138,7 +138,6 @@ class Core {
 @Suppress("unused")  // Called from js at program start.
 @JsName("startCore")
 fun startCore(args: Array<String>) {
-
     if (js("Module.ready") != true) {
 
         Logger.getLogger("Core").info("Module not yet ready.")
@@ -148,7 +147,7 @@ fun startCore(args: Array<String>) {
         )
         return // come back later
     }
-    val core = Core()
+    val core = Core(args)
     Logger.getLogger("Core").info("Began main loop")
     core.update(0.0)
 }

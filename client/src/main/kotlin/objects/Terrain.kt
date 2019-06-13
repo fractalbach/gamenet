@@ -26,7 +26,7 @@ private const val MAX_LOD: Int = 23 // any value up to 28
 private const val MAX_ENCODED_LOD: Int = 28 // max LOD able to be encoded
 
 // Distance in tile widths at which a tile subdivides
-private const val REL_SUBDIVISION_DIST: Double = 5 * RADIUS // must be > tile w
+private const val REL_SUBDIVISION_DIST: Double = 3 * RADIUS // must be > tile w
 private const val TILE_POLYGON_WIDTH: Int = 8 // width in polygons of tile
 private const val TILE_HEIGHT_ROW_SIZE = TILE_POLYGON_WIDTH + 1
 private const val TILE_VERTICES_ROW_SIZE = TILE_HEIGHT_ROW_SIZE + 2
@@ -36,7 +36,7 @@ private const val N_TILE_VERTICES: Int =
         TILE_VERTICES_ROW_SIZE * TILE_VERTICES_ROW_SIZE
 
 private const val TILE_LIP_BASE_SCALE: Double = 1.0 / TILE_POLYGON_WIDTH
-private const val MAX_TILE_DIVISIONS_PER_TIC = 32
+private const val MAX_TILE_DIVISIONS_PER_TIC = 2
 
 
 /**
@@ -86,11 +86,11 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     // Actions --------------------------------------------------------
 
     /**
-     * Updates terrain, checking to see which tiles owned by Terrain
-     * require subdivision, and which can be recombined.
+     * Do setup required for logic tic
+     *
      * @param tic: Core.Tic
      */
-    override fun update(tic: Core.Tic) {
+    override fun updateStart(tic: Core.Tic) {
         subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
     }
 
@@ -98,6 +98,8 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
      * Cleans up at end of update tic.
      *
      * Performs needed upkeep.
+     *
+     * @param tic: Core.Tic
      */
     override fun updateEnd(tic: Core.Tic) {
         tilePile.upkeep()
