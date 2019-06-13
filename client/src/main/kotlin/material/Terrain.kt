@@ -22,12 +22,12 @@ void main() {
 
 private const val terrainFrag: String = """
 #define N_TERRAIN_LIGHTS 4
-#define SIMPLEX_NEAR 25.0
-#define SIMPLEX_FAR 250.0
+#define SIMPLEX_NEAR 10.0
+#define SIMPLEX_FAR 50.0
 
 const vec3 LIGHT_COLOR = vec3(1.0, 1.0, 0.9);
 const vec3 DIRT_COLOR = vec3(0.74, 0.68, 0.46);
-const vec3 GRASS_COLOR = vec3(0.38, 0.6, 0.15);
+const vec3 GRASS_COLOR = vec3(0.38, 0.58, 0.15);
 const vec3 RAW_SUN_COLOR = vec3(1.0, 1.0, 0.98);
 
 uniform vec3 u_fog_color;
@@ -52,12 +52,12 @@ vec3 sun_color() {
 
 float noise(float depth) {
     float gain = 0.5;
-    float lacunarity = 3.0;
-    float frq = 0.3;
-    float amp = 0.5;
+    float lacunarity = 4.0;
+    float frq = 0.33;
+    float amp = 0.8;
     float v = 0.0;
 
-    for (int i=0; i <3 ; i++) {
+    for (int i=0; i < 5; i++) {
         float level_influence = 1.0 - smoothstep(
             SIMPLEX_NEAR / frq,
             SIMPLEX_FAR / frq,
@@ -77,7 +77,7 @@ void main() {
     float simplex_value = noise(depth);
     vec3 simplex_adj = vec3(simplex_value, simplex_value, simplex_value);
     float simplex_weight = 1.0 - smoothstep(SIMPLEX_NEAR, SIMPLEX_FAR, depth);
-    color = mix(color, simplex_adj, 0.13);  // TODO
+    color = mix(color, simplex_adj, 0.08);  // TODO
 
     // then apply atmosphere fog
     float fog_factor = smoothstep(u_fog_near, u_fog_far, depth);
