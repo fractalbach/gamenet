@@ -44,29 +44,48 @@ SIMPLEX!
 
 vec3 sun_color() {
     float theta = max(
-            dot(normalize(v_normal), normalize(u_dir_light.xyz)),
-            0.0
+    dot(normalize(v_normal), normalize(u_dir_light.xyz)),
+    0.0
     );
     return RAW_SUN_COLOR * theta;
 }
 
-void main() {
-	float depth = gl_FragCoord.z / gl_FragCoord.w;
+float noise(float depth) {
+    float gain = 0.5;
+    float lacunarity = 3.0;
+    float frq = 0.3;
+    float amp = 0.5;
+    float v = 0.0;
 
-	vec3 color = GRASS_COLOR; // vec3(0.5, 0.5, 0.5);
-    float simplex_value = simplex_noise(v_tex_pos * 3.0);
-	simplex_value = mix(simplex_value, simplex_noise(v_tex_pos), 0.5);
+    for (int i=0; i <3 ; i++) {
+        float level_influence = 1.0 - smoothstep(
+            SIMPLEX_NEAR / frq,
+            SIMPLEX_FAR / frq,
+            depth
+        );
+        v += simplex_noise(v_tex_pos * frq) * amp * level_influence;
+        frq *= lacunarity;
+        amp *= gain;
+    }
+    return v;
+}
+
+void main() {
+    float depth = gl_FragCoord.z / gl_FragCoord.w;
+
+    vec3 color = GRASS_COLOR;
+    float simplex_value = noise(depth);
     vec3 simplex_adj = vec3(simplex_value, simplex_value, simplex_value);
     float simplex_weight = 1.0 - smoothstep(SIMPLEX_NEAR, SIMPLEX_FAR, depth);
-	color = mix(color, simplex_adj, 0.1 * simplex_weight);  // TODO
+    color = mix(color, simplex_adj, 0.13);  // TODO
 
-	// then apply atmosphere fog
-	float fog_factor = smoothstep(u_fog_near, u_fog_far, depth);
-	color = mix(color, u_fog_color, fog_factor);
+    // then apply atmosphere fog
+    float fog_factor = smoothstep(u_fog_near, u_fog_far, depth);
+    color = mix(color, u_fog_color, fog_factor);
 
     color *= sun_color();
 
-	gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = vec4(color, 1.0);
 }
 """
 
