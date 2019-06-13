@@ -16,7 +16,9 @@ import info.laht.threekt.THREE.BackSide
 import info.laht.threekt.core.Object3D
 import info.laht.threekt.geometries.PlaneBufferGeometry
 import info.laht.threekt.materials.Material
+import info.laht.threekt.math.Vector3
 import info.laht.threekt.objects.Mesh
+import material.uValue
 import org.khronos.webgl.Float32Array
 import util.ObjectPool
 
@@ -69,6 +71,8 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     /** Gravitational acceleration of terrestrial objects */
     val gravity: Double = 9.806
 
+    val material = makeMaterial()
+
     // Init -----------------------------------------------------------
 
     init {
@@ -95,6 +99,11 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
      */
     override fun update(tic: Core.Tic) {
         subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
+        val sunPos: Double3 = scene!!.sunLight.position
+        val sunRelPos = position - sunPos
+        (material.unsafeCast<dynamic>()).uniforms.u_dir_light = uValue(Vector3(
+                sunRelPos.x, sunRelPos.y, sunRelPos.z
+        ))
     }
 
     /**
@@ -210,6 +219,19 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
 
         // Get perpendicular vector
         return cross(dir0, dir1) * -1.0
+    }
+
+    private fun makeMaterial(): Material {
+        val planeMaterial = getTerrainMat(
+                Double3(0.7, 0.7, 0.7), 500.0, 120000.0
+        )
+        //planeMaterial.color = Color(0x3cff00)
+        planeMaterial.side = BackSide
+        //planeMaterial.metalness = 0.2
+        //planeMaterial.roughness = 0.6
+        //planeMaterial.wireframe = true // for debugging
+        //planeMaterial.flatShading = true
+        return planeMaterial
     }
 }
 
@@ -453,7 +475,7 @@ class Tile(private val terrain: Terrain, face: Int,
                 normalArray[vertexStartIndex + 1] = normal.y
                 normalArray[vertexStartIndex + 2] = normal.z
 
-                val texPos: Double3 = smallTexCoord(vertPositions[i])
+                val texPos: Double3 = smallTexPos(vertPositions[i])
                 texCoordArray[vertexStartIndex] = texPos.x
                 texCoordArray[vertexStartIndex + 1] = texPos.y
                 texCoordArray[vertexStartIndex + 2] = texPos.z
@@ -577,22 +599,9 @@ class Tile(private val terrain: Terrain, face: Int,
             return geo
         }
 
-        fun makeMaterial(): Material {
-            val planeMaterial = getTerrainMat(
-                    Double3(0.7, 0.7, 0.7), 500.0, 120000.0
-            )
-            //planeMaterial.color = Color(0x3cff00)
-            planeMaterial.side = BackSide
-            //planeMaterial.metalness = 0.2
-            //planeMaterial.roughness = 0.6
-            //planeMaterial.wireframe = true // for debugging
-            //planeMaterial.flatShading = true
-            return planeMaterial
-        }
-
         val geometry: PlaneBufferGeometry = makeGeometry()
         this.geometry = geometry
-        val material: Material = makeMaterial()
+        val material: Material = terrain.material
         val mesh = Mesh(geometry, material)
         mesh.matrixAutoUpdate = false // tile won't be moving very often
         return mesh
@@ -738,7 +747,22 @@ class Tile(private val terrain: Terrain, face: Int,
         return facePosTo3d(facePos)
     }
 
-    private fun smallTexCoord(pos: Double3): Double3 {
+    /**
+     * Get texture generation coordinate for vertex.
+     *
+     * This function produces position vectors that are smaller than
+     * the vertex's global coordinate, in order to avoid floating
+     * point precision issues on the GPU, which will be using 32bit
+     * floats or smaller to handle the vert position when generating
+     * simplex noise and other functions that require a value that
+     * changes proportionally to the true global coordinate.
+     *
+     * @param pos World position vector.
+     * @return vector that has changes proportional to any changes in
+     *          the world position vector. IE, edge-wrapping excepted,
+     *          smallTexPos(pos + x) - smallTexPos(pos) == x
+     */
+    private fun smallTexPos(pos: Double3): Double3 {
         fun mod(a: Double, n: Double): Double {
             var r = (a).rem(n)
             if (r < 0) r += n
