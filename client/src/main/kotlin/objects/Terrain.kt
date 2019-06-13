@@ -6,17 +6,20 @@ import Logger
 import Logger.Companion.getLogger
 import com.curiouscreature.kotlin.math.Double2
 import com.curiouscreature.kotlin.math.Double3
-import com.curiouscreature.kotlin.math.normalize
-import com.curiouscreature.kotlin.math.length
+import com.curiouscreature.kotlin.math.abs
 import com.curiouscreature.kotlin.math.cross
+import com.curiouscreature.kotlin.math.length
+import com.curiouscreature.kotlin.math.normalize
 import exception.CException
+import getTerrainMat
 import info.laht.threekt.THREE.BackSide
 import info.laht.threekt.core.Object3D
 import info.laht.threekt.geometries.PlaneBufferGeometry
 import info.laht.threekt.materials.Material
-import info.laht.threekt.materials.MeshStandardMaterial
-import info.laht.threekt.math.Color
+import info.laht.threekt.math.Vector3
 import info.laht.threekt.objects.Mesh
+import material.uValue
+import org.khronos.webgl.Float32Array
 import util.ObjectPool
 
 private const val TERRAIN_SEED: Int = 124
@@ -37,6 +40,8 @@ private const val N_TILE_VERTICES: Int =
 
 private const val TILE_LIP_BASE_SCALE: Double = 1.0 / TILE_POLYGON_WIDTH
 private const val MAX_TILE_DIVISIONS_PER_TIC = 32
+
+private const val SMALL_TEX_CHUNK_SIZE = 6000.0
 
 
 /**
@@ -66,6 +71,8 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     /** Gravitational acceleration of terrestrial objects */
     val gravity: Double = 9.806
 
+    val material = makeMaterial()
+
     // Init -----------------------------------------------------------
 
     init {
@@ -92,6 +99,11 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
      */
     override fun update(tic: Core.Tic) {
         subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
+        val sunPos: Double3 = scene!!.sunLight.position
+        val sunRelPos = position - sunPos
+        (material.unsafeCast<dynamic>()).uniforms.u_dir_light = uValue(Vector3(
+                sunRelPos.x, sunRelPos.y, sunRelPos.z
+        ))
     }
 
     /**
@@ -173,7 +185,6 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
      *
      * Expects input to be normalized.
      */
-    @Suppress("UNUSED_PARAMETER")
     fun normalAtVector(v0: Double3, r: Double): Double3 {
         // Hardly a perfect sampling method, but much cheaper in
         // cpu time.
@@ -208,6 +219,19 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
         // Get perpendicular vector
         return cross(dir0, dir1) * -1.0
     }
+
+    private fun makeMaterial(): Material {
+        val planeMaterial = getTerrainMat(
+                Double3(0.7, 0.7, 0.7), 500.0, 120000.0
+        )
+        //planeMaterial.color = Color(0x3cff00)
+        planeMaterial.side = BackSide
+        //planeMaterial.metalness = 0.2
+        //planeMaterial.roughness = 0.6
+        //planeMaterial.wireframe = true // for debugging
+        //planeMaterial.flatShading = true
+        return planeMaterial
+    }
 }
 
 
@@ -220,7 +244,6 @@ class Tile(private val terrain: Terrain, face: Int,
            parent: Tile? = null, quadrant: Int? = null) :
         GameObject()
 {
-
     companion object {
         private val logger = Logger.getLogger("Tile")
 
@@ -366,11 +389,12 @@ class Tile(private val terrain: Terrain, face: Int,
             val geometry: dynamic = this.geometry
                     ?: throw IllegalStateException("Geometry is null")
             geometry.verticesNeedUpdate = true
-            geometry.attributes.position.needsUpdate = true
-            geometry.attributes.normal.needsUpdate = true
 
             val pos: Double3 = setVertices()
             geometry.computeBoundingSphere()
+            geometry.attributes.position.needsUpdate = true
+            geometry.attributes.normal.needsUpdate = true
+            geometry.attributes.a_tex_pos.needsUpdate = true
 
             threeObject.position.set(pos.x, pos.y, pos.z)
             threeObject.updateMatrix()
@@ -436,6 +460,7 @@ class Tile(private val terrain: Terrain, face: Int,
                     "Tile geometry is null in setGeometry")
             val positionsArray = geometry.getAttribute("position").array
             val normalArray = geometry.getAttribute("normal").array
+            val texCoordArray = geometry.getAttribute("a_tex_pos").array
             for (i in 0 until N_TILE_VERTICES) {
                 var pos = vertPositions[i]
                 pos -= relativeCenter
@@ -448,6 +473,11 @@ class Tile(private val terrain: Terrain, face: Int,
                 normalArray[vertexStartIndex] = normal.x
                 normalArray[vertexStartIndex + 1] = normal.y
                 normalArray[vertexStartIndex + 2] = normal.z
+
+                val texPos: Double3 = smallTexPos(vertPositions[i])
+                texCoordArray[vertexStartIndex] = texPos.x
+                texCoordArray[vertexStartIndex + 1] = texPos.y
+                texCoordArray[vertexStartIndex + 2] = texPos.z
             }
             return relativeCenter
         } catch (e: Exception) {
@@ -560,23 +590,17 @@ class Tile(private val terrain: Terrain, face: Int,
          */
         fun makeGeometry(): PlaneBufferGeometry {
             // create position array.
-            return PlaneBufferGeometry(1, 1, 10, 10)
-        }
-
-        fun makeMaterial(): Material {
-            val planeMaterial = MeshStandardMaterial()
-            planeMaterial.color = Color(0x3cff00)
-            planeMaterial.side = BackSide
-            planeMaterial.metalness = 0.2
-            planeMaterial.roughness = 0.6
-            //planeMaterial.wireframe = true // for debugging
-            //planeMaterial.flatShading = true
-            return planeMaterial
+            val geo = PlaneBufferGeometry(1, 1, 10, 10)
+            val texPosArr = Float32Array(3 * N_TILE_VERTICES)
+            geo.addAttribute(
+                    "a_tex_pos", js("new THREE.BufferAttribute(texPosArr, 3)")
+            )
+            return geo
         }
 
         val geometry: PlaneBufferGeometry = makeGeometry()
         this.geometry = geometry
-        val material: Material = makeMaterial()
+        val material: Material = terrain.material
         val mesh = Mesh(geometry, material)
         mesh.matrixAutoUpdate = false // tile won't be moving very often
         return mesh
@@ -720,6 +744,42 @@ class Tile(private val terrain: Terrain, face: Int,
         val tileRelPos = tilePosFromHeightIndex(i)
         val facePos: Double2 = p1 + tileRelPos * shape
         return facePosTo3d(facePos)
+    }
+
+    /**
+     * Get texture generation coordinate for vertex.
+     *
+     * This function produces position vectors that are smaller than
+     * the vertex's global coordinate, in order to avoid floating
+     * point precision issues on the GPU, which will be using 32bit
+     * floats or smaller to handle the vert position when generating
+     * simplex noise and other functions that require a value that
+     * changes proportionally to the true global coordinate.
+     *
+     * @param pos World position vector.
+     * @return vector that has changes proportional to any changes in
+     *          the world position vector. IE, edge-wrapping excepted,
+     *          smallTexPos(pos + x) - smallTexPos(pos) == x
+     */
+    private fun smallTexPos(pos: Double3): Double3 {
+        fun mod(a: Double, n: Double): Double {
+            var r = (a).rem(n)
+            if (r < 0) r += n
+            return r
+        }
+        return abs(Double3(
+                mod(pos.x, SMALL_TEX_CHUNK_SIZE * 4),
+                mod(pos.y, SMALL_TEX_CHUNK_SIZE * 4),
+                mod(pos.z, SMALL_TEX_CHUNK_SIZE * 4)
+        ) - Double3(
+                SMALL_TEX_CHUNK_SIZE * 2,
+                SMALL_TEX_CHUNK_SIZE * 2,
+                SMALL_TEX_CHUNK_SIZE * 2
+        )) - Double3(
+                SMALL_TEX_CHUNK_SIZE,
+                SMALL_TEX_CHUNK_SIZE,
+                SMALL_TEX_CHUNK_SIZE
+        )
     }
 }
 

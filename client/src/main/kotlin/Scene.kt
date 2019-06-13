@@ -1,9 +1,7 @@
 import com.curiouscreature.kotlin.math.Double3
 import info.laht.threekt.math.Color
-import info.laht.threekt.renderers.WebGL2Renderer
 import info.laht.threekt.renderers.WebGLRenderer
 import info.laht.threekt.scenes.Fog
-import info.laht.threekt.scenes.FogExp2
 import info.laht.threekt.scenes.Scene
 import objects.*
 import kotlin.browser.window
@@ -29,7 +27,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     private val gameObjects: HashMap<String, GameObject> = HashMap()
     private val removalQueue: HashSet<GameObject> = HashSet()
     /** THREE scene which is wrapped by this Scene */
-    val threeScene: Scene = info.laht.threekt.scenes.Scene()
+    val threeScene: Scene = Scene()
     /** THREE renderer that is the default for rendering to view */
     val renderer = WebGLRenderer()
     /** Width of render result */
@@ -41,7 +39,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     /** World Terrain instance - owner of procedural land tiles */
     val terrain: Terrain = Terrain()
     /** Main Camera which is used to see the world from */
-    val camera: Camera = objects.FollowCamera()
+    val camera: Camera = FollowCamera()
     /** Overhead mono-directional light source. */
     val sunLight = SunLight("SunLight")
     /**
@@ -63,7 +61,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         threeScene.fog = Fog()
         threeScene.fog.color = Color(0xf0fff0)
         threeScene.fog.near = 500
-        threeScene.fog.far = 120000 // 1e5
+        threeScene.fog.far = 120000 // 1.2e5
 
 
         sunLight.position = Double3(1e9, 1e9, 30.0)
