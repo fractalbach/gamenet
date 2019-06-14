@@ -63,7 +63,6 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         threeScene.fog.near = 500
         threeScene.fog.far = 120000 // 1.2e5
 
-
         sunLight.position = Double3(1e9, 1e9, 30.0)
 
         // add constant game objects
@@ -71,12 +70,6 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         add(camera)
         add(sunLight)
         add(ambientLight)
-
-        // test obj
-        val mover = TestMover()
-        mover.position = Double3(6.0, 0.0, 0.0)
-        add(mover)
-        (camera as FollowCamera).follow(mover)
     }
 
     /**
@@ -158,8 +151,11 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         }
     }
 
+    /**
+     * Check whether the Scene contains the passed GameObject
+     */
     fun contains(gameObject: GameObject): Boolean {
-        return gameObjects.containsKey(gameObject.id);
+        return gameObjects.containsKey(gameObject.id)
     }
 
     /**

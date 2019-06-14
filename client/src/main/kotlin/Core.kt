@@ -120,7 +120,7 @@ class Core {
         }
 
         scene.render()
-        window.requestAnimationFrame({ update(it) }) // request next frame
+        window.requestAnimationFrame { update(it) } // request next frame
     }
 
     /** @suppress */
@@ -137,18 +137,27 @@ class Core {
  */
 @Suppress("unused")  // Called from js at program start.
 @JsName("startCore")
-fun startCore(args: Array<String>) {
+fun startCore() {
 
     if (js("Module.ready") != true) {
-
         Logger.getLogger("Core").info("Module not yet ready.")
         window.setTimeout(
-                { startCore(args) },
+                { startCore() },
                 500
         )
         return // come back later
     }
+
+    val settings: dynamic = js("window.settings")
+    Logger.getLogger("Core").info("Args: $settings")
     val core = Core()
+
+    if (settings.mode == "simple") {
+        simpleInit(core)
+    } else if (settings.mode == "map") {
+        mapViewInit(core)
+    }
+
     Logger.getLogger("Core").info("Began main loop")
     core.update(0.0)
 }

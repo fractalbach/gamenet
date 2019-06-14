@@ -2,13 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Open</title>
+    <title>Open Map Viewer</title>
 </head>
 <body>
 
     <div id="container"><br/>Generating...</div>
 
-    <script type="text/javascript" src="config.js"></script>
+    <script>
+        var settings = {
+            "mode": "map",
+            "terrainShader": "standard"
+        }
+    </script>
+
     <script type="text/javascript" src="lib/module.js"></script>
     <script async type="text/javascript" src="terrain.min.js"></script> <!todo: async>
     <script type="text/javascript" src="lib/kotlin.js"></script>
