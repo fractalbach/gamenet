@@ -2,7 +2,6 @@ package objects
 
 import Core
 import Scene
-import Logger
 import Logger.Companion.getLogger
 import com.curiouscreature.kotlin.math.Double2
 import com.curiouscreature.kotlin.math.Double3
@@ -263,7 +262,7 @@ class Tile(private val terrain: Terrain, face: Int,
         GameObject()
 {
     companion object {
-        private val logger = Logger.getLogger("Tile")
+        private val logger = getLogger("Tile")
 
         /**
          * Gets tile-relative position from tile vertex index.
@@ -413,6 +412,7 @@ class Tile(private val terrain: Terrain, face: Int,
             geometry.attributes.position.needsUpdate = true
             geometry.attributes.normal.needsUpdate = true
             geometry.attributes.a_tex_pos.needsUpdate = true
+            geometry.attributes.a_height.needsUpdate = true
 
             threeObject.position.set(pos.x, pos.y, pos.z)
             threeObject.updateMatrix()
@@ -479,7 +479,10 @@ class Tile(private val terrain: Terrain, face: Int,
             val positionsArray = geometry.getAttribute("position").array
             val normalArray = geometry.getAttribute("normal").array
             val texCoordArray = geometry.getAttribute("a_tex_pos").array
+            val heightArray = geometry.getAttribute("a_height").array
             for (i in 0 until N_TILE_VERTICES) {
+                val (heightIndex: Int, _) = vertexData(i)
+
                 var pos = vertPositions[i]
                 pos -= relativeCenter
                 val normal = vertNormals[i]
@@ -492,10 +495,14 @@ class Tile(private val terrain: Terrain, face: Int,
                 normalArray[vertexStartIndex + 1] = normal.y
                 normalArray[vertexStartIndex + 2] = normal.z
 
-                val texPos: Double3 = smallTexPos(vertPositions[i])
+                val spherePos: Double3 = spherePositions[heightIndex]
+                val texPos: Double3 = smallTexPos(spherePos)
                 texCoordArray[vertexStartIndex] = texPos.x
                 texCoordArray[vertexStartIndex + 1] = texPos.y
                 texCoordArray[vertexStartIndex + 2] = texPos.z
+
+                heightArray[i] = length(spherePos) - terrain.radius
+
             }
             return relativeCenter
         } catch (e: Exception) {
@@ -536,9 +543,8 @@ class Tile(private val terrain: Terrain, face: Int,
         if (parent == null) {
             return Double2(-1.0, -1.0)
         }
-        val quadrant: Int = this.quadrant ?: throw NullPointerException(
-                "Tile.findP1() called when Tile quadrant is null")
-        return when (quadrant) {
+        return when (quadrant ?: throw NullPointerException(
+                "Tile.findP1() called when Tile quadrant is null")) {
             0 -> parent.p1 + shape // middlepoint
             1 -> Double2(parent.p1.x, parent.p1.y + shape.y)
             2 -> parent.p1
@@ -612,6 +618,10 @@ class Tile(private val terrain: Terrain, face: Int,
             val texPosArr = Float32Array(3 * N_TILE_VERTICES)
             geo.addAttribute(
                     "a_tex_pos", js("new THREE.BufferAttribute(texPosArr, 3)")
+            )
+            val heightArr = Float32Array(N_TILE_VERTICES)
+            geo.addAttribute(
+                    "a_height", js("new THREE.BufferAttribute(heightArr, 1)")
             )
             return geo
         }

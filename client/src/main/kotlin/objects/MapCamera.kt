@@ -7,6 +7,7 @@ import com.curiouscreature.kotlin.math.clamp
 import com.curiouscreature.kotlin.math.radians
 import info.laht.threekt.cameras.PerspectiveCamera
 import info.laht.threekt.math.Euler
+import material.uValue
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -18,6 +19,9 @@ private const val ALT_COEF: Double = 0.02
 private const val MIN_ALT: Double = 10_000.0
 private const val MAX_ALT: Double = 10_000_000.0
 
+private const val STANDARD_MODE: Int = 0
+private const val HEIGHT_MODE: Int = 1
+
 
 /**
  * Camera that views the map
@@ -28,6 +32,8 @@ open class MapCamera(name: String="", id: String=""): Camera(name, id) {
     var lat: Double = 0.0
     var lon: Double = 0.0
     var alt: Double = 100_000.0
+
+    private var mode: Int = 0
 
     /**
      * Set Terrain (planet) for MapCamera to focus on.
@@ -83,10 +89,15 @@ open class MapCamera(name: String="", id: String=""): Camera(name, id) {
             perspectiveCamera.updateProjectionMatrix()
         }
 
+        if (tic.core.input.keyPressed(InputHandler.Key.H)) {
+            toggleHeightMode()
+        }
+
         // Display debug info
         tic.core.debugInfo["Map Lat"] = lat.toString()
         tic.core.debugInfo["Map Lon"] = lon.toString()
         tic.core.debugInfo["Map Alt"] = alt.toString()
+        tic.core.debugInfo["Map Mode"] = mode.toString()
     }
 
     /**
@@ -113,6 +124,18 @@ open class MapCamera(name: String="", id: String=""): Camera(name, id) {
                 x=radians(-lat + 90.0),
                 order = "ZYX"
         )
+    }
+
+    private fun toggleHeightMode() {
+        val uniforms: dynamic =
+                followed!!.material.unsafeCast<dynamic>().uniforms
+        if (mode == HEIGHT_MODE) {
+            uniforms.u_mode = uValue(STANDARD_MODE)
+            mode = STANDARD_MODE
+        } else {
+            uniforms.u_mode = uValue(HEIGHT_MODE)
+            mode = HEIGHT_MODE
+        }
     }
 
     private fun wrap(x: Double, min: Double, max: Double): Double {
