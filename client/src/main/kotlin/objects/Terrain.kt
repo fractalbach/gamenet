@@ -12,6 +12,7 @@ import com.curiouscreature.kotlin.math.dot
 import com.curiouscreature.kotlin.math.length
 import com.curiouscreature.kotlin.math.normalize
 import exception.CException
+import getSettings
 import getTerrainMat
 import info.laht.threekt.THREE.BackSide
 import info.laht.threekt.core.Object3D
@@ -50,8 +51,14 @@ private const val SMALL_TEX_CHUNK_SIZE = 6000.0
  *
  * Terrain will maintain a hierarchy of terrain Tiles that provide
  * varying levels of detail depending on camera distance.
+ *
+ * @param id: GameObject id. If not passed, or empty, will be randomly
+ *          generated.
+ * @param mat: Material used for terrain tiles. If not passed or null,
+ *          a default material will be instantiated.
  */
-open class Terrain(id: String=""): GameObject("Terrain", id) {
+open class Terrain(id: String="", mat: Material? = null):
+        GameObject("Terrain", id) {
     companion object {
         private val logger = getLogger("Terrain")
     }
@@ -72,7 +79,7 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     /** Gravitational acceleration of terrestrial objects */
     val gravity: Double = 9.806
 
-    val material = makeMaterial()
+    val material = mat ?: makeMaterial()
 
     // Init -----------------------------------------------------------
 
@@ -229,8 +236,11 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     }
 
     private fun makeMaterial(): Material {
+        val settings = getSettings()
         val planeMaterial = getTerrainMat(
-                Double3(0.7, 0.7, 0.7), 500.0, 120000.0
+                Double3(0.7, 0.7, 0.7),
+                (settings.fogNear?: 500.0) as Double,
+                (settings.fogFar?: 120000.0) as Double
         )
         //planeMaterial.color = Color(0x3cff00)
         planeMaterial.side = BackSide

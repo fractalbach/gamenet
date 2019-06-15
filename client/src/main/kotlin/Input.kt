@@ -29,16 +29,17 @@ class InputHandler(private val container: Element) {
         V(86), W(87), X(88), Y(89), Z(90),
         KEY0(48), KEY1(49), KEY2(50), KEY3(51), KEY4(52),
         KEY5(53), KEY6(54), KEY7(55), KEY8(56), KEY9(57),
+        MINUS(173), PLUS(61),
         BACK(8), TAB(9), ENTER(13), SHIFT(16), CTRL(17), ALT(18),
         SPACE(32)
-
     }
 
     /**
      * Enum of actions that can be bound to a key.
      */
     enum class Command {
-        MOVE_LEFT, MOVE_UP, MOVE_RIGHT, MOVE_DOWN;
+        MOVE_LEFT, MOVE_UP, MOVE_RIGHT, MOVE_DOWN,
+        ZOOM_IN, ZOOM_OUT;
 
         private val boundKeys: HashSet<Key> = HashSet()
 
@@ -101,6 +102,8 @@ class InputHandler(private val container: Element) {
         bindKey(Key.A, Command.MOVE_LEFT)
         bindKey(Key.S, Command.MOVE_DOWN)
         bindKey(Key.D, Command.MOVE_RIGHT)
+        bindKey(Key.PLUS, Command.ZOOM_IN)
+        bindKey(Key.MINUS, Command.ZOOM_OUT)
     }
 
     private fun onKeyPressed(event: KeyboardEvent) {

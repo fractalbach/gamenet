@@ -58,6 +58,8 @@ class Core {
     val connection: ServerConnection = ServerConnection()
     /** Handles parsing of received events */
     val eventHandler: EventHandler = EventHandler()
+    /** Displays runtime debug information */
+    val debugInfo = DebugInfo()
 
     private var deltaTMs: Double = 0.0 // ms not-yet-run simulation time
     private var lastFrameTimeMs: Double = 0.0 // timestamp of last update call
@@ -120,6 +122,7 @@ class Core {
         }
 
         scene.render()
+        debugInfo.update()
         window.requestAnimationFrame { update(it) } // request next frame
     }
 
@@ -148,7 +151,7 @@ fun startCore() {
         return // come back later
     }
 
-    val settings: dynamic = js("window.settings")
+    val settings: dynamic = getSettings()
     Logger.getLogger("Core").info("Args: $settings")
     val core = Core()
 
@@ -160,4 +163,8 @@ fun startCore() {
 
     Logger.getLogger("Core").info("Began main loop")
     core.update(0.0)
+}
+
+fun getSettings(): dynamic {
+    return js("window.settings")
 }
