@@ -8,6 +8,7 @@ import com.curiouscreature.kotlin.math.Double2
 import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.abs
 import com.curiouscreature.kotlin.math.cross
+import com.curiouscreature.kotlin.math.dot
 import com.curiouscreature.kotlin.math.length
 import com.curiouscreature.kotlin.math.normalize
 import exception.CException
@@ -100,7 +101,7 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     override fun update(tic: Core.Tic) {
         subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
         val sunPos: Double3 = scene!!.sunLight.position
-        val sunRelPos = position - sunPos
+        val sunRelPos = sunPos - position
         (material.unsafeCast<dynamic>()).uniforms.u_dir_light = uValue(Vector3(
                 sunRelPos.x, sunRelPos.y, sunRelPos.z
         ))
@@ -216,8 +217,15 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
         val dir0 = normalize(sample1 - sample0)
         val dir1 = normalize(sample2 - sample0)
 
-        // Get perpendicular vector
-        return cross(dir0, dir1) * -1.0
+        // Get vector perpendicular to the sample points.
+        var norm: Double3 = cross(dir0, dir1)
+
+        // If normal vector points towards world center, flip it.
+        if (dot(norm, v1) < 0.0) {
+            norm *= -1.0
+        }
+
+        return norm
     }
 
     private fun makeMaterial(): Material {
