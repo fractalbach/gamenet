@@ -4,10 +4,9 @@ import Core
 import com.curiouscreature.kotlin.math.Double2
 import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.clamp
-import com.curiouscreature.kotlin.math.min
 import com.curiouscreature.kotlin.math.radians
+import info.laht.threekt.cameras.PerspectiveCamera
 import info.laht.threekt.math.Euler
-import util.toVec3
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -15,7 +14,7 @@ import kotlin.math.sin
 
 private const val LAT_COEF: Double = 0.00000004  // At 10km alt.
 private const val LON_COEF: Double = 0.00000004  // At 10km alt.
-private const val ALT_COEF: Double = 0.01
+private const val ALT_COEF: Double = 0.02
 private const val MIN_ALT: Double = 10_000.0
 private const val MAX_ALT: Double = 10_000_000.0
 
@@ -76,6 +75,12 @@ open class MapCamera(name: String="", id: String=""): Camera(name, id) {
         if (moved) {
             position = findPosition()
             rotation = findRotation()
+
+            // Update view frustum
+            val perspectiveCamera = threeCamera as PerspectiveCamera
+            perspectiveCamera.far = alt + followed!!.radius
+            perspectiveCamera.near = max(alt * 0.25, alt - 20_000.0)
+            perspectiveCamera.updateProjectionMatrix()
         }
 
         // Display debug info
