@@ -4,15 +4,17 @@ import Core
 import com.curiouscreature.kotlin.math.Double2
 import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.clamp
+import com.curiouscreature.kotlin.math.min
 import com.curiouscreature.kotlin.math.radians
 import info.laht.threekt.math.Euler
+import util.toVec3
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
-private const val LAT_COEF: Double = 0.00000001  // At 10km alt.
-private const val LON_COEF: Double = 0.00000001  // At 10km alt.
+private const val LAT_COEF: Double = 0.00000004  // At 10km alt.
+private const val LON_COEF: Double = 0.00000004  // At 10km alt.
 private const val ALT_COEF: Double = 0.01
 private const val MIN_ALT: Double = 10_000.0
 private const val MAX_ALT: Double = 10_000_000.0
@@ -50,7 +52,8 @@ open class MapCamera(name: String="", id: String=""): Camera(name, id) {
         val traverse: Double2 = tic.core.input.mouseMotion
         var moved = false
         if (traverse.x != 0.0) {
-            lon += traverse.x * LON_COEF * (1.0 / cos(radians(lat))) * alt
+            val latMod: Double = min(1.0 / cos(radians(lat)), 100.0)
+            lon += -traverse.x * LON_COEF * latMod * alt
             lon = wrap(lon, -180.0, 180.0)
             moved = true
         }
@@ -101,9 +104,9 @@ open class MapCamera(name: String="", id: String=""): Camera(name, id) {
     private fun findRotation(): Euler {
         return Euler(
                 y=radians(0.0),
-                z=radians(lon - 180),
-                x=radians(0.0),
-                order = "YXZ"
+                z=radians(lon + 90.0),
+                x=radians(-lat + 90.0),
+                order = "ZYX"
         )
     }
 
