@@ -1,3 +1,11 @@
+
+extern crate cgmath;
+extern crate num_traits;
+
+mod voronoi;
+mod surface;
+mod tectonic;
+
 type Vec3 = cgmath::Vector3<f64>;
 
 // --------------------------------------------------------------------

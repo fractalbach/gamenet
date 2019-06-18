@@ -9,3 +9,4 @@ crate-type = ["cdylib"]
 [dependencies]
 cgmath = "0.17.0"
 noise = "0.5.1"
+num-traits = "0.2"
