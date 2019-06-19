@@ -1,7 +1,7 @@
 
 use std::num::Wrapping;
 
-use cgmath::{Vector2, Vector3};
+use cgmath::{Vector2, Vector3, Vector4};
 
 ///
 pub fn idx_hash(x: i64) -> u32 {
@@ -45,4 +45,16 @@ pub fn component_multiply(a: Vector3<f64>, b: Vector3<f64>) -> Vector3<f64> {
         a.y * b.y,
         a.z * b.z
     )
+}
+
+
+pub fn hash_indices(seed: u32, indices: Vector4<i64>) -> u32 {
+    let seed_hash = Wrapping(idx_hash(seed as i64));
+    let x_hash = Wrapping(idx_hash(indices.x));
+    let y_hash = Wrapping(idx_hash(indices.y));
+    let z_hash = Wrapping(idx_hash(indices.z));
+    let w_hash = Wrapping(idx_hash(indices.w));
+    let hash: u32 = (seed_hash + w_hash + x_hash + y_hash + z_hash).0;
+
+    hash
 }

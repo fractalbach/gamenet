@@ -1,6 +1,7 @@
 
 extern crate cgmath;
 extern crate num_traits;
+extern crate lru_cache;
 
 mod voronoi;
 mod surface;

@@ -4,14 +4,19 @@
 ///
 
 use cgmath::{Vector2, Vector3, Vector4};
+use lru_cache::LruCache;
+
 use voronoi::*;
+use surface::Surface;
+use util::{rand2, hash_indices};
 
 
 /// Highest level tectonic struct. Functions provide access to
 /// individual plates.
 struct TectonicLayer {
-    voronoi: VoronoiSpace,
-    radius: f64
+    seed: u32,
+    surface: Surface,
+    cache: LruCache<Vector4<i64>, Plate>,
 }
 
 
@@ -19,9 +24,7 @@ struct TectonicLayer {
 ///
 /// Corresponds to a single voronoi cell.
 struct Plate {
-    nucleus: Vector3<f64>,
-    nucleus_indices: Vector4<i64>,
-    neighbors: Vec<Vector4<i64>>,
+    cell: Cell,
     motion: Vector2<f64>
 }
 
@@ -51,18 +54,23 @@ struct PlateVertex {
 impl TectonicLayer {
     pub const DEFAULT_REGION_WIDTH: f64 = 1e7;  // 10Mm
     pub const DEFAULT_RADIUS: f64 = 6.357e6;
+    pub const DEFAULT_CACHE_SIZE: usize = 1_000;
 
     pub fn new(seed: u32) -> TectonicLayer {
         TectonicLayer {
-            voronoi: VoronoiSpace::new(
-                seed,
-                Vector3::new(
-                    Self::DEFAULT_REGION_WIDTH,
-                    Self::DEFAULT_REGION_WIDTH,
-                    Self::DEFAULT_REGION_WIDTH,
-                )
+            seed,
+            surface: Surface::new(
+                VoronoiSpace::new(
+                    seed,
+                    Vector3::new(
+                        Self::DEFAULT_REGION_WIDTH,
+                        Self::DEFAULT_REGION_WIDTH,
+                        Self::DEFAULT_REGION_WIDTH,
+                    )
+                ),
+                Self::DEFAULT_RADIUS,
             ),
-            radius: Self::DEFAULT_RADIUS
+            cache: LruCache::new(Self::DEFAULT_CACHE_SIZE)
         }
     }
 
@@ -72,7 +80,35 @@ impl TectonicLayer {
         // TODO
     }
 
-    pub fn plate(&self, v: Vector3<f64>) {
-        // TODO
+    /// Get Plate for the specified direction from planet center.
+    pub fn plate(&mut self, v: Vector3<f64>) -> Option<&mut Plate> {
+        let cell_indices = self.surface.cell_indices(v);
+        if self.cache.contains_key(&cell_indices) {
+            return self.cache.get_mut(&cell_indices);
+        }
+
+        let cell = self.surface.cell(v);
+        let motion = rand2(hash_indices(self.seed, cell_indices));
+
+        let plate = Plate {
+            cell,
+            motion,
+        };
+
+        self.cache.insert(cell_indices, plate);
+
+        self.cache.get_mut(&cell_indices)
+    }
+
+    /// Get indices of plate passed through by passed direction vector
+    /// from globe center.
+    fn plate_indices(&self, v: Vector3<f64>) -> Vector4<i64> {
+        self.surface.cell_indices(v)
     }
 }
+
+
+// --------------------------------------------------------------------
+
+
+

@@ -20,7 +20,7 @@ use cgmath::MetricSpace;
 use cgmath::InnerSpace;
 use num_traits::real::Real;
 
-use util::{idx_hash, rand3, component_multiply};
+use util::{idx_hash, rand3, component_multiply, hash_indices};
 
 
 // --------------------------------------------------------------------
@@ -142,6 +142,21 @@ impl VoronoiSpace {
         }
     }
 
+    /// Find indices of cell with nucleus closes to the passed point.
+    pub fn cell_indices(&self, v: Vec3) -> Vector4<i64> {
+        let mut min_d: f64 = -1.0;
+        let mut closest_indices: Vector4<i64> = Vector4::new(0, 0, 0, 0);
+        self.visit_cluster(self.region(v), &mut |nucleus, indices| {
+            let d = nucleus.distance2(v);
+            if min_d < 0.0 || d < min_d {
+                min_d = d;
+                closest_indices = indices;
+            }
+        });
+        assert!(min_d >= 0.0);
+        closest_indices
+    }
+
     /// Visit all nuclei in the identified region and all regions
     /// adjacent to it.
     ///
@@ -228,15 +243,10 @@ impl VoronoiSpace {
 
     /// Gets position of region point of index i in world space.
     fn region_point(&self, region: Vector3<i64>, i: u8) -> Vec3 {
-        let seed_hash = Wrapping(idx_hash(self.seed as i64));
-        let i_hash = Wrapping(idx_hash(i as i64));
-        let x_hash = Wrapping(idx_hash(region.x));
-        let y_hash = Wrapping(idx_hash(region.y));
-        let z_hash = Wrapping(idx_hash(region.z));
-        let hash: u32 = (seed_hash + i_hash + x_hash + y_hash + z_hash).0;
-
+        let hash: u32 = hash_indices(self.seed, Vector4::new(
+            region.x, region.y, region.z, i as i64
+        ));
         let region_pos = component_multiply(self.region_shape, rand3(hash));
-
         return self.region_origin(region) + region_pos;
     }
 
@@ -297,8 +307,10 @@ impl Cell {
 #[cfg(test)]
 mod tests {
 
-    use voronoi::*;
     use cgmath::Vector3;
+
+    use util::component_multiply;
+    use voronoi::*;
 
     #[test]
     fn test_get_region() {

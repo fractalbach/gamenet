@@ -8,7 +8,7 @@ use voronoi::{VoronoiSpace, Cell, Neighbor};
 /// on a spherical surface.
 
 /// Struct handling retrieval of cells and clusters
-struct Surface {
+pub struct Surface {
     voronoi: VoronoiSpace,
     radius: f64
 }
@@ -20,7 +20,7 @@ struct Surface {
 /// Convenience class that specializes voronoi cell access for
 /// positions on a spherical surface.
 impl Surface {
-    fn new(voronoi: VoronoiSpace, radius: f64) -> Surface {
+    pub fn new(voronoi: VoronoiSpace, radius: f64) -> Surface {
         Surface {
             voronoi,
             radius
@@ -30,15 +30,15 @@ impl Surface {
     /// Get surface cell.
     ///
     /// Finds the SurfaceCell which the passed vector passes through.
-    fn cell(&self, v: Vector3<f64>) -> Cell {
-        let v_cell = self.voronoi.cell(v.normalize() * self.radius);
+    pub fn cell(&self, v: Vector3<f64>) -> Cell {
+        let v_cell = self.voronoi.cell(self.surf_pos(v));
         let mut neighbors = Vec::new();
         for v_neighbor in &v_cell.neighbors {
             // If neighbor's surface position (normalized pos * radius)
             // is closer to another neighbor or the cell than it is to
             // its nucleus, then it does not influence the cell's
             // boundary at the surface and it may be discarded.
-            let surface_pos = v_neighbor.nucleus.normalize() * self.radius;
+            let surface_pos = self.surf_pos(v_neighbor.nucleus);
             let d = v_neighbor.nucleus.distance2(surface_pos);
             if v_cell.nucleus.distance2(surface_pos) < d {
                 continue;
@@ -58,5 +58,19 @@ impl Surface {
             neighbors,
             ..v_cell
         }
+    }
+
+    /// Get cell which direction vector passes through from the
+    /// sphere origin.
+    pub fn cell_indices(&self, v: Vector3<f64>) -> Vector4<i64> {
+        self.voronoi.cell_indices(self.surf_pos(v))
+    }
+
+    // Helper functions
+
+    /// Get position on the sphere surface which has the same direction
+    /// from the sphere origin as the passed position.
+    fn surf_pos(&self, v: Vector3<f64>) -> Vector3<f64> {
+        v.normalize() * self.radius
     }
 }
