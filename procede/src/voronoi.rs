@@ -262,6 +262,35 @@ impl VoronoiSpace {
 }
 
 
+// --------------------------------------------------------------------
+
+
+impl Cell {
+    fn contains(&self, position: Vec3) -> bool {
+        let rel_pos = position - self.nucleus;
+        let rel_mag2 = rel_pos.magnitude() * 2.0;
+        let rel_dir = rel_pos.normalize();
+        let mut contains = true;
+        for neighbor in &self.neighbors {
+            let neighbor_dir = neighbor.rel_pos.normalize();
+            let angle_cos = neighbor_dir.dot(rel_dir);
+            if angle_cos < 0.0 {
+                continue;
+            }
+            if rel_mag2 * angle_cos > neighbor.distance {
+                contains = false;
+                break;
+            }
+        }
+        return contains;
+    }
+}
+
+
+// --------------------------------------------------------------------
+
+
+///
 fn idx_hash(x: i64) -> u32 {
     let x = Wrapping(x as u32);
 
@@ -404,5 +433,56 @@ mod tests {
         assert_ne!(points1[1], points2[1]);
         assert_ne!(points1[2], points2[2]);
         assert_ne!(points1[3], points2[3]);
+    }
+
+
+    // ----------------------------------------------------------------
+
+
+    #[test]
+    fn test_cell_contains() {
+        let mut neighbors: Vec<Neighbor> = Vec::with_capacity(5);
+
+        neighbors.push(Neighbor {
+            nucleus: Vec3::new(0.0, 3.0, 2.0),
+            indices: Vector4::new(0, 0, 0, 0),  // not used.
+            rel_pos: Vec3::new(0.0, 2.0, 0.0),
+            distance: 2.0
+        });
+        neighbors.push(Neighbor {
+            nucleus: Vec3::new(1.0, 1.0, 2.0),
+            indices: Vector4::new(0, 0, 0, 0),  // not used.
+            rel_pos: Vec3::new(2.0, 0.0, 0.0),
+            distance: 1.0
+        });
+        neighbors.push(Neighbor {
+            nucleus: Vec3::new(-1.5, 3.0, 2.0),
+            indices: Vector4::new(0, 0, 0, 0),  // not used.
+            rel_pos: Vec3::new(-1.5, 0.0, 0.0),
+            distance: 1.5
+        });
+        neighbors.push(Neighbor {
+            nucleus: Vec3::new(0.0, -3.0, 2.0),
+            indices: Vector4::new(0, 0, 0, 0),  // not used.
+            rel_pos: Vec3::new(0.0, -4.0, 0.0),
+            distance: 4.0
+        });
+        neighbors.push(Neighbor {
+            nucleus: Vec3::new(0.0, 0.0, 3.0),
+            indices: Vector4::new(0, 0, 0, 0),  // not used.
+            rel_pos: Vec3::new(0.0, 0.0, 1.0),
+            distance: 1.0
+        });
+
+        let cell = Cell {
+            nucleus: Vec3::new(0.0, 1.0, 2.0),
+            indices: Vector4::new(0, 0, 0, 0),  // Not used.
+            neighbors
+        };
+
+        assert!(cell.contains(Vec3::new(0.0, 1.0, 2.0)));
+        assert!(cell.contains(Vec3::new(0.0, -0.5, 2.25)));
+        assert!(!cell.contains(Vec3::new(0.0, -2.5, 2.25)));
+        assert!(!cell.contains(Vec3::new(0.0, 1.0, 2.6)));
     }
 }
