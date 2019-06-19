@@ -112,3 +112,41 @@ impl TectonicLayer {
 
 
 
+#[cfg(test)]
+mod tests {
+    use cgmath::Vector3;
+
+    use util::component_multiply;
+    use tectonic::*;
+    use voronoi::*;
+
+    #[test]
+    fn test_plate_motion_differs() {
+        let mut tectonic = TectonicLayer::new(1);
+        let motion1 = tectonic.plate(
+            Vector3::new(1.0, 2.0, -3.0)
+        ).unwrap().motion;
+        let motion2 = tectonic.plate(
+            Vector3::new(1.0, 2.0, 3.0)
+        ).unwrap().motion;
+        let motion3 = tectonic.plate(
+            Vector3::new(-1.0, -2.0, 3.0)
+        ).unwrap().motion;
+
+        assert_ne!(motion1, motion2);
+        assert_ne!(motion1, motion3);
+    }
+
+    #[test]
+    fn test_plate_motion_is_consistent() {
+        let mut tectonic = TectonicLayer::new(1);
+        let motion1a = tectonic.plate(
+            Vector3::new(1.0, 2.0, 3.0)
+        ).unwrap().motion;
+        let motion1b = tectonic.plate(
+            Vector3::new(1.0, 2.0, 3.0)
+        ).unwrap().motion;
+
+        assert_eq!(motion1a, motion1b);
+    }
+}
