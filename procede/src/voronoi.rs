@@ -16,6 +16,8 @@ type Vec3 = cgmath::Vector3<f64>;
 use std::num::Wrapping;
 
 use cgmath::{Vector3, Vector4};
+use cgmath::MetricSpace;
+use cgmath::InnerSpace;
 use num_traits::real::Real;
 
 
@@ -65,24 +67,73 @@ impl VoronoiSpace {
         let region_nuclei: Vec<Vec3> = self.region_points(region_indices);
 
         // Find center.
-        let mut nucleus: Vec3;
-        let mut min_dist: f64 = -1.0;
-        let mut nucleus_index: i64 = 0;
-        // TODO
+        let mut nucleus: Vec3 = Vec3::new(0.0, 0.0, 0.0);
+        let mut min_d: f64 = -1.0;
+        let mut nucleus_indices: Vector4<i64> = Vector4::new(0, 0, 0, 0);
+        self.visit_cluster(region_indices, &mut |nucleus2, indices2| {
+            let d = nucleus.distance2(v);
+            if min_d < 0.0 || d < min_d {
+                min_d = d;
+                nucleus = nucleus2;
+                nucleus_indices = indices2;
+            }
+        });
 
-        // Find neighbors.
+        assert!(min_d >= 0.0);
+
+        // Find nearby cells.
+        let mut nearby_cells: Vec<Neighbor> = Vec::with_capacity(
+            (self.nuclei_per_region as usize) * 5 * 5 * 5);
+        let nucleus_region = Vector3::new(
+                nucleus_indices.x, nucleus_indices.y, nucleus_indices.z
+        );
+        self.visit_super_cluster(nucleus_region, &mut |nucleus2, indices2 | {
+            // Skip the nucleus that is this cell's nucleus.
+            if indices2 == nucleus_indices {
+                return;
+            }
+
+            let rel_pos = nucleus2 - nucleus;
+            let distance = nucleus.distance2(nucleus2);
+
+            nearby_cells.push(Neighbor {
+                nucleus: nucleus2,
+                indices: indices2,
+                rel_pos,
+                distance
+            })
+        });
+        nearby_cells.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
+
+        // Find neighbors from nearby cells.
         let mut neighbors: Vec<Neighbor> = Vec::new();
-        // TODO
+        for nearby in nearby_cells {
+            let mut excluded = false;
+            for neighbor in &neighbors {
+                let near_dir = nearby.rel_pos.normalize();
+                let neighbor_dir = neighbor.rel_pos.normalize();
+                let angle_cos = near_dir.dot(neighbor_dir);
+
+                // If cos of angle < 0 then angle is > 90 degrees.
+                if angle_cos < 0.0 {
+                    continue;
+                }
+
+                if nearby.distance * angle_cos > neighbor.distance {
+                    excluded = true;
+                    break;
+                }
+            }
+
+            if !excluded {
+                neighbors.push(nearby);
+            }
+        }
 
         // Create cell
         Cell {
             nucleus,
-            indices: Vector4::new(
-                region_indices.x,
-                region_indices.y,
-                region_indices.z,
-                nucleus_index
-            ),
+            indices: nucleus_indices,
             neighbors
         }
     }
@@ -94,7 +145,7 @@ impl VoronoiSpace {
     pub fn visit_cluster(
             &self,
             center_indices: Vector3<i64>,
-            f: &Fn(Vec3, Vector4<i64>) -> i32
+            f: &mut FnMut(Vec3, Vector4<i64>)
     ) {
         for i in -1..2 {
             for j in -1..2 {
@@ -122,7 +173,7 @@ impl VoronoiSpace {
     pub fn visit_super_cluster(
         &self,
         center_indices: Vector3<i64>,
-        f: &Fn(Vec3, Vector4<i64>) -> i32
+        f: &mut FnMut(Vec3, Vector4<i64>)
     ) {
         for i in -2i64..3 {
             for j in -2i64..3 {
@@ -185,6 +236,9 @@ impl VoronoiSpace {
         return self.region_origin(region) + region_pos;
     }
 
+    /// Gets the origin point of a region.
+    ///
+    /// This is the position in the 'lower' x, y, and z dimensions.
     fn region_origin(&self, region: Vector3<i64>) -> Vec3 {
         return Vec3::new(
             self.region_shape.x * region.x as f64,
@@ -219,6 +273,9 @@ fn idx_hash(x: i64) -> u32 {
 }
 
 
+/// Produces a Vec3 from a random u32.
+///
+/// Produced x, y, and z values are all between 0 and 1.
 fn rand3(x: u32) -> Vec3 {
     Vec3::new(
         ((x & 0x7FF) as f64) / 2048.0,
@@ -242,7 +299,7 @@ fn component_multiply(a: Vec3, b: Vec3) -> Vec3 {
 mod tests {
 
     use voronoi::*;
-    use super::cgmath::Vector3;
+    use cgmath::Vector3;
 
     #[test]
     fn test_get_region() {
