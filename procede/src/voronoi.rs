@@ -20,6 +20,8 @@ use cgmath::MetricSpace;
 use cgmath::InnerSpace;
 use num_traits::real::Real;
 
+use util::{idx_hash, rand3, component_multiply};
+
 
 // --------------------------------------------------------------------
 // Structs
@@ -290,40 +292,6 @@ impl Cell {
 
 
 // --------------------------------------------------------------------
-
-
-///
-fn idx_hash(x: i64) -> u32 {
-    let x = Wrapping(x as u32);
-
-    let x = ((x >> 16) ^ x) * Wrapping(0x45d9f3b);
-    let x = ((x >> 16) ^ x) * Wrapping(0x45d9f3b);
-    let x = (x >> 16) ^ x;
-
-    return x.0;
-}
-
-
-/// Produces a Vec3 from a random u32.
-///
-/// Produced x, y, and z values are all between 0 and 1.
-fn rand3(x: u32) -> Vec3 {
-    Vec3::new(
-        ((x & 0x7FF) as f64) / 2048.0,
-        ((x & (0x3FF << 11)) as f64) / 1024.0,
-        ((x & (0x7FF << 21)) as f64) / 2048.0
-    )
-}
-
-
-/// Multiply vectors component-wise.
-fn component_multiply(a: Vec3, b: Vec3) -> Vec3 {
-    Vec3::new(
-        a.x * b.x,
-        a.y * b.y,
-        a.z * b.z
-    )
-}
 
 
 #[cfg(test)]

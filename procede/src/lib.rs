@@ -5,6 +5,7 @@ extern crate num_traits;
 mod voronoi;
 mod surface;
 mod tectonic;
+mod util;
 
 type Vec3 = cgmath::Vector3<f64>;
 
