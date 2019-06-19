@@ -26,21 +26,23 @@ use num_traits::real::Real;
 
 
 pub struct VoronoiSpace {
-    region_shape: Vec3,
-    seed: u32,
-    nuclei_per_region: u8,
+    pub region_shape: Vec3,
+    pub seed: u32,
+    pub nuclei_per_region: u8,
 }
 
 pub struct Cell {
-    nucleus: Vec3,
-    indices: Vector4<i64>,
-    neighbors: Vec<Neighbor>
+    pub nucleus: Vec3,
+    pub indices: Vector4<i64>,
+    pub neighbors: Vec<Neighbor>
 }
 
+#[derive(Clone)]
 pub struct Neighbor {
-    position: Vec3,
-    indices: Vector4<i64>,
-    distance: f64
+    pub nucleus: Vec3,
+    pub indices: Vector4<i64>,
+    pub rel_pos: Vec3,
+    pub distance: f64
 }
 
 
