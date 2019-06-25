@@ -1,14 +1,12 @@
 /// Module containing tectonic plate procedural structs and functions.
 ///
-/// For a given point, first the plate and its neighbors are found.
-///
 
 use cgmath::{Vector2, Vector3, Vector4};
 use lru_cache::LruCache;
 
 use voronoi::*;
 use surface::Surface;
-use util::{rand2, hash_indices};
+use util::{rand1, rand2, hash_indices};
 
 
 /// Highest level tectonic struct. Functions provide access to
@@ -17,6 +15,9 @@ struct TectonicLayer {
     seed: u32,
     surface: Surface,
     cache: LruCache<Vector4<i64>, Plate>,
+    min_base_height: f64,
+    max_base_height: f64,
+    base_height_range: f64,
 }
 
 
@@ -25,25 +26,8 @@ struct TectonicLayer {
 /// Corresponds to a single voronoi cell.
 struct Plate {
     cell: Cell,
-    motion: Vector2<f64>
-}
-
-
-/// Struct representing a single triangular polygon, defined by a
-/// vertex at the plate center, and two vertices at corners of the
-/// voronoi cell.
-struct PlatePoly {
-    vertices: [PlateVertex]
-}
-
-
-/// Struct representing a point on a plate.
-///
-/// In practice, this will be either the plate center, or one of
-/// its corners.
-struct PlateVertex {
-    position: Vector3<f64>,
-    height: f64
+    motion: Vector2<f64>,
+    base_height: f64,
 }
 
 
@@ -55,6 +39,8 @@ impl TectonicLayer {
     pub const DEFAULT_REGION_WIDTH: f64 = 1e7;  // 10Mm
     pub const DEFAULT_RADIUS: f64 = 6.357e6;
     pub const DEFAULT_CACHE_SIZE: usize = 1_000;
+    pub const DEFAULT_MIN_BASE_HEIGHT: f64 = -2000.0;
+    pub const DEFAULT_MAX_BASE_HEIGHT: f64 = 2000.0;
 
     pub fn new(seed: u32) -> TectonicLayer {
         TectonicLayer {
@@ -70,7 +56,11 @@ impl TectonicLayer {
                 ),
                 Self::DEFAULT_RADIUS,
             ),
-            cache: LruCache::new(Self::DEFAULT_CACHE_SIZE)
+            cache: LruCache::new(Self::DEFAULT_CACHE_SIZE),
+            min_base_height: Self::DEFAULT_MIN_BASE_HEIGHT,
+            max_base_height: Self::DEFAULT_MAX_BASE_HEIGHT,
+            base_height_range: Self::DEFAULT_MAX_BASE_HEIGHT -
+                    Self::DEFAULT_MIN_BASE_HEIGHT,
         }
     }
 
@@ -88,14 +78,7 @@ impl TectonicLayer {
         }
 
         let cell = self.surface.cell(v);
-        let motion = rand2(hash_indices(self.seed, cell_indices));
-
-        let plate = Plate {
-            cell,
-            motion,
-        };
-
-        self.cache.insert(cell_indices, plate);
+        self.cache.insert(cell_indices, Plate::new(self.seed, cell));
 
         self.cache.get_mut(&cell_indices)
     }
@@ -111,12 +94,28 @@ impl TectonicLayer {
 // --------------------------------------------------------------------
 
 
+impl Plate {
+    fn new(seed: u32, cell: Cell) -> Self {
+        let hash = hash_indices(seed, cell.indices);
+        let motion = rand2(hash);
+        let base_height = rand1(hash);
+
+        Plate {
+            cell,
+            motion,
+            base_height,
+        }
+    }
+}
+
+
+// --------------------------------------------------------------------
+
 
 #[cfg(test)]
 mod tests {
     use cgmath::Vector3;
 
-    use util::component_multiply;
     use tectonic::*;
     use voronoi::*;
 

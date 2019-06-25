@@ -15,6 +15,11 @@ pub fn idx_hash(x: i64) -> u32 {
 }
 
 
+pub fn rand1(x: u32) -> f64 {
+    x as f64 / 4294967296.0
+}
+
+
 /// Produces a Vector2<f64> from a random u32.
 ///
 /// Produced x and y values are all between 0 and 1.
