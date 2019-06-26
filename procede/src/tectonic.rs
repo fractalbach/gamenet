@@ -6,7 +6,7 @@ use lru_cache::LruCache;
 
 use voronoi::*;
 use surface::Surface;
-use util::{rand1, rand2, hash_indices};
+use util::{rand1, rand2, hash_indices, hg_blur};
 
 
 /// Highest level tectonic struct. Functions provide access to
@@ -18,6 +18,7 @@ struct TectonicLayer {
     min_base_height: f64,
     max_base_height: f64,
     base_height_range: f64,
+    blur_radius: f64,
 }
 
 
@@ -26,8 +27,8 @@ struct TectonicLayer {
 /// Corresponds to a single voronoi cell.
 struct Plate {
     cell: Cell,
-    motion: Vector2<f64>,
-    base_height: f64,
+    pub motion: Vector2<f64>,
+    pub base_height: f64,
 }
 
 
@@ -41,6 +42,7 @@ impl TectonicLayer {
     pub const DEFAULT_CACHE_SIZE: usize = 1_000;
     pub const DEFAULT_MIN_BASE_HEIGHT: f64 = -2000.0;
     pub const DEFAULT_MAX_BASE_HEIGHT: f64 = 2000.0;
+    pub const DEFAULT_BLUR_SIGMA: f64 = 1e5;  // 100km.
 
     pub fn new(seed: u32) -> TectonicLayer {
         TectonicLayer {
@@ -61,13 +63,16 @@ impl TectonicLayer {
             max_base_height: Self::DEFAULT_MAX_BASE_HEIGHT,
             base_height_range: Self::DEFAULT_MAX_BASE_HEIGHT -
                     Self::DEFAULT_MIN_BASE_HEIGHT,
+            blur_radius: Self::DEFAULT_BLUR_SIGMA,
         }
     }
 
     /// Gets height at surface position identified by direction vector
     /// from origin.
-    pub fn height(&self, v: Vector3<f64>) {
-        // TODO
+    pub fn height(&mut self, v: Vector3<f64>) -> f64 {
+        hg_blur(v, self.blur_radius, &mut |v| {
+            self.plate(v).unwrap().base_height
+        })
     }
 
     /// Get Plate for the specified direction from planet center.
