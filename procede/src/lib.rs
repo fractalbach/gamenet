@@ -24,8 +24,9 @@
 ///
 ///
 extern crate cgmath;
-extern crate num_traits;
+extern crate probability;
 extern crate lru_cache;
+extern crate num_traits;
 
 mod voronoi;
 mod surface;
