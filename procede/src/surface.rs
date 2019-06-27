@@ -74,3 +74,36 @@ impl Surface {
         v.normalize() * self.radius
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use cgmath::Vector3;
+
+    use surface::*;
+    use voronoi::*;
+
+    #[test]
+    fn test_different_indices_are_produced_from_different_vectors() {
+        const WIDTH: f64 = 1e7;  // 10Mm
+        const RADIUS: f64 = 6.357e6;
+
+        let surface = Surface::new(
+            VoronoiSpace::new(
+                88,
+                Vector3::new(
+                    WIDTH,
+                    WIDTH,
+                    WIDTH,
+                )
+            ),
+            RADIUS,
+        );
+        let a = surface.cell_indices(Vector3::new(1.0, 2.0, -3.0));
+        let b = surface.cell_indices(Vector3::new(1.0, 2.0, 3.0));
+        let c = surface.cell_indices(Vector3::new(-1.0, -2.0, 3.0));
+
+        assert_ne!(a, b);
+        assert_ne!(a, c);
+    }
+}
