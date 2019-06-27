@@ -4,9 +4,8 @@ use std::num::Wrapping;
 use cgmath::{Vector2, Vector3, Vector4};
 use cgmath::InnerSpace;
 use cgmath::MetricSpace;
-use probability::distribution::Continuous;
 
-///
+/// Hashes a single cell index to produce a new u32.
 pub fn idx_hash(x: i64) -> u32 {
     let x = Wrapping(x as u32);
 
@@ -82,8 +81,7 @@ pub fn hg_blur(
     let u_vec = v_norm.cross(Vector3::new(0.0, 0.0, 1.0)).normalize();
     let v_vec = v_norm.cross(u_vec);
 
-    let step_d = sigma / 3.0;
-    let gauss = probability::distribution::Gaussian::new(0.0, sigma);
+    let step_d = sigma;
 
     let mut h_sum = 0.0;
     let mut density_sum = 0.0;
@@ -94,7 +92,8 @@ pub fn hg_blur(
             let v_offset = v_vec * v_i as f64 * step_d;
             let pos = v + u_offset + v_offset;
             let dist = v.distance2(pos);
-            let density = gauss.density(dist);
+            // TODO: Replace below line with gaussian density.
+            let density = 1.0 - dist / sigma * 3.0;
             h_sum += f(pos) * density;
             density_sum += density;
         }
