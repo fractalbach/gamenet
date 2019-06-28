@@ -76,7 +76,7 @@ impl VoronoiSpace {
         let mut min_d: f64 = -1.0;
         let mut nucleus_indices: Vector4<i64> = Vector4::new(0, 0, 0, 0);
         self.visit_cluster(region_indices, &mut |nucleus2, indices2| {
-            let d = nucleus.distance2(v);
+            let d = nucleus2.distance2(v);
             if min_d < 0.0 || d < min_d {
                 min_d = d;
                 nucleus = nucleus2;
