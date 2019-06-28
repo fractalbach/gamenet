@@ -31,5 +31,6 @@ mod voronoi;
 mod surface;
 mod tectonic;
 mod util;
+mod world;
 
 type Vec3 = cgmath::Vector3<f64>;

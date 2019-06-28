@@ -11,7 +11,7 @@ use util::{rand1, rand2, hash_indices, hg_blur};
 
 /// Highest level tectonic struct. Functions provide access to
 /// individual plates.
-struct TectonicLayer {
+pub struct TectonicLayer {
     seed: u32,
     surface: Surface,
     cache: LruCache<Vector4<i64>, Plate>,
@@ -77,7 +77,7 @@ impl TectonicLayer {
     }
 
     /// Get Plate for the specified direction from planet center.
-    pub fn plate(&mut self, v: Vector3<f64>) -> Option<&mut Plate> {
+    fn plate(&mut self, v: Vector3<f64>) -> Option<&mut Plate> {
         let cell_indices = self.surface.cell_indices(v);
         if self.cache.contains_key(&cell_indices) {
             return self.cache.get_mut(&cell_indices);
