@@ -25,6 +25,7 @@ struct TectonicLayer {
 /// Individual tectonic Plate.
 ///
 /// Corresponds to a single voronoi cell.
+#[derive(Clone)]
 struct Plate {
     cell: Cell,
     pub motion: Vector2<f64>,

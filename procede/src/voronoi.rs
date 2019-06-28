@@ -33,6 +33,7 @@ pub struct VoronoiSpace {
     pub nuclei_per_region: u8,
 }
 
+#[derive(Clone)]
 pub struct Cell {
     pub nucleus: Vec3,
     pub indices: Vector4<i64>,
