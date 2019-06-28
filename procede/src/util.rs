@@ -17,30 +17,33 @@ pub fn idx_hash(x: i64) -> u32 {
 }
 
 
+/// Produces random float from u32.
+///
+/// Produced values are between -1.0 and 1.0.
 pub fn rand1(x: u32) -> f64 {
-    x as f64 / 4294967296.0
+    x as f64 / 2147483648.0 - 1.0
 }
 
 
 /// Produces a Vector2<f64> from a random u32.
 ///
-/// Produced x and y values are all between 0 and 1.
+/// Produced x and y values are all between -1.0 and 1.0.
 pub fn rand2(x: u32) -> Vector2<f64> {
     Vector2::new(
-        ((x & 0xFFFF) as f64) / 65536.0,
-        ((x ^ 0xFFFF) as f64) / 65536.0,
+        ((x & 0xFFFF) as f64) / 32768.0 - 1.0,
+        (((x >> 16) & 0xFFFF) as f64) / 32768.0 - 1.0,
     )
 }
 
 
 /// Produces a Vector3<f64> from a random u32.
 ///
-/// Produced x, y, and z values are all between 0 and 1.
+/// Produced x, y, and z values are all between -1.0 and 1.0.
 pub fn rand3(x: u32) -> Vector3<f64> {
     Vector3::new(
-        ((x & 0x7FF) as f64) / 2048.0,
-        ((x & (0x3FF << 11)) as f64) / 1024.0,
-        ((x & (0x7FF << 21)) as f64) / 2048.0
+        ((x & 0x7FF) as f64) / 1024.0 - 1.0,
+        (((x >> 11) & 0x3FF) as f64) / 512.0 - 1.0,
+        (((x >> 21) & 0x7FF) as f64) / 1024.0 - 1.0
     )
 }
 
@@ -100,4 +103,96 @@ pub fn hg_blur(
     }
 
     h_sum / density_sum
+}
+
+
+#[cfg(test)]
+mod tests {
+    use cgmath::{Vector4, Vector3, Vector2};
+    use util::{idx_hash, hash_indices, rand2, rand3};
+
+    #[test]
+    fn test_idx_hash() {
+        let mut mean = 0u32;
+        for i in -100..100 {
+            mean += idx_hash(i) / 201;
+        }
+
+        assert!(mean > (2147483648.0 * 0.8) as u32);
+        assert!(mean < (2147483648.0 * 1.2) as u32);
+    }
+
+    #[test]
+    fn test_hash_indices() {
+        let mut mean = 0u32;
+
+        let n_hashes = 10 * 10 * 10 * 10 * 5;
+
+        for i in -5..5 {
+            for j in -5..5 {
+                for k in -5..5 {
+                    for m in -5..5 {
+                        for seed in 0..5 {
+                            mean += hash_indices(
+                                seed, Vector4::new(i, j, k, m)
+                            ) / n_hashes;
+                        }
+                    }
+                }
+            }
+        }
+
+        assert!(mean > (2147483648.0 * 0.8) as u32);
+        assert!(mean < (2147483648.0 * 1.2) as u32);
+    }
+
+    #[test]
+    fn test_rand2_produces_results_in_range() {
+        let mut mean = Vector2::new(0.0, 0.0);
+
+        for i in 0..1000 {
+            let hash = idx_hash(i);
+
+            let rand_vec = rand2(hash);
+
+            assert!(rand_vec.x >= -1.0);
+            assert!(rand_vec.y >= -1.0);
+            assert!(rand_vec.x <= 1.0);
+            assert!(rand_vec.y <= 1.0);
+
+            mean += rand_vec / 1000.0;
+        }
+
+        assert!(mean.x > -0.2);
+        assert!(mean.x < 0.2);
+        assert!(mean.y > -0.2);
+        assert!(mean.y < 0.2);
+    }
+
+    #[test]
+    fn test_rand3_produces_results_in_range() {
+        let mut mean = Vector3::new(0.0, 0.0, 0.0);
+
+        for i in 0..1000 {
+            let hash = idx_hash(i);
+
+            let rand_vec = rand3(hash);
+
+            assert!(rand_vec.x >= -1.0);
+            assert!(rand_vec.y >= -1.0);
+            assert!(rand_vec.z >= -1.0);
+            assert!(rand_vec.x <= 1.0);
+            assert!(rand_vec.y <= 1.0);
+            assert!(rand_vec.z <= 1.0);
+
+            mean += rand_vec / 1000.0;
+        }
+
+        assert!(mean.x > -0.2);
+        assert!(mean.x < 0.2);
+        assert!(mean.y > -0.2);
+        assert!(mean.y < 0.2);
+        assert!(mean.z > -0.2);
+        assert!(mean.z < 0.2);
+    }
 }
