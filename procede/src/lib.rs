@@ -78,6 +78,7 @@ mod tests {
     fn test_lib_interface_produces_heights_in_expected_range() {
         let mem_pos: usize = create_world();
         let mut mean = 0.0;
+        let mut abs_mean = 0.0;
 
         for i in -10..11 {
             for j in -10..11 {
@@ -96,13 +97,18 @@ mod tests {
                     assert!(h < 15_000.0);
 
                     mean += h;
+                    abs_mean += h.abs()
                 }
             }
         }
 
-        mean /= 21.0 * 21.0 * 21.0;
+        let n_samples = 21.0 * 21.0 * 21.0 - 1.0;
+        mean /= n_samples;
+        abs_mean /= n_samples;
 
         assert!(mean > -1000.0);
         assert!(mean < 1000.0);
+
+        assert!(abs_mean > 100.0);
     }
 }
