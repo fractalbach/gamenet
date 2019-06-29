@@ -41,6 +41,10 @@ use wasm_bindgen::prelude::*;
 use world::World;
 
 
+// --------------------------------------------------------------------
+// JS Interface Functions
+
+
 #[wasm_bindgen]
 pub fn create_world() -> usize {
     let world: Box<World> = Box::new(World::new(88));
@@ -71,13 +75,17 @@ mod tests {
     use height;
 
     #[test]
-    fn test_world_produces_heights_in_expected_range() {
+    fn test_lib_interface_produces_heights_in_expected_range() {
         let mem_pos: usize = create_world();
         let mut mean = 0.0;
 
         for i in -10..11 {
             for j in -10..11 {
                 for k in -10..11 {
+                    if i == 0 && j == 0 && k == 0 {
+                        continue;
+                    }
+
                     let x = i as f64 / 10.0;
                     let y = j as f64 / 10.0;
                     let z = k as f64 / 10.0;

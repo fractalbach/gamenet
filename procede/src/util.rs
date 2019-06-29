@@ -5,6 +5,9 @@ use cgmath::{Vector2, Vector3, Vector4};
 use cgmath::InnerSpace;
 use cgmath::MetricSpace;
 
+// --------------------------------------------------------------------
+
+
 /// Hashes a single cell index to produce a new u32.
 pub fn idx_hash(x: i64) -> u32 {
     let x = Wrapping(x as u32);
@@ -80,8 +83,18 @@ pub fn hg_blur(
         sigma: f64,
         f: &mut FnMut (Vector3<f64>) -> f64,
 ) -> f64 {
+    assert_ne!(v, Vector3::new(0.0, 0.0, 0.0));
+
+    let z_axis_vector = Vector3::new(0.0, 0.0, 1.0);
     let v_norm = v.normalize();
-    let u_vec = v_norm.cross(Vector3::new(0.0, 0.0, 1.0)).normalize();
+
+    // Get u_vec and v_vec.
+    let u_vec: Vector3<f64>;
+    if v_norm == z_axis_vector || v_norm == z_axis_vector * -1.0 {
+        u_vec = Vector3::new(0.0, 1.0, 0.0);
+    } else {
+        u_vec = v_norm.cross(z_axis_vector).normalize();
+    }
     let v_vec = v_norm.cross(u_vec);
 
     let step_d = sigma;
@@ -103,6 +116,14 @@ pub fn hg_blur(
     }
 
     h_sum / density_sum
+}
+
+
+/**
+ * Simple utility function that fulfills a common use.
+ */
+pub fn xyz<T>(v: Vector4<T>) -> Vector3<T>{
+    Vector3::new(v.x, v.y, v.z)
 }
 
 

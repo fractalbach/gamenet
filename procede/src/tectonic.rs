@@ -17,6 +17,7 @@ pub struct TectonicLayer {
     cache: LruCache<Vector4<i64>, Plate>,
     min_base_height: f64,
     max_base_height: f64,
+    mean_base_height: f64,
     base_height_range: f64,
     blur_radius: f64,
 }
@@ -62,6 +63,10 @@ impl TectonicLayer {
             cache: LruCache::new(Self::DEFAULT_CACHE_SIZE),
             min_base_height: Self::DEFAULT_MIN_BASE_HEIGHT,
             max_base_height: Self::DEFAULT_MAX_BASE_HEIGHT,
+            mean_base_height: (
+                    Self::DEFAULT_MIN_BASE_HEIGHT +
+                    Self::DEFAULT_MAX_BASE_HEIGHT
+            ) / 2.0,
             base_height_range: Self::DEFAULT_MAX_BASE_HEIGHT -
                     Self::DEFAULT_MIN_BASE_HEIGHT,
             blur_radius: Self::DEFAULT_BLUR_SIGMA,
@@ -84,7 +89,8 @@ impl TectonicLayer {
         }
 
         let cell = self.surface.cell(v);
-        self.cache.insert(cell_indices, Plate::new(self.seed, cell));
+        let plate = Plate::new(self.seed, cell, &self);
+        self.cache.insert(cell_indices, plate);
 
         self.cache.get_mut(&cell_indices)
     }
@@ -101,10 +107,11 @@ impl TectonicLayer {
 
 
 impl Plate {
-    fn new(seed: u32, cell: Cell) -> Self {
+    fn new(seed: u32, cell: Cell, layer: &TectonicLayer) -> Self {
         let hash = hash_indices(seed, cell.indices);
         let motion = rand2(hash);
-        let base_height = rand1(hash);
+        let base_height = rand1(hash) * layer.base_height_range / 2.0 +
+            layer.mean_base_height;
 
         Plate {
             cell,
