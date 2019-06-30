@@ -1,5 +1,6 @@
 import exception.DocumentError
 import exception.GameException
+import module.Procede
 import org.w3c.dom.Element
 import kotlin.browser.document
 import kotlin.browser.window
@@ -10,7 +11,7 @@ const val LOGIC_HZ: Double = 60.0
 const val STEP_DELTA_MS: Double = 1000.0 / LOGIC_HZ
 
 /** Maximum DeltaT, above which some action to correct or exit should occur */
-const val DELTA_T_LIMIT_MS: Double = 1e4
+const val DELTA_T_LIMIT_MS: Double = 2e4
 
 
 /**
@@ -141,9 +142,8 @@ class Core {
 @Suppress("unused")  // Called from js at program start.
 @JsName("startCore")
 fun startCore() {
-
-    if (js("Module.ready") != true) {
-        Logger.getLogger("Core").info("Module not yet ready.")
+    if (!Procede.ready()) {
+        Logger.getLogger("Core").info("Procede not yet ready.")
         window.setTimeout(
                 { startCore() },
                 500

@@ -10,7 +10,6 @@ import com.curiouscreature.kotlin.math.cross
 import com.curiouscreature.kotlin.math.dot
 import com.curiouscreature.kotlin.math.length
 import com.curiouscreature.kotlin.math.normalize
-import exception.CException
 import getSettings
 import getTerrainMat
 import info.laht.threekt.THREE.BackSide
@@ -20,6 +19,7 @@ import info.laht.threekt.materials.Material
 import info.laht.threekt.math.Vector3
 import info.laht.threekt.objects.Mesh
 import material.uValue
+import module.Procede
 import org.khronos.webgl.Float32Array
 import util.ObjectPool
 
@@ -67,6 +67,10 @@ open class Terrain(id: String="", mat: Material? = null):
     override var threeObject: Object3D = Object3D() // nothing special
 
     val radius = RADIUS
+
+    /** module.Procede generation webassembly module wrapper */
+    val procede = Procede(TERRAIN_SEED)
+
     val faces: Array<Tile> = Array(6) { Tile(this, it) }
     /** Stores tiles no longer in use, but whose geometry can be reused */
     private val tilePile: ObjectPool<Tile> = ObjectPool {
@@ -83,18 +87,8 @@ open class Terrain(id: String="", mat: Material? = null):
     // Init -----------------------------------------------------------
 
     init {
-        js("Module.terrain = this")
         // add each face to scene
         faces.forEach { addChild(it) }
-
-        // initialize terrain module
-        val echo: Int = js("_ter_TestEcho(4)") as Int
-        if (echo != 4) {
-            throw CException("Test Function call to C failed. " +
-                    "Is Module set up?")
-        }
-
-        js("_ter_Init($TERRAIN_SEED, $RADIUS, $HEIGHT_SCALE)")
     }
 
     // Actions --------------------------------------------------------
@@ -182,9 +176,7 @@ open class Terrain(id: String="", mat: Material? = null):
      */
     @Suppress("UNUSED_PARAMETER") // used in js
     fun heightAtVector(vector: Double3): Double {
-        return js("_ter_GetHeight(" +
-                "vector.x, vector.y, vector.z, $MAX_LOD)") as Double *
-                HEIGHT_SCALE
+        return procede.height(vector)
     }
 
     /**
@@ -431,15 +423,8 @@ class Tile(private val terrain: Terrain, face: Int,
                 try {
                     val cubeRelPos: Double3 = cubeRelPosFromHeightIndex(it)
                     val normPos: Double3 = normalize(cubeRelPos)
-                    @Suppress("UNUSED_VARIABLE") // used in js
-                    val x: Double = normPos.x
-                    @Suppress("UNUSED_VARIABLE") // used in js
-                    val y: Double = normPos.y
-                    @Suppress("UNUSED_VARIABLE") // used in js
-                    val z: Double = normPos.z
-                    val height: Double =
-                            js("_ter_GetHeight(x, y, z, $MAX_LOD)") as Double
-                    val pos = normPos * (RADIUS + height * HEIGHT_SCALE)
+                    val height = terrain.procede.height(normPos)
+                    val pos = normPos * (RADIUS + height)
                     pos
                 } catch (e: Exception) {
                     logger.error("Error converting height index: $it")
