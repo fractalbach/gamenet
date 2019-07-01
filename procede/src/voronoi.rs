@@ -13,14 +13,10 @@
 
 type Vec3 = cgmath::Vector3<f64>;
 
-use std::num::Wrapping;
-
-use cgmath::{Vector3, Vector4};
+use cgmath::Vector3;
 use cgmath::MetricSpace;
-use cgmath::InnerSpace;
-use num_traits::real::Real;
 
-use util::{idx_hash, rand3, component_multiply, hash_indices};
+use util::{rand3, component_multiply, hash_indices};
 
 
 // --------------------------------------------------------------------
@@ -30,22 +26,12 @@ use util::{idx_hash, rand3, component_multiply, hash_indices};
 pub struct VoronoiSpace {
     pub region_shape: Vec3,
     pub seed: u32,
-    pub nuclei_per_region: u8,
 }
 
-#[derive(Clone)]
-pub struct Cell {
-    pub nucleus: Vec3,
-    pub indices: Vector4<i64>,
-    pub neighbors: Vec<Neighbor>
-}
-
-#[derive(Clone)]
-pub struct Neighbor {
-    pub nucleus: Vec3,
-    pub indices: Vector4<i64>,
-    pub rel_pos: Vec3,
-    pub distance: f64
+pub struct NearResult {
+    pub regions: [Vector3<i64>; 4],
+    pub points: [Vec3; 4],
+    pub dist: [f64; 4]
 }
 
 
@@ -54,147 +40,23 @@ pub struct Neighbor {
 
 
 impl VoronoiSpace {
-    pub const DEFAULT_NUCLEI_PER_REGION: u8 = 4;
-
-    // Constructor
-
     pub fn new(seed: u32, region_shape: Vec3) -> Self {
         VoronoiSpace {
             seed,
-            region_shape,
-            nuclei_per_region: Self::DEFAULT_NUCLEI_PER_REGION,
+            region_shape
         }
     }
 
-    /// Get cell which contains a position.
-    pub fn cell(&self, v: Vec3) -> Cell {
-        let region_indices: Vector3<i64> = self.region(v);
-        let region_nuclei: Vec<Vec3> = self.region_points(region_indices);
+    /// Find nearest points
+    pub fn near4(&self, v: Vec3) -> NearResult {
+        let v_region = self.region(v);
 
-        // Find center.
-        let mut nucleus: Vec3 = Vec3::new(0.0, 0.0, 0.0);
-        let mut min_d: f64 = -1.0;
-        let mut nucleus_indices: Vector4<i64> = Vector4::new(0, 0, 0, 0);
-        self.visit_cluster(region_indices, &mut |nucleus2, indices2| {
-            let d = nucleus2.distance2(v);
-            if min_d < 0.0 || d < min_d {
-                min_d = d;
-                nucleus = nucleus2;
-                nucleus_indices = indices2;
-            }
-        });
+        let mut result: NearResult = NearResult {
+            regions: [Vector3::new(0, 0, 0); 4],
+            points: [Vec3::new(0.0, 0.0, 0.0); 4],
+            dist: [-1.0; 4]
+        };
 
-        assert!(min_d >= 0.0);
-
-        // Find nearby cells.
-        let mut nearby_cells: Vec<Neighbor> = Vec::with_capacity(
-            (self.nuclei_per_region as usize) * 5 * 5 * 5);
-        let nucleus_region = Vector3::new(
-                nucleus_indices.x, nucleus_indices.y, nucleus_indices.z
-        );
-        self.visit_super_cluster(nucleus_region, &mut |nucleus2, indices2 | {
-            // Skip the nucleus that is this cell's nucleus.
-            if indices2 == nucleus_indices {
-                return;
-            }
-
-            let rel_pos = nucleus2 - nucleus;
-            let distance = nucleus.distance2(nucleus2);
-
-            nearby_cells.push(Neighbor {
-                nucleus: nucleus2,
-                indices: indices2,
-                rel_pos,
-                distance
-            })
-        });
-        nearby_cells.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
-
-        // Find neighbors from nearby cells.
-        let mut neighbors: Vec<Neighbor> = Vec::new();
-        for nearby in nearby_cells {
-            let mut excluded = false;
-            for neighbor in &neighbors {
-                let near_dir = nearby.rel_pos.normalize();
-                let neighbor_dir = neighbor.rel_pos.normalize();
-                let angle_cos = near_dir.dot(neighbor_dir);
-
-                // If cos of angle < 0 then angle is > 90 degrees.
-                if angle_cos < 0.0 {
-                    continue;
-                }
-
-                if nearby.distance * angle_cos > neighbor.distance {
-                    excluded = true;
-                    break;
-                }
-            }
-
-            if !excluded {
-                neighbors.push(nearby);
-            }
-        }
-
-        // Create cell
-        Cell {
-            nucleus,
-            indices: nucleus_indices,
-            neighbors
-        }
-    }
-
-    /// Find indices of cell with nucleus closes to the passed point.
-    pub fn cell_indices(&self, v: Vec3) -> Vector4<i64> {
-        let mut min_d: f64 = -1.0;
-        let mut closest_indices: Vector4<i64> = Vector4::new(0, 0, 0, 0);
-        self.visit_cluster(self.region(v), &mut |nucleus, indices| {
-            let d = nucleus.distance2(v);
-            if min_d < 0.0 || d < min_d {
-                min_d = d;
-                closest_indices = indices;
-            }
-        });
-        assert!(min_d >= 0.0);
-        closest_indices
-    }
-
-    /// Visit all nuclei in the identified region and all regions
-    /// adjacent to it.
-    ///
-    /// The visited regions form a 3x3x3 cube.
-    pub fn visit_cluster(
-            &self,
-            center_indices: Vector3<i64>,
-            f: &mut FnMut(Vec3, Vector4<i64>)
-    ) {
-        for i in -1..2 {
-            for j in -1..2 {
-                for k in -1..2 {
-                    let region_points = self.region_points(Vector3::new(
-                        center_indices.x + i,
-                        center_indices.y + j,
-                        center_indices.z + k
-                    ));
-                    for m in 0..self.nuclei_per_region {
-                        let nucleus: Vec3 = region_points[m as usize];
-                        let indices = Vector4::new(i, j, k, m as i64);
-                        f(nucleus, indices);
-                    }
-                }
-            }
-        }
-    }
-
-    /// Visit all nuclei in the identified region and all regions
-    /// adjacent to it.
-    ///
-    /// The visited regions form a 5x5x5 cube, excepting the outermost
-    /// corners (-2, -2, -2), (2, 2, 2), etc
-    pub fn visit_super_cluster(
-        &self,
-        center_indices: Vector3<i64>,
-        f: &mut FnMut(Vec3, Vector4<i64>)
-    ) {
         for i in -2i64..3 {
             for j in -2i64..3 {
                 for k in -2i64..3 {
@@ -203,19 +65,55 @@ impl VoronoiSpace {
                         continue;
                     }
 
-                    let region_points = self.region_points(Vector3::new(
-                        center_indices.x + i,
-                        center_indices.y + j,
-                        center_indices.z + k
-                    ));
-                    for m in 0..self.nuclei_per_region {
-                        let nucleus: Vec3 = region_points[m as usize];
-                        let indices = Vector4::new(i, j, k, m as i64);
-                        f(nucleus, indices);
+                    // Get indices of visted region
+                    let indices = Vector3::new(
+                        v_region.x + i,
+                        v_region.y + j,
+                        v_region.z + k
+                    );
+
+                    // Get point
+                    let p = self.region_point(indices);
+                    let d2 = p.distance2(v);
+
+                    // Find place to store point
+                    let mut place = 4;
+                    while place > 0 {
+                        if result.dist[place - 1] < 0.0 ||
+                                d2 < result.dist[place - 1] {
+                            place -= 1;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    // Place point in result and shift others.
+                    let mut t1_i = indices;
+                    let mut t1_p = p;
+                    let mut t1_d = d2;
+                    while place < 4 {
+                        let t2_i = result.regions[place];
+                        let t2_p = result.points[place];
+                        let t2_d = result.dist[place];
+                        result.regions[place] = t1_i;
+                        result.points[place] = t1_p;
+                        result.dist[place] = t1_d;
+                        t1_i = t2_i;
+                        t1_p = t2_p;
+                        t1_d = t2_d;
+
+                        place += 1;
                     }
                 }
             }
         }
+
+        result.dist[0] = result.dist[0].sqrt();
+        result.dist[1] = result.dist[1].sqrt();
+        result.dist[2] = result.dist[2].sqrt();
+        result.dist[3] = result.dist[3].sqrt();
+
+        result
     }
 
     // Helper functions
@@ -223,7 +121,7 @@ impl VoronoiSpace {
     /// Get region which contains passed position vector
     ///
     /// Returns Vector3 of the regions x, y, z indices.
-    fn region(&self, v: Vec3) -> cgmath::Vector3<i64> {
+    pub fn region(&self, v: Vec3) -> cgmath::Vector3<i64> {
         Vector3::new(
             (v.x / self.region_shape.x).floor() as i64,
             (v.y / self.region_shape.y).floor() as i64,
@@ -231,24 +129,11 @@ impl VoronoiSpace {
         )
     }
 
-    /// Gets position of each point in a region.
-    fn region_points(&self, region: Vector3<i64>) -> Vec<Vec3> {
-        let mut vec = Vec::with_capacity(self.nuclei_per_region as usize);
-
-        for i in 0..self.nuclei_per_region {
-            vec.push(self.region_point(region, i));
-        }
-
-        return vec
-    }
-
     /// Gets position of region point of index i in world space.
-    fn region_point(&self, region: Vector3<i64>, i: u8) -> Vec3 {
-        let hash: u32 = hash_indices(self.seed, Vector4::new(
-            region.x, region.y, region.z, i as i64
-        ));
+    fn region_point(&self, indices: Vector3<i64>) -> Vec3 {
+        let hash: u32 = hash_indices(self.seed, indices);
         let region_pos = component_multiply(self.region_shape, rand3(hash));
-        return self.region_origin(region) + region_pos;
+        return self.region_origin(indices) + region_pos;
     }
 
     /// Gets the origin point of a region.
@@ -260,44 +145,6 @@ impl VoronoiSpace {
             self.region_shape.y * region.y as f64,
             self.region_shape.z * region.z as f64
         )
-    }
-
-    // Getters + Setters
-
-    pub fn set_nuclei_per_region(self, n: u8) -> Self {
-        Self {
-                nuclei_per_region: n,
-                ..self
-        }
-    }
-
-    pub fn nuclei_per_region(self) -> u8 {
-        self.nuclei_per_region
-    }
-}
-
-
-// --------------------------------------------------------------------
-
-
-impl Cell {
-    fn contains(&self, position: Vec3) -> bool {
-        let rel_pos = position - self.nucleus;
-        let rel_mag2 = rel_pos.magnitude() * 2.0;
-        let rel_dir = rel_pos.normalize();
-        let mut contains = true;
-        for neighbor in &self.neighbors {
-            let neighbor_dir = neighbor.rel_pos.normalize();
-            let angle_cos = neighbor_dir.dot(rel_dir);
-            if angle_cos < 0.0 {
-                continue;
-            }
-            if rel_mag2 * angle_cos > neighbor.distance {
-                contains = false;
-                break;
-            }
-        }
-        return contains;
     }
 }
 
@@ -334,138 +181,32 @@ mod tests {
     }
 
     #[test]
-    fn test_component_wise_vector_multiplication() {
-        let a = Vec3::new(1.0, 2.0, 3.0);
-        let b = Vec3::new(2.0, 3.0, 4.0);
-
-        let r = component_multiply(a, b);
-
-        assert_eq!(r.x, 2.0);
-        assert_eq!(r.y, 6.0);
-        assert_eq!(r.z, 12.0);
-    }
-
-    #[test]
     fn test_region_has_consistent_points() {
         let voronoi = VoronoiSpace::new(0, Vec3::new(10.0, 10.0, 10.0));
 
-        let points1 = voronoi.region_points(Vector3::new(1, 2, 3));
-        let points2 = voronoi.region_points(Vector3::new(1, 2, 3));
+        let point1 = voronoi.region_point(Vector3::new(1, 2, 3));
+        let point2 = voronoi.region_point(Vector3::new(1, 2, 3));
 
-        assert_eq!(
-            VoronoiSpace::DEFAULT_NUCLEI_PER_REGION as usize,
-            points1.len()
-        );
-
-        assert_eq!(points1[0], points2[0]);
-        assert_eq!(points1[1], points2[1]);
-        assert_eq!(points1[2], points2[2]);
-        assert_eq!(points1[3], points2[3]);
-    }
-
-    #[test]
-    fn test_points_differ_within_regions() {
-        let voronoi = VoronoiSpace::new(0, Vec3::new(10.0, 10.0, 10.0));
-
-        let points = voronoi.region_points(Vector3::new(1, 2, 3));
-
-        assert_eq!(
-            VoronoiSpace::DEFAULT_NUCLEI_PER_REGION as usize,
-            points.len()
-        );
-
-        assert_ne!(points[0], points[1]);
-        assert_ne!(points[0], points[2]);
-        assert_ne!(points[0], points[3]);
-        assert_ne!(points[1], points[2]);
-        assert_ne!(points[1], points[3]);
-        assert_ne!(points[2], points[3]);
+        assert_eq!(point1, point2);
     }
 
     #[test]
     fn test_points_differ_between_regions() {
         let voronoi = VoronoiSpace::new(0, Vec3::new(10.0, 10.0, 10.0));
 
-        let points1 = voronoi.region_points(Vector3::new(1, 2, 3));
-        let points2 = voronoi.region_points(Vector3::new(3, 5, 7));
+        let point1 = voronoi.region_point(Vector3::new(1, 2, 3));
+        let point2 = voronoi.region_point(Vector3::new(3, 5, 7));
 
-        assert_eq!(
-            VoronoiSpace::DEFAULT_NUCLEI_PER_REGION as usize,
-            points1.len()
-        );
-
-        assert_ne!(points1[0], points2[0]);
-        assert_ne!(points1[1], points2[1]);
-        assert_ne!(points1[2], points2[2]);
-        assert_ne!(points1[3], points2[3]);
+        assert_ne!(point1, point2);
     }
 
     #[test]
     fn test_points_differ_between_inverse_regions() {
         let voronoi = VoronoiSpace::new(0, Vec3::new(10.0, 10.0, 10.0));
 
-        let points1 = voronoi.region_points(Vector3::new(0, 0, 0));
-        let points2 = voronoi.region_points(Vector3::new(-1, -1, -1));
+        let point1 = voronoi.region_point(Vector3::new(0, 0, 0));
+        let point2 = voronoi.region_point(Vector3::new(-1, -1, -1));
 
-        assert_eq!(
-            VoronoiSpace::DEFAULT_NUCLEI_PER_REGION as usize,
-            points1.len()
-        );
-
-        assert_ne!(points1[0], points2[0]);
-        assert_ne!(points1[1], points2[1]);
-        assert_ne!(points1[2], points2[2]);
-        assert_ne!(points1[3], points2[3]);
-    }
-
-
-    // ----------------------------------------------------------------
-
-
-    #[test]
-    fn test_cell_contains() {
-        let mut neighbors: Vec<Neighbor> = Vec::with_capacity(5);
-
-        neighbors.push(Neighbor {
-            nucleus: Vec3::new(0.0, 3.0, 2.0),
-            indices: Vector4::new(0, 0, 0, 0),  // not used.
-            rel_pos: Vec3::new(0.0, 2.0, 0.0),
-            distance: 2.0
-        });
-        neighbors.push(Neighbor {
-            nucleus: Vec3::new(1.0, 1.0, 2.0),
-            indices: Vector4::new(0, 0, 0, 0),  // not used.
-            rel_pos: Vec3::new(2.0, 0.0, 0.0),
-            distance: 1.0
-        });
-        neighbors.push(Neighbor {
-            nucleus: Vec3::new(-1.5, 3.0, 2.0),
-            indices: Vector4::new(0, 0, 0, 0),  // not used.
-            rel_pos: Vec3::new(-1.5, 0.0, 0.0),
-            distance: 1.5
-        });
-        neighbors.push(Neighbor {
-            nucleus: Vec3::new(0.0, -3.0, 2.0),
-            indices: Vector4::new(0, 0, 0, 0),  // not used.
-            rel_pos: Vec3::new(0.0, -4.0, 0.0),
-            distance: 4.0
-        });
-        neighbors.push(Neighbor {
-            nucleus: Vec3::new(0.0, 0.0, 3.0),
-            indices: Vector4::new(0, 0, 0, 0),  // not used.
-            rel_pos: Vec3::new(0.0, 0.0, 1.0),
-            distance: 1.0
-        });
-
-        let cell = Cell {
-            nucleus: Vec3::new(0.0, 1.0, 2.0),
-            indices: Vector4::new(0, 0, 0, 0),  // Not used.
-            neighbors
-        };
-
-        assert!(cell.contains(Vec3::new(0.0, 1.0, 2.0)));
-        assert!(cell.contains(Vec3::new(0.0, -0.5, 2.25)));
-        assert!(!cell.contains(Vec3::new(0.0, -2.5, 2.25)));
-        assert!(!cell.contains(Vec3::new(0.0, 1.0, 2.6)));
+        assert_ne!(point1, point2);
     }
 }

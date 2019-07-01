@@ -27,6 +27,7 @@ extern crate cgmath;
 extern crate lru_cache;
 extern crate num_traits;
 extern crate wasm_bindgen;
+extern crate noise;
 
 mod voronoi;
 mod surface;
@@ -45,6 +46,8 @@ use world::World;
 // JS Interface Functions
 
 
+/// Create world instance and return its position in memory as a usize
+/// to allow it to be returned to js.
 #[wasm_bindgen]
 pub fn create_world() -> usize {
     let world: Box<World> = Box::new(World::new(88));
@@ -62,6 +65,7 @@ pub fn height(world_pos: usize, x: f64, y: f64, z: f64) -> f64 {
 }
 
 
+/// Release world instance at memory position identified by usize.
 #[wasm_bindgen]
 pub fn release_world(world_pos: usize) {
     let world: *mut World = unsafe { std::mem::transmute(world_pos) };
@@ -71,7 +75,7 @@ pub fn release_world(world_pos: usize) {
 
 #[cfg(test)]
 mod tests {
-    use create_world;
+    use ::{create_world, release_world};
     use height;
 
     #[test]
@@ -102,6 +106,8 @@ mod tests {
             }
         }
 
+        release_world(mem_pos);
+
         let n_samples = 21.0 * 21.0 * 21.0 - 1.0;
         mean /= n_samples;
         abs_mean /= n_samples;
@@ -110,5 +116,21 @@ mod tests {
         assert!(mean < 1000.0);
 
         assert!(abs_mean > 100.0);
+    }
+
+    #[test]
+    fn test_height_changes_gradually() {
+        let mem_pos: usize = create_world();
+
+        let mut h1 = height(mem_pos, 6.3e6, 0.0, 0.0);
+        for i in 1..1000 {
+            let h2 = height(mem_pos, 6.3e6, 0.0, i as f64);
+            let diff = h2 - h1;
+            h1 = h2;
+
+            assert!(diff.abs() < 2.0);
+        }
+
+        release_world(mem_pos);
     }
 }

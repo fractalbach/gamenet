@@ -63,13 +63,12 @@ pub fn component_multiply(a: Vector3<f64>, b: Vector3<f64>) -> Vector3<f64> {
 
 /// Gets u32 hash of passed cell indices Vector4, and combines it
 /// with the passed seed.
-pub fn hash_indices(seed: u32, indices: Vector4<i64>) -> u32 {
+pub fn hash_indices(seed: u32, indices: Vector3<i64>) -> u32 {
     let seed_hash = Wrapping(idx_hash(seed as i64));
     let x_hash = Wrapping(idx_hash(indices.x));
     let y_hash = Wrapping(idx_hash(indices.y));
     let z_hash = Wrapping(idx_hash(indices.z));
-    let w_hash = Wrapping(idx_hash(indices.w));
-    let hash: u32 = (seed_hash + w_hash + x_hash + y_hash + z_hash).0;
+    let hash: u32 = (seed_hash + x_hash + y_hash + z_hash).0;
 
     hash
 }
@@ -119,18 +118,22 @@ pub fn hg_blur(
 }
 
 
-/**
- * Simple utility function that fulfills a common use.
- */
-pub fn xyz<T>(v: Vector4<T>) -> Vector3<T>{
-    Vector3::new(v.x, v.y, v.z)
-}
-
-
 #[cfg(test)]
 mod tests {
     use cgmath::{Vector4, Vector3, Vector2};
-    use util::{idx_hash, hash_indices, rand2, rand3};
+    use util::{idx_hash, hash_indices, rand2, rand3, component_multiply};
+
+    #[test]
+    fn test_component_wise_vector_multiplication() {
+        let a = Vector3::new(1.0, 2.0, 3.0);
+        let b = Vector3::new(2.0, 3.0, 4.0);
+
+        let r = component_multiply(a, b);
+
+        assert_eq!(r.x, 2.0);
+        assert_eq!(r.y, 6.0);
+        assert_eq!(r.z, 12.0);
+    }
 
     #[test]
     fn test_idx_hash() {
@@ -147,17 +150,15 @@ mod tests {
     fn test_hash_indices() {
         let mut mean = 0u32;
 
-        let n_hashes = 10 * 10 * 10 * 10 * 5;
+        let n_hashes = 10 * 10 * 10 * 5;
 
         for i in -5..5 {
             for j in -5..5 {
                 for k in -5..5 {
-                    for m in -5..5 {
-                        for seed in 0..5 {
-                            mean += hash_indices(
-                                seed, Vector4::new(i, j, k, m)
-                            ) / n_hashes;
-                        }
+                    for seed in 0..5 {
+                        mean += hash_indices(
+                            seed, Vector3::new(i, j, k)
+                        ) / n_hashes;
                     }
                 }
             }
