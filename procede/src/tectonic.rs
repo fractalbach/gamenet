@@ -1,14 +1,13 @@
 /// Module containing tectonic plate procedural structs and functions.
 ///
 
-use cgmath::{Vector2, Vector3, vec2};
-use cgmath::MetricSpace;
+use cgmath::{Vector2, Vector3};
 use cgmath::InnerSpace;
 use lru_cache::LruCache;
 
 use voronoi::*;
 use surface::Surface;
-use util::{rand2, hash_indices, vec2arr};
+use util::{hash_indices, vec2arr};
 use noise::{Perlin, Fbm, NoiseFn, Seedable};
 
 
@@ -322,7 +321,6 @@ mod tests {
     use cgmath::Vector3;
 
     use tectonic::*;
-    use voronoi::*;
 
     #[test]
     fn test_plate_motion_differs() {

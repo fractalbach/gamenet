@@ -1,7 +1,7 @@
 
 use std::num::Wrapping;
 
-use cgmath::{Vector2, Vector3, Vector4};
+use cgmath::{Vector2, Vector3};
 use cgmath::InnerSpace;
 use cgmath::MetricSpace;
 
@@ -124,7 +124,7 @@ pub fn vec2arr(v: Vector3<f64>) -> [f64; 3] {
 
 #[cfg(test)]
 mod tests {
-    use cgmath::{Vector4, Vector3, Vector2};
+    use cgmath::{Vector3, Vector2};
     use util::{idx_hash, hash_indices, rand2, rand3, component_multiply};
 
     #[test]

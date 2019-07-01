@@ -53,7 +53,7 @@ mod tests {
     use cgmath::Vector3;
 
     use surface::*;
-    use voronoi::*;
+    use voronoi::VoronoiSpace;
 
     #[test]
     fn test_different_indices_are_produced_from_different_vectors() {

@@ -157,7 +157,6 @@ mod tests {
 
     use cgmath::Vector3;
 
-    use util::component_multiply;
     use voronoi::*;
 
     #[test]

@@ -71,7 +71,7 @@ pub fn height(world_pos: usize, x: f64, y: f64, z: f64) -> f64 {
 #[wasm_bindgen]
 pub fn release_world(world_pos: usize) {
     let world: *mut World = unsafe { std::mem::transmute(world_pos) };
-    unsafe { drop(world) }
+    drop(world)
 }
 
 
