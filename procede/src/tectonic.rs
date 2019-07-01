@@ -2,6 +2,8 @@
 ///
 
 use cgmath::{Vector2, Vector3};
+use cgmath::MetricSpace;
+use cgmath::InnerSpace;
 use lru_cache::LruCache;
 
 use voronoi::*;
@@ -23,6 +25,7 @@ pub struct TectonicLayer {
     max_base_height: f64,
     mean_base_height: f64,
     base_height_range: f64,
+    max_ridge_height: f64,
     blur_radius: f64,
 }
 
@@ -50,7 +53,8 @@ impl TectonicLayer {
     pub const DEFAULT_CACHE_SIZE: usize = 1_000;
     pub const DEFAULT_MIN_BASE_HEIGHT: f64 = -3920.0;
     pub const DEFAULT_MAX_BASE_HEIGHT: f64 = 1680.0;
-    pub const DEFAULT_BLUR_SIGMA: f64 = 1e5;  // 100km.
+    pub const DEFAULT_BLUR_SIGMA: f64 = 2e5;  // 200km.
+    pub const DEFAULT_MAX_RIDGE_HEIGHT: f64 = 8_000.0;
 
     pub fn new(seed: u32) -> TectonicLayer {
         TectonicLayer {
@@ -78,6 +82,7 @@ impl TectonicLayer {
             ) / 2.0,
             base_height_range: Self::DEFAULT_MAX_BASE_HEIGHT -
                     Self::DEFAULT_MIN_BASE_HEIGHT,
+            max_ridge_height: Self::DEFAULT_MAX_RIDGE_HEIGHT,
             blur_radius: Self::DEFAULT_BLUR_SIGMA,
         }
     }
@@ -92,10 +97,61 @@ impl TectonicLayer {
         );
         let near_result = self.surface.near4(adj_pos);
 
-        self.plate(
-            near_result.regions[0],
-            near_result.points[0]
-        ).unwrap().base_height
+        let nearest_d = near_result.dist[0];
+
+        let mut base_mean = 0.0;
+        let mut base_weight_sum = 1.0;
+        let mut ridge_mean = 0.0;
+        let mut ridge_weight_sum = 0.0;
+        let mut nearest_motion = Vector2::new(0.0, 0.0);
+
+        for i in 0..4 {
+            // Find distance to edge of cell.
+            let edge_dist = (near_result.dist[i] - nearest_d) / 2.0;
+            if edge_dist >= self.blur_radius {
+                continue;
+            }
+
+            // Get plate info
+            let plate_base_height: f64;
+            let plate_motion: Vector2<f64>;
+            {
+                let plate = self.plate(
+                    near_result.regions[i],
+                    near_result.points[i]
+                ).unwrap();
+                plate_base_height = plate.base_height;
+                plate_motion = plate.motion;
+            }
+
+            // Find base height and ridge height.
+            if i == 0 {
+                base_mean += plate_base_height;
+                nearest_motion = plate_motion;
+            } else {
+                let weight = 1.0 - edge_dist / self.blur_radius;
+                base_mean += plate_base_height * weight;
+                base_weight_sum += weight;
+                let (ridge_h, ridge_w) = self.ridge_h(
+                    near_result.points[0],
+                   nearest_motion,
+                   near_result.points[i],
+                   plate_motion,
+                    edge_dist,
+                );
+                ridge_mean += ridge_h;
+                ridge_weight_sum += ridge_w;
+            }
+        }
+        base_mean /= base_weight_sum;
+
+        let mut h = base_mean;
+        if ridge_weight_sum > 0.0 {
+            ridge_mean /= ridge_weight_sum;
+            h += ridge_mean;
+        }
+
+        h
     }
 
     /// Get Plate for the specified direction from planet center.
@@ -112,6 +168,69 @@ impl TectonicLayer {
         self.cache.insert(indices, plate);
 
         self.cache.get_mut(&indices)
+    }
+
+    /// Get ridge height of two plates
+    fn ridge_h(
+        &self,
+        a_nucleus: Vector3<f64>,
+        a_motion: Vector2<f64>,
+        b_nucleus: Vector3<f64>,
+        b_motion: Vector2<f64>,
+        edge_dist: f64,
+    ) -> (f64, f64) {
+        let weight = 1.0 - edge_dist / self.blur_radius;
+        let closing_rate = self.closing_rate(
+            a_nucleus,
+            a_motion,
+            b_nucleus,
+            b_motion
+        );
+        assert!(closing_rate.abs() <= 1.0);
+        let mut ridge_h = closing_rate * self.max_ridge_height * weight;
+        if ridge_h < 0.0 {
+            ridge_h /= -3.0;
+        }
+
+        (ridge_h, weight)
+    }
+
+    /// Get closing rate of two plates.
+    fn closing_rate(
+        &self,
+        a_nucleus: Vector3<f64>,
+        a_motion: Vector2<f64>,
+        b_nucleus: Vector3<f64>,
+        b_motion: Vector2<f64>,
+    ) -> f64 {
+        let a_surf_pos = self.surface.surf_pos(a_nucleus);
+        let b_surf_pos = self.surface.surf_pos(b_nucleus);
+
+        let a_motion3d = Self::lat_lon_2_3d(a_surf_pos, a_motion);
+        let b_motion3d = Self::lat_lon_2_3d(b_surf_pos, b_motion);
+
+        let pos_diff = b_surf_pos - a_surf_pos;
+        let mot_diff = a_motion3d - b_motion3d;
+
+        let angle_cos = pos_diff.normalize().dot(mot_diff.normalize());
+        angle_cos * mot_diff.magnitude() / 2.0
+    }
+
+    /// Convert lat/lon motion vector into 3d.
+    fn lat_lon_2_3d(p: Vector3<f64>, motion: Vector2<f64>) -> Vector3<f64> {
+        let z_axis_vector = Vector3::new(0.0, 0.0, 1.0);
+        let v_norm = p.normalize();
+
+        // Get u_vec and v_vec.
+        let u_vec: Vector3<f64>;
+        if v_norm == z_axis_vector || v_norm == z_axis_vector * -1.0 {
+            u_vec = Vector3::new(0.0, 1.0, 0.0);
+        } else {
+            u_vec = v_norm.cross(z_axis_vector).normalize();
+        }
+        let v_vec = v_norm.cross(u_vec);
+
+        u_vec * motion.x + v_vec * motion.y
     }
 }
 

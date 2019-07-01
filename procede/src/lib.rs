@@ -61,7 +61,9 @@ pub fn height(world_pos: usize, x: f64, y: f64, z: f64) -> f64 {
     let world_ptr: *mut World = unsafe { std::mem::transmute(world_pos) };
     let world: &mut World = unsafe { world_ptr.as_mut().unwrap() };
 
-    world.height(Vec3::new(x, y, z))
+    let h = world.height(Vec3::new(x, y, z));
+    assert_eq!(h, h);
+    h
 }
 
 
@@ -112,7 +114,7 @@ mod tests {
         mean /= n_samples;
         abs_mean /= n_samples;
 
-        assert!(mean > -1000.0);
+        assert!(mean > -2000.0);
         assert!(mean < 1000.0);
 
         assert!(abs_mean > 100.0);
