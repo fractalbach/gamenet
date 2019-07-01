@@ -8,4 +8,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 cgmath = "0.17.0"
+lru-cache = "0.1.2"
 noise = "0.5.1"
+num-traits = "0.2"
+wasm-bindgen = "0.2"

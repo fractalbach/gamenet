@@ -15,7 +15,6 @@ private const val MOUSE_TRAVERSE_COEF = 0.003
 class TestMover(name: String="", id: String=""): TerrestrialMover(name, id) {
     override var threeObject: Object3D = makeMesh()
 
-
     init {
         threeObject.castShadow = true
         threeObject.receiveShadows = true

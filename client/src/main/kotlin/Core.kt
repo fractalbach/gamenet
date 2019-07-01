@@ -1,5 +1,6 @@
 import exception.DocumentError
 import exception.GameException
+import module.Procede
 import org.w3c.dom.Element
 import kotlin.browser.document
 import kotlin.browser.window
@@ -10,14 +11,14 @@ const val LOGIC_HZ: Double = 60.0
 const val STEP_DELTA_MS: Double = 1000.0 / LOGIC_HZ
 
 /** Maximum DeltaT, above which some action to correct or exit should occur */
-const val DELTA_T_LIMIT_MS: Double = 1e4
+const val DELTA_T_LIMIT_MS: Double = 2e4
 
 
 /**
  * The game Core object contains the game main loop, and handles timing,
  * and calling of logic updates, and rendering.
  */
-class Core(val args: Array<String>) {
+class Core {
 
     /**
      * Data-Class whose instances store information about specific
@@ -58,6 +59,8 @@ class Core(val args: Array<String>) {
     val connection: ServerConnection = ServerConnection()
     /** Handles parsing of received events */
     val eventHandler: EventHandler = EventHandler()
+    /** Displays runtime debug information */
+    val debugInfo = DebugInfo()
 
     private var deltaTMs: Double = 0.0 // ms not-yet-run simulation time
     private var lastFrameTimeMs: Double = 0.0 // timestamp of last update call
@@ -120,6 +123,7 @@ class Core(val args: Array<String>) {
         }
 
         scene.render()
+        debugInfo.update()
         window.requestAnimationFrame { update(it) } // request next frame
     }
 
@@ -137,17 +141,30 @@ class Core(val args: Array<String>) {
  */
 @Suppress("unused")  // Called from js at program start.
 @JsName("startCore")
-fun startCore(args: Array<String>) {
-    if (js("Module.ready") != true) {
-
-        Logger.getLogger("Core").info("Module not yet ready.")
+fun startCore() {
+    if (!Procede.ready()) {
+        Logger.getLogger("Core").info("Procede not yet ready.")
         window.setTimeout(
-                { startCore(args) },
+                { startCore() },
                 500
         )
         return // come back later
     }
-    val core = Core(args)
+
+    val settings: dynamic = getSettings()
+    Logger.getLogger("Core").info("Args: $settings")
+    val core = Core()
+
+    if (settings.mode == "simple") {
+        simpleInit(core)
+    } else if (settings.mode == "map") {
+        mapViewInit(core)
+    }
+
     Logger.getLogger("Core").info("Began main loop")
     core.update(0.0)
+}
+
+fun getSettings(): dynamic {
+    return js("window.settings")
 }

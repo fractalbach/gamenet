@@ -30,6 +30,7 @@ const vec3 DIRT_COLOR = vec3(0.74, 0.68, 0.46);
 const vec3 GRASS_COLOR = vec3(0.38, 0.58, 0.15);
 const vec3 RAW_SUN_COLOR = vec3(1.0, 1.0, 0.98);
 
+uniform int u_mode;
 uniform vec3 u_fog_color;
 uniform float u_fog_near;
 uniform float u_fog_far;
@@ -70,7 +71,16 @@ float noise(float depth) {
     return v;
 }
 
-void main() {
+vec3 height_color() {
+    if (v_height >= 0.0) {
+        float x = smoothstep(-3000.0, 3000.0, v_height);
+        return vec3(x, x, x);
+    } else {
+        return vec3(0.3, 0.3, 0.8);
+    }
+}
+
+vec3 standard_color() {
     float depth = gl_FragCoord.z / gl_FragCoord.w;
 
     vec3 color = GRASS_COLOR;
@@ -85,6 +95,16 @@ void main() {
 
     color *= sun_color();
 
+    return color;
+}
+
+void main() {
+    vec3 color;
+    if (u_mode == 0) {
+        color = standard_color();
+    } else if (u_mode == 1) {
+        color = height_color();
+    }
     gl_FragColor = vec4(color, 1.0);
 }
 """
@@ -100,6 +120,7 @@ fun getTerrainMat(
         fog_color: Double3, fog_near: Double, fog_far: Double
 ): ShaderMaterial {
     val uniforms: dynamic = object{}
+    uniforms["u_mode"] = uValue(0)
     uniforms["u_fog_color"] = uValue(
             Vector3(fog_color.x, fog_color.y, fog_color.z)
     )

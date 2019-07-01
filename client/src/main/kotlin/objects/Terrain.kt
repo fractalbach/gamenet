@@ -2,15 +2,15 @@ package objects
 
 import Core
 import Scene
-import Logger
 import Logger.Companion.getLogger
 import com.curiouscreature.kotlin.math.Double2
 import com.curiouscreature.kotlin.math.Double3
 import com.curiouscreature.kotlin.math.abs
 import com.curiouscreature.kotlin.math.cross
+import com.curiouscreature.kotlin.math.dot
 import com.curiouscreature.kotlin.math.length
 import com.curiouscreature.kotlin.math.normalize
-import exception.CException
+import getSettings
 import getTerrainMat
 import info.laht.threekt.THREE.BackSide
 import info.laht.threekt.core.Object3D
@@ -19,6 +19,7 @@ import info.laht.threekt.materials.Material
 import info.laht.threekt.math.Vector3
 import info.laht.threekt.objects.Mesh
 import material.uValue
+import module.Procede
 import org.khronos.webgl.Float32Array
 import util.ObjectPool
 
@@ -49,8 +50,14 @@ private const val SMALL_TEX_CHUNK_SIZE = 6000.0
  *
  * Terrain will maintain a hierarchy of terrain Tiles that provide
  * varying levels of detail depending on camera distance.
+ *
+ * @param id: GameObject id. If not passed, or empty, will be randomly
+ *          generated.
+ * @param mat: Material used for terrain tiles. If not passed or null,
+ *          a default material will be instantiated.
  */
-open class Terrain(id: String=""): GameObject("Terrain", id) {
+open class Terrain(id: String="", mat: Material? = null):
+        GameObject("Terrain", id) {
     companion object {
         private val logger = getLogger("Terrain")
     }
@@ -60,6 +67,10 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     override var threeObject: Object3D = Object3D() // nothing special
 
     val radius = RADIUS
+
+    /** module.Procede generation webassembly module wrapper */
+    val procede = Procede(TERRAIN_SEED)
+
     val faces: Array<Tile> = Array(6) { Tile(this, it) }
     /** Stores tiles no longer in use, but whose geometry can be reused */
     private val tilePile: ObjectPool<Tile> = ObjectPool {
@@ -71,23 +82,13 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     /** Gravitational acceleration of terrestrial objects */
     val gravity: Double = 9.806
 
-    val material = makeMaterial()
+    val material = mat ?: makeMaterial()
 
     // Init -----------------------------------------------------------
 
     init {
-        js("Module.terrain = this")
         // add each face to scene
         faces.forEach { addChild(it) }
-
-        // initialize terrain module
-        val echo: Int = js("_ter_TestEcho(4)") as Int
-        if (echo != 4) {
-            throw CException("Test Function call to C failed. " +
-                    "Is Module set up?")
-        }
-
-        js("_ter_Init($TERRAIN_SEED, $RADIUS, $HEIGHT_SCALE)")
     }
 
     // Actions --------------------------------------------------------
@@ -100,7 +101,7 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
     override fun updateStart(tic: Core.Tic) {
         subdivisionCounter = MAX_TILE_DIVISIONS_PER_TIC
         val sunPos: Double3 = scene!!.sunLight.position
-        val sunRelPos = position - sunPos
+        val sunRelPos = sunPos - position
         (material.unsafeCast<dynamic>()).uniforms.u_dir_light = uValue(Vector3(
                 sunRelPos.x, sunRelPos.y, sunRelPos.z
         ))
@@ -177,9 +178,7 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
      */
     @Suppress("UNUSED_PARAMETER") // used in js
     fun heightAtVector(vector: Double3): Double {
-        return js("_ter_GetHeight(" +
-                "vector.x, vector.y, vector.z, $MAX_LOD)") as Double *
-                HEIGHT_SCALE
+        return procede.height(vector)
     }
 
     /**
@@ -218,13 +217,23 @@ open class Terrain(id: String=""): GameObject("Terrain", id) {
         val dir0 = normalize(sample1 - sample0)
         val dir1 = normalize(sample2 - sample0)
 
-        // Get perpendicular vector
-        return cross(dir0, dir1) * -1.0
+        // Get vector perpendicular to the sample points.
+        var norm: Double3 = cross(dir0, dir1)
+
+        // If normal vector points towards world center, flip it.
+        if (dot(norm, v1) < 0.0) {
+            norm *= -1.0
+        }
+
+        return norm
     }
 
     private fun makeMaterial(): Material {
+        val settings = getSettings()
         val planeMaterial = getTerrainMat(
-                Double3(0.7, 0.7, 0.7), 500.0, 120000.0
+                Double3(0.7, 0.7, 0.7),
+                (settings.fogNear?: 500.0) as Double,
+                (settings.fogFar?: 120000.0) as Double
         )
         //planeMaterial.color = Color(0x3cff00)
         planeMaterial.side = BackSide
@@ -247,7 +256,7 @@ class Tile(private val terrain: Terrain, face: Int,
         GameObject()
 {
     companion object {
-        private val logger = Logger.getLogger("Tile")
+        private val logger = getLogger("Tile")
 
         /**
          * Gets tile-relative position from tile vertex index.
@@ -397,6 +406,7 @@ class Tile(private val terrain: Terrain, face: Int,
             geometry.attributes.position.needsUpdate = true
             geometry.attributes.normal.needsUpdate = true
             geometry.attributes.a_tex_pos.needsUpdate = true
+            geometry.attributes.a_height.needsUpdate = true
 
             threeObject.position.set(pos.x, pos.y, pos.z)
             threeObject.updateMatrix()
@@ -422,15 +432,8 @@ class Tile(private val terrain: Terrain, face: Int,
                 try {
                     val cubeRelPos: Double3 = cubeRelPosFromHeightIndex(it)
                     val normPos: Double3 = normalize(cubeRelPos)
-                    @Suppress("UNUSED_VARIABLE") // used in js
-                    val x: Double = normPos.x
-                    @Suppress("UNUSED_VARIABLE") // used in js
-                    val y: Double = normPos.y
-                    @Suppress("UNUSED_VARIABLE") // used in js
-                    val z: Double = normPos.z
-                    val height: Double =
-                            js("_ter_GetHeight(x, y, z, $MAX_LOD)") as Double
-                    val pos = normPos * (RADIUS + height * HEIGHT_SCALE)
+                    val height = terrain.procede.height(normPos)
+                    val pos = normPos * (RADIUS + height)
                     pos
                 } catch (e: Exception) {
                     logger.error("Error converting height index: $it")
@@ -471,7 +474,10 @@ class Tile(private val terrain: Terrain, face: Int,
             val positionsArray = geometry.getAttribute("position").array
             val normalArray = geometry.getAttribute("normal").array
             val texCoordArray = geometry.getAttribute("a_tex_pos").array
+            val heightArray = geometry.getAttribute("a_height").array
             for (i in 0 until N_TILE_VERTICES) {
+                val (heightIndex: Int, _) = vertexData(i)
+
                 var pos = vertPositions[i]
                 pos -= relativeCenter
                 val normal = vertNormals[i]
@@ -484,10 +490,14 @@ class Tile(private val terrain: Terrain, face: Int,
                 normalArray[vertexStartIndex + 1] = normal.y
                 normalArray[vertexStartIndex + 2] = normal.z
 
-                val texPos: Double3 = smallTexPos(vertPositions[i])
+                val spherePos: Double3 = spherePositions[heightIndex]
+                val texPos: Double3 = smallTexPos(spherePos)
                 texCoordArray[vertexStartIndex] = texPos.x
                 texCoordArray[vertexStartIndex + 1] = texPos.y
                 texCoordArray[vertexStartIndex + 2] = texPos.z
+
+                heightArray[i] = length(spherePos) - terrain.radius
+
             }
             return relativeCenter
         } catch (e: Exception) {
@@ -529,9 +539,8 @@ class Tile(private val terrain: Terrain, face: Int,
         if (parent == null) {
             return Double2(-1.0, -1.0)
         }
-        val quadrant: Int = this.quadrant ?: throw NullPointerException(
-                "Tile.findP1() called when Tile quadrant is null")
-        return when (quadrant) {
+        return when (quadrant ?: throw NullPointerException(
+                "Tile.findP1() called when Tile quadrant is null")) {
             0 -> parent.p1 + shape // middlepoint
             1 -> Double2(parent.p1.x, parent.p1.y + shape.y)
             2 -> parent.p1
@@ -605,6 +614,10 @@ class Tile(private val terrain: Terrain, face: Int,
             val texPosArr = Float32Array(3 * N_TILE_VERTICES)
             geo.addAttribute(
                     "a_tex_pos", js("new THREE.BufferAttribute(texPosArr, 3)")
+            )
+            val heightArr = Float32Array(N_TILE_VERTICES)
+            geo.addAttribute(
+                    "a_height", js("new THREE.BufferAttribute(heightArr, 1)")
             )
             return geo
         }

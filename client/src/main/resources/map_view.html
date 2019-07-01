@@ -2,14 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Open</title>
+    <title>Open Map Viewer</title>
 </head>
 <body>
 
     <div id="container"><br/>Generating...</div>
     <div id="debugInfo"></div>
 
-    <script type="text/javascript" src="config.js"></script>
+    <script>
+        var settings = {
+            "mode": "map",
+            "terrainShader": "standard",
+            "fogFar": 10000000.0,
+            "nearPlane": 10000.0,
+            "farPlane": 1000000.0
+        }
+    </script>
+
     <script type="text/javascript" src="lib/module.js"></script>
     <script type="text/javascript" src="lib/kotlin.js"></script>
     <script type="text/javascript" src="lib/three.min.js"></script>

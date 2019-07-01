@@ -39,7 +39,7 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
     /** World Terrain instance - owner of procedural land tiles */
     val terrain: Terrain = Terrain()
     /** Main Camera which is used to see the world from */
-    val camera: Camera = FollowCamera()
+    var camera: Camera = FollowCamera()
     /** Overhead mono-directional light source. */
     val sunLight = SunLight("SunLight")
     /**
@@ -47,6 +47,14 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
      * Will be adjusted depending on surroundings.
      */
     val ambientLight = AmbientLight("AmbientLight")
+
+    var fogNear: Double
+        get() { return threeScene.fog.near as Double }
+        set(x) { threeScene.fog.near = x}
+
+    var fogFar: Double
+        get() { return threeScene.fog.far as Double }
+        set(x) { threeScene.fog.far = x}
 
     init {
         val r = renderer
@@ -57,12 +65,13 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         js("r.shadowMap.enabled = true;") //enable shadow
         js("r.shadowMap.type = THREE.PCFSoftShadowMap;")
         r.setSize(renderWidth, renderHeight)
+
         // setup threeScene
+        val settings = getSettings()
         threeScene.fog = Fog()
         threeScene.fog.color = Color(0xf0fff0)
-        threeScene.fog.near = 500
-        threeScene.fog.far = 120000 // 1.2e5
-
+        threeScene.fog.near = settings.fogNear?: 500
+        threeScene.fog.far = settings.fogFar?: 120000 // 1.2e5
 
         sunLight.position = Double3(1e9, 1e9, 30.0)
 
@@ -71,12 +80,6 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         add(camera)
         add(sunLight)
         add(ambientLight)
-
-        // test obj
-        val mover = TestMover()
-        mover.position = Double3(6.0, 0.0, 0.0)
-        add(mover)
-        (camera as FollowCamera).follow(mover)
     }
 
     /**
@@ -158,8 +161,11 @@ class Scene(val name: String="Unnamed", var core: Core?=null) {
         }
     }
 
+    /**
+     * Check whether the Scene contains the passed GameObject
+     */
     fun contains(gameObject: GameObject): Boolean {
-        return gameObjects.containsKey(gameObject.id);
+        return gameObjects.containsKey(gameObject.id)
     }
 
     /**
