@@ -72,8 +72,12 @@ float noise(float depth) {
 }
 
 vec3 height_color() {
-    float x = smoothstep(-15000.0, 15000.0, v_height);
-    return vec3(x, x, x);
+    if (v_height >= 0.0) {
+        float x = smoothstep(-3000.0, 3000.0, v_height);
+        return vec3(x, x, x);
+    } else {
+        return vec3(0.3, 0.3, 0.8);
+    }
 }
 
 vec3 standard_color() {
