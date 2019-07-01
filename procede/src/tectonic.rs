@@ -1,15 +1,15 @@
 /// Module containing tectonic plate procedural structs and functions.
 ///
 
-use cgmath::{Vector2, Vector3};
+use cgmath::{Vector2, Vector3, vec2};
 use cgmath::MetricSpace;
 use cgmath::InnerSpace;
 use lru_cache::LruCache;
 
 use voronoi::*;
 use surface::Surface;
-use util::{rand2, hash_indices};
-use noise::{Perlin, NoiseFn, Seedable};
+use util::{rand2, hash_indices, vec2arr};
+use noise::{Perlin, Fbm, NoiseFn, Seedable};
 
 
 /// Highest level tectonic struct. Functions provide access to
@@ -18,9 +18,11 @@ pub struct TectonicLayer {
     seed: u32,
     surface: Surface,
     cache: LruCache<Vector3<i64>, Plate>,
-    h_perlin: Perlin,
-    x_motion_perlin: Perlin,
-    y_motion_perlin: Perlin,
+    h_noise: Fbm,
+    x_motion_noise: Fbm,
+    y_motion_noise: Fbm,
+    pos_noise: Fbm,
+    ridge_noise: Perlin,
     min_base_height: f64,
     max_base_height: f64,
     mean_base_height: f64,
@@ -48,7 +50,7 @@ struct Plate {
 
 
 impl TectonicLayer {
-    pub const DEFAULT_REGION_WIDTH: f64 = 2.8e6;
+    pub const DEFAULT_REGION_WIDTH: f64 = 3.0e6;
     pub const DEFAULT_RADIUS: f64 = 6.357e6;
     pub const DEFAULT_CACHE_SIZE: usize = 1_000;
     pub const DEFAULT_MIN_BASE_HEIGHT: f64 = -3920.0;
@@ -71,9 +73,11 @@ impl TectonicLayer {
                 Self::DEFAULT_RADIUS,
             ),
             cache: LruCache::new(Self::DEFAULT_CACHE_SIZE),
-            h_perlin: Perlin::new().set_seed(seed),
-            x_motion_perlin: Perlin::new().set_seed(seed + 1),
-            y_motion_perlin: Perlin::new().set_seed(seed + 2),
+            h_noise: Fbm::new().set_seed(seed),
+            x_motion_noise: Fbm::new().set_seed(seed + 100),
+            y_motion_noise: Fbm::new().set_seed(seed + 200),
+            pos_noise: Fbm::new().set_seed(seed + 300),
+            ridge_noise: Perlin::new().set_seed(seed + 400),
             min_base_height: Self::DEFAULT_MIN_BASE_HEIGHT,
             max_base_height: Self::DEFAULT_MAX_BASE_HEIGHT,
             mean_base_height: (
@@ -90,11 +94,7 @@ impl TectonicLayer {
     /// Gets height at surface position identified by direction vector
     /// from origin.
     pub fn height(&mut self, v: Vector3<f64>) -> f64 {
-        let adj_pos = Vector3::new(
-            v.x,
-            v.y,
-            v.z / 0.7,
-        );
+        let adj_pos = self.adjust_pos(v);
         let near_result = self.surface.near4(adj_pos);
 
         let nearest_d = near_result.dist[0];
@@ -133,6 +133,7 @@ impl TectonicLayer {
                 base_mean += plate_base_height * weight;
                 base_weight_sum += weight;
                 let (ridge_h, ridge_w) = self.ridge_h(
+                    adj_pos,
                     near_result.points[0],
                    nearest_motion,
                    near_result.points[i],
@@ -148,10 +149,30 @@ impl TectonicLayer {
         let mut h = base_mean;
         if ridge_weight_sum > 0.0 {
             ridge_mean /= ridge_weight_sum;
-            h += ridge_mean;
+            h += self.ridge_invert(ridge_mean, base_mean);
         }
 
         h
+    }
+
+    /// Adjust input world position
+    fn adjust_pos(&self, v: Vector3<f64>) -> Vector3<f64> {
+        let v = v.normalize();
+        let noise_amp = 0.6;
+        let noise_frq = 0.6;
+        let x_noise = self.pos_noise.get(vec2arr(v * noise_frq)) * noise_amp;
+        let y_noise = self.pos_noise.get(
+            vec2arr(v * noise_frq + Vector3::new(0.5, 0.0, 0.0) * noise_frq)
+        ) * noise_amp;
+        let z_noise = self.pos_noise.get(
+            vec2arr(v * noise_frq - Vector3::new(0.7, 0.0, 0.0) * noise_frq)
+        ) * noise_amp;
+
+        Vector3::new(
+            v.x + x_noise,
+            v.y + y_noise,
+            (v.z + z_noise) * 0.66,
+        )
     }
 
     /// Get Plate for the specified direction from planet center.
@@ -173,6 +194,7 @@ impl TectonicLayer {
     /// Get ridge height of two plates
     fn ridge_h(
         &self,
+        v: Vector3<f64>,
         a_nucleus: Vector3<f64>,
         a_motion: Vector2<f64>,
         b_nucleus: Vector3<f64>,
@@ -187,12 +209,24 @@ impl TectonicLayer {
             b_motion
         );
         assert!(closing_rate.abs() <= 1.0);
-        let mut ridge_h = closing_rate * self.max_ridge_height * weight;
+        let noise = self.ridge_noise.get(vec2arr(v));
+        let amp = weight * (0.8 + sign_safe_sqrt(noise));
+        let mut ridge_h = closing_rate * self.max_ridge_height * amp;
         if ridge_h < 0.0 {
-            ridge_h /= -3.0;
+            ridge_h /= 3.0;
         }
 
         (ridge_h, weight)
+    }
+
+    fn ridge_invert(&self, ridge_h: f64, base_h: f64) -> f64 {
+        if base_h > 1000.0 {
+            return ridge_h;
+        } else if base_h < -1000.0 {
+            return -ridge_h;
+        }
+        let scale = base_h / 1000.0;
+        ridge_h * scale
     }
 
     /// Get closing rate of two plates.
@@ -247,16 +281,16 @@ impl Plate {
     ) -> Self {
         let hash = hash_indices(seed, indices);
         let sample_p = layer.surface.surf_pos(nucleus) / 6.3e6;
-        let perlin = layer.h_perlin.get([
+        let noise = layer.h_noise.get([
             sample_p.x,
             sample_p.y,
-            sample_p.z
+            sample_p.z / 0.66
         ]);
-        let base_height = perlin * layer.base_height_range / 2.0 +
-            layer.mean_base_height;
+        let base_height = sign_safe_sqrt(noise) *
+            layer.base_height_range / 2.0 + layer.mean_base_height;
         let motion = Vector2::new(
-            layer.x_motion_perlin.get([sample_p.x, sample_p.y, sample_p.z]),
-            layer.y_motion_perlin.get([sample_p.x, sample_p.y, sample_p.z]),
+            layer.x_motion_noise.get([sample_p.x, sample_p.y, sample_p.z]),
+            layer.y_motion_noise.get([sample_p.x, sample_p.y, sample_p.z]),
         );
 
         Plate {
@@ -266,6 +300,16 @@ impl Plate {
             motion,
             base_height,
         }
+    }
+}
+
+fn sign_safe_sqrt(x: f64) -> f64 {
+    if x == 0.0 {
+        return 0.0;
+    } else if x > 0.0 {
+        return x.sqrt();
+    } else {
+        return -((-x).sqrt());
     }
 }
 

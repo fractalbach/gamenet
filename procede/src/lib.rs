@@ -50,7 +50,7 @@ use world::World;
 /// to allow it to be returned to js.
 #[wasm_bindgen]
 pub fn create_world() -> usize {
-    let world: Box<World> = Box::new(World::new(88));
+    let world: Box<World> = Box::new(World::new(13));
 
     unsafe { std::mem::transmute(Box::into_raw(world)) }
 }

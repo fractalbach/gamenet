@@ -117,6 +117,10 @@ pub fn hg_blur(
     h_sum / density_sum
 }
 
+pub fn vec2arr(v: Vector3<f64>) -> [f64; 3] {
+    [v.x, v.y, v.z]
+}
+
 
 #[cfg(test)]
 mod tests {
