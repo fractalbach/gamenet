@@ -7,18 +7,29 @@
 ///
 /// ### Tectonic:
 ///     For a given point...
-///         * Perform gaussian blurring from N sample points:
-///             * get base height from nearest plate nuclei.
-///             * get ridge / trench height mod from distance to
-///                 cell border.
+///         * get base height from nearest plate nuclei.
+///         * get ridge / trench height mod from distance to
+///             cell border.
 ///         * cache?
 ///
 /// ### River:
 ///     For a given surface point...
+///         * Get tectonic cell indices
 ///         * Get cell nuclei.
 ///         * Check for cached map.
 ///             * If not cached:
-///             * Get
+///             * Create river graph
+///                 * Create delaunay graph
+///                 * Get Delaunay centers
+///                 * Check if inside tectonic cell or in body of water
+///                         and adjacent to cell.
+///                     * If underwater and adjacent, mark as mouth.
+///                 * Connect to neighbors
+///             * propagate uphill from river mouths (Randomly?)
+///             * Set Strahler number for each point.
+///         * Find nearest river edge (between nodes).
+///         * Set height as function of distance to nearest edge.
+///             (and Strahler number?)
 ///
 /// ### SubRiver:
 ///
