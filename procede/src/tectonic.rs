@@ -307,8 +307,14 @@ impl Plate {
             sample_p.y,
             sample_p.z / 0.66
         ]);
+
+        // Divide by 1.86 instead of 2.0 to make up some of the scale
+        // lost by Fbm noise, which often is between -0.5 to 0.5
+        //
+        // This gets the land/surface ratio closer to what's
+        // desired (0.3)
         let base_height = sign_safe_sqrt(noise) *
-            layer.base_height_range / 2.0 + layer.mean_base_height;
+            layer.base_height_range / 1.86 + layer.mean_base_height;
         let motion = Vector2::new(
             layer.x_motion_noise.get(vec2arr(sample_p)),
             layer.y_motion_noise.get(vec2arr(sample_p)),
