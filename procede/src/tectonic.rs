@@ -11,6 +11,9 @@ use util::{hash_indices, vec2arr};
 use noise::{Perlin, Fbm, NoiseFn, Seedable};
 
 
+// --------------------------------------------------------------------
+
+
 /// Highest level tectonic struct. Functions provide access to
 /// individual plates.
 pub struct TectonicLayer {
@@ -30,6 +33,12 @@ pub struct TectonicLayer {
     blur_radius: f64,
 }
 
+/// Struct used to return height and related info about a position.
+#[derive(Clone)]
+pub struct TectonicInfo {
+    pub height: f64,
+    pub indices: Vector3<i64>,
+}
 
 /// Individual tectonic Plate.
 ///
@@ -92,7 +101,7 @@ impl TectonicLayer {
 
     /// Gets height at surface position identified by direction vector
     /// from origin.
-    pub fn height(&mut self, v: Vector3<f64>) -> f64 {
+    pub fn height(&mut self, v: Vector3<f64>) -> TectonicInfo {
         let adj_pos = self.adjust_pos(v);
         let near_result = self.surface.near4(adj_pos);
 
@@ -151,7 +160,7 @@ impl TectonicLayer {
             h += self.ridge_invert(ridge_mean, base_mean);
         }
 
-        h
+        TectonicInfo::new(h, near_result.regions[0])
     }
 
     /// Adjust input world position
@@ -264,6 +273,19 @@ impl TectonicLayer {
         let v_vec = v_norm.cross(u_vec);
 
         u_vec * motion.x + v_vec * motion.y
+    }
+}
+
+
+// --------------------------------------------------------------------
+
+
+impl TectonicInfo {
+    pub fn new(h: f64, indices: Vector3<i64>) -> TectonicInfo {
+        TectonicInfo {
+            height: h,
+            indices,
+        }
     }
 }
 
