@@ -38,6 +38,7 @@ pub struct TectonicLayer {
 pub struct TectonicInfo {
     pub height: f64,
     pub indices: Vector3<i64>,
+    pub nucleus: Vector3<f64>,
 }
 
 /// Individual tectonic Plate.
@@ -160,7 +161,11 @@ impl TectonicLayer {
             h += self.ridge_invert(ridge_mean, base_mean);
         }
 
-        TectonicInfo::new(h, near_result.regions[0])
+        TectonicInfo {
+            height: h,
+            indices: near_result.regions[0],
+            nucleus: near_result.points[0],
+        }
     }
 
     /// Adjust input world position
@@ -273,19 +278,6 @@ impl TectonicLayer {
         let v_vec = v_norm.cross(u_vec);
 
         u_vec * motion.x + v_vec * motion.y
-    }
-}
-
-
-// --------------------------------------------------------------------
-
-
-impl TectonicInfo {
-    pub fn new(h: f64, indices: Vector3<i64>) -> TectonicInfo {
-        TectonicInfo {
-            height: h,
-            indices,
-        }
     }
 }
 
