@@ -33,7 +33,7 @@
 ///
 /// ### SubRiver:
 ///
-///
+
 extern crate cgmath;
 extern crate lru_cache;
 extern crate num_traits;
@@ -41,6 +41,7 @@ extern crate wasm_bindgen;
 extern crate noise;
 
 mod voronoi;
+mod river;
 mod surface;
 mod tectonic;
 mod util;

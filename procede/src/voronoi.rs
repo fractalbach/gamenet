@@ -108,6 +108,10 @@ impl VoronoiSpace {
             }
         }
 
+        // Originally, the distance squared was stored, which allows
+        // efficient comparison of distances.
+        // Here, these dist^2 values are converted to the true
+        // Euclidean distance.
         result.dist[0] = result.dist[0].sqrt();
         result.dist[1] = result.dist[1].sqrt();
         result.dist[2] = result.dist[2].sqrt();
@@ -130,7 +134,7 @@ impl VoronoiSpace {
     }
 
     /// Gets position of region point of index i in world space.
-    fn region_point(&self, indices: Vector3<i64>) -> Vec3 {
+    pub fn region_point(&self, indices: Vector3<i64>) -> Vec3 {
         let hash: u32 = hash_indices(self.seed, indices);
         let region_pos = component_multiply(self.region_shape, rand3(hash));
         return self.region_origin(indices) + region_pos;
