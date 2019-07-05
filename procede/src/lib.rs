@@ -34,6 +34,7 @@
 /// ### SubRiver:
 ///
 
+extern crate assert_approx_eq;
 extern crate cgmath;
 extern crate lru_cache;
 extern crate num_traits;

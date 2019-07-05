@@ -102,6 +102,38 @@ impl HexGraph {
             _ => panic!("Unexpected sequence index: {}", i)
         }
     }
+
+    /// Gets indices of neighbors sharing an edge with a vertex.
+    fn neighbors(&self, indices: Vector2<i64>) -> [Vector2<i64>; 3] {
+        // Get index within 4 vertex sequence.
+        // This statement is a workaround for the '%' operator
+        // producing the remainder, rather than the modulo.
+        let i = ((indices.y % 4) + 4) % 4;
+
+        match i {
+            0 => [
+                Vector2::new(indices.x, indices.y + 1),
+                Vector2::new(indices.x, indices.y - 1),
+                Vector2::new(indices.x - 1, indices.y - 1)
+            ],
+            1 => [
+                Vector2::new(indices.x, indices.y + 1),
+                Vector2::new(indices.x, indices.y - 1),
+                Vector2::new(indices.x - 1, indices.y + 1)
+            ],
+            2 => [
+                Vector2::new(indices.x, indices.y + 1),
+                Vector2::new(indices.x + 1, indices.y - 1),
+                Vector2::new(indices.x, indices.y - 1)
+            ],
+            3 => [
+                Vector2::new(indices.x, indices.y + 1),
+                Vector2::new(indices.x + 1, indices.y + 1),
+                Vector2::new(indices.x, indices.y - 1)
+            ],
+            _ => panic!("Unexpected sequence index: {}", i)
+        }
+    }
 }
 
 
@@ -110,7 +142,9 @@ impl HexGraph {
 
 #[cfg(test)]
 mod tests {
+    use assert_approx_eq::assert_approx_eq;
     use cgmath::Vector2;
+    use cgmath::MetricSpace;
 
     use river::HexGraph;
 
@@ -152,7 +186,7 @@ mod tests {
     }
 
     #[test]
-    fn test_graph_vertices_are_where_expected() {
+    fn test_graph_vertex_pos() {
         let graph = HexGraph::new(1.0);
 
         let p00 = graph.pos(Vector2::new(0, 0));
@@ -174,5 +208,67 @@ mod tests {
         assert_vec_near!(pn12, Vector2::new(-0.866025403, 1.5));
         assert_vec_near!(p12, Vector2::new(2.598076211353316, 1.5));
         assert_vec_near!(p10, Vector2::new(1.7320508, 0.0));
+    }
+
+    #[test]
+    fn test_graph_neighbors_of_i0() {
+        let graph = HexGraph::new(1.0);
+
+        let neighbors = graph.neighbors(Vector2::new(0, 0));
+        assert_eq!(neighbors[0], Vector2::new(0, 1));
+        assert_eq!(neighbors[1], Vector2::new(0, -1));
+        assert_eq!(neighbors[2], Vector2::new(-1, -1));
+    }
+
+    #[test]
+    fn test_graph_neighbors_of_i1() {
+        let graph = HexGraph::new(1.0);
+
+        let neighbors = graph.neighbors(Vector2::new(1, 1));
+        assert_eq!(neighbors[0], Vector2::new(1, 2));
+        assert_eq!(neighbors[1], Vector2::new(1, 0));
+        assert_eq!(neighbors[2], Vector2::new(0, 2));
+    }
+
+    #[test]
+    fn test_graph_neighbors_of_i2() {
+        let graph = HexGraph::new(1.0);
+
+        let neighbors = graph.neighbors(Vector2::new(-1, 2));
+        assert_eq!(neighbors[0], Vector2::new(-1, 3));
+        assert_eq!(neighbors[1], Vector2::new(0, 1));
+        assert_eq!(neighbors[2], Vector2::new(-1, 1));
+    }
+
+    #[test]
+    fn test_graph_neighbors_of_i3() {
+        let graph = HexGraph::new(1.0);
+
+        let neighbors = graph.neighbors(Vector2::new(0, -1));
+        assert_eq!(neighbors[0], Vector2::new(0, 0));
+        assert_eq!(neighbors[1], Vector2::new(1, 0));
+        assert_eq!(neighbors[2], Vector2::new(0, -2));
+    }
+
+    #[test]
+    fn test_neighbor_distances() {
+        let test_indices = [
+            Vector2::new(0, 0),
+            Vector2::new(1, 1),
+            Vector2::new(-1, 2),
+            Vector2::new(0, -1)
+        ];
+
+        let graph = HexGraph::new(1.0);
+        for vertex in &test_indices {
+            let neighbors = graph.neighbors(*vertex);
+
+            for neighbor in &neighbors {
+                let pos0 = graph.pos(*vertex);
+                let pos1 = graph.pos(*neighbor);
+
+                assert_approx_eq!(pos0.distance2(pos1), 1.0, 1e-6);
+            }
+        }
     }
 }

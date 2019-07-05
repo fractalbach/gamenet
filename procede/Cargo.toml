@@ -7,6 +7,7 @@ authors = []
 crate-type = ["cdylib"]
 
 [dependencies]
+assert_approx_eq = "1.1.0"
 cgmath = "0.17.0"
 lru-cache = "0.1.2"
 noise = "0.5.1"
