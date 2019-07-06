@@ -7,9 +7,12 @@ authors = []
 crate-type = ["cdylib"]
 
 [dependencies]
+aabb-quadtree = "0.2.0"
 assert_approx_eq = "1.1.0"
 cgmath = "0.17.0"
+euclid = "0.19.9"
 lru-cache = "0.1.2"
 noise = "0.5.1"
 num-traits = "0.2"
+smallvec = "0.6.10"
 wasm-bindgen = "0.2"

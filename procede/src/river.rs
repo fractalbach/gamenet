@@ -2,6 +2,7 @@
 /// and functions.
 use std::f64;
 
+use aabb_quadtree::{QuadTree, ItemId};
 use cgmath::{Vector2, Vector3};
 use lru_cache::LruCache;
 
@@ -16,14 +17,26 @@ pub struct RiverLayer {
     region_cache: LruCache<Vector3<i64>, Region>,
 }
 
+/// Struct used to return height and related information about
+/// a position from the RiverLayer.
+pub struct RiverInfo {
+    height: f64,
+}
+
 /// A River Region is associated with a single tectonic cell and
 struct Region {
-
+    // segment_tree: TODO
 }
 
 /// River node
 struct Node {
 
+}
+
+/// River segment
+struct Segment {
+    a: Vector2<f64>,
+    b: Vector2<f64>
 }
 
 struct HexGraph {
@@ -52,6 +65,33 @@ impl RiverLayer {
     }
 
     // Height methods
+    pub fn height(
+            &mut self,
+            v: Vector3<f64>,
+            tectonic_info: TectonicInfo,
+            tectonic: &mut TectonicLayer,
+    ) -> RiverInfo {
+        RiverInfo {
+            height: 0.0, // TODO
+        }
+    }
+}
+
+
+// --------------------------------------------------------------------
+
+
+/// River region
+impl Region {
+    fn new(
+        seed: u32,
+        tectonic: &mut TectonicLayer,
+        tectonic_info: TectonicInfo,
+    ) -> Region {
+        Region {
+            // TODO
+        }
+    }
 }
 
 

@@ -34,12 +34,13 @@
 /// ### SubRiver:
 ///
 
+extern crate aabb_quadtree;
 extern crate assert_approx_eq;
 extern crate cgmath;
 extern crate lru_cache;
+extern crate noise;
 extern crate num_traits;
 extern crate wasm_bindgen;
-extern crate noise;
 
 mod voronoi;
 mod river;
