@@ -143,7 +143,7 @@ impl Region {
         };
 
         // Create river segments
-        let segment_tree = Self::create_segments(&nodes, &info.mouths);
+        let segment_tree = Self::create_segments(&nodes, &info.mouths, shape);
 
         Region {
             segment_tree,
@@ -197,15 +197,17 @@ impl Region {
     /// Create river segments from nodes.
     ///
     /// # Arguments
-    /// * `nodes` Reference to Vec of river nodes.
-    /// * `mouths` Reference to Vec of indices indicating the nodes at
-    ///             which rivers begin.
+    /// * `nodes` - Reference to Vec of river nodes.
+    /// * `mouths` - Reference to Vec of indices indicating the nodes
+    ///             at which rivers begin.
+    /// * `shape` - Reference to river node bounds.
     ///
     /// # Return
     /// Searchable QuadTree of river segments.
     fn create_segments(
         nodes: &Vec<Node>,
-        mouths: &Vec<i32>
+        mouths: &Vec<i32>,
+        shape: Rect,
     ) -> QuadTree<Segment> {
         QuadTree::default(shape) // Todo
     }
