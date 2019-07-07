@@ -1,10 +1,10 @@
+//! Module containing a wrapper class for helping use 3d voronoi noise
+//! on a spherical surface.
+
 use cgmath::Vector3;
 use cgmath::InnerSpace;
 
 use voronoi::{VoronoiSpace, NearResult};
-
-//! Module containing a wrapper class for helping use 3d voronoi noise
-//! on a spherical surface.
 
 /// Struct handling retrieval of cells and clusters
 pub struct Surface {
