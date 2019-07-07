@@ -74,49 +74,6 @@ pub fn hash_indices(seed: u32, indices: Vector3<i64>) -> u32 {
 }
 
 
-/// Gaussian height blur.
-///
-/// Intended to be used to blur heights in a map.
-pub fn hg_blur(
-        v: Vector3<f64>,
-        sigma: f64,
-        f: &mut FnMut (Vector3<f64>) -> f64,
-) -> f64 {
-    assert_ne!(v, Vector3::new(0.0, 0.0, 0.0));
-
-    let z_axis_vector = Vector3::new(0.0, 0.0, 1.0);
-    let v_norm = v.normalize();
-
-    // Get u_vec and v_vec.
-    let u_vec: Vector3<f64>;
-    if v_norm == z_axis_vector || v_norm == z_axis_vector * -1.0 {
-        u_vec = Vector3::new(0.0, 1.0, 0.0);
-    } else {
-        u_vec = v_norm.cross(z_axis_vector).normalize();
-    }
-    let v_vec = v_norm.cross(u_vec);
-
-    let step_d = sigma;
-
-    let mut h_sum = 0.0;
-    let mut density_sum = 0.0;
-
-    for u_i in -2..3 {
-        for v_i in -2..3 {
-            let u_offset = u_vec * u_i as f64 * step_d;
-            let v_offset = v_vec * v_i as f64 * step_d;
-            let pos = v + u_offset + v_offset;
-            let dist = v.distance2(pos);
-            // TODO: Replace below line with gaussian density.
-            let density = 1.0 - dist / sigma * 3.0;
-            h_sum += f(pos) * density;
-            density_sum += density;
-        }
-    }
-
-    h_sum / density_sum
-}
-
 pub fn vec2arr(v: Vector3<f64>) -> [f64; 3] {
     [v.x, v.y, v.z]
 }
