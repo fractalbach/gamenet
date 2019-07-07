@@ -74,6 +74,37 @@ pub fn hash_indices(seed: u32, indices: Vector3<i64>) -> u32 {
 }
 
 
+/// Finds U and V vectors for position on surface of a sphere.
+///
+/// # Arguments
+/// * `v` - Vector identifying position on surface of a sphere.
+///             This value does not need to be normalized.
+///
+/// # Returns
+/// * u vector - Vector tangential to the surface, aligned with the
+///             longitude line of the passed position.
+///             (side to side)
+/// * v vector - Vector tangential to the surface, pointing towards
+///             the north pole.
+pub fn sphere_uv_vec(v: Vector3<f64>) -> (Vector3<f64>, Vector3<f64>) {
+    assert_ne!(v, Vector3::new(0.0, 0.0, 0.0));
+
+    let z_axis_vector = Vector3::new(0.0, 0.0, 1.0);
+    let v_norm = v.normalize();
+
+    // Get u_vec and v_vec.
+    let u_vec: Vector3<f64>;
+    if v_norm == z_axis_vector || v_norm == z_axis_vector * -1.0 {
+        u_vec = Vector3::new(0.0, 1.0, 0.0);
+    } else {
+        u_vec = v_norm.cross(z_axis_vector).normalize();
+    }
+    let v_vec = v_norm.cross(u_vec);
+
+    (u_vec, v_vec)
+}
+
+
 pub fn vec2arr(v: Vector3<f64>) -> [f64; 3] {
     [v.x, v.y, v.z]
 }
