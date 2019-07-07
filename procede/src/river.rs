@@ -367,42 +367,6 @@ mod tests {
 
     use river::HexGraph;
 
-    macro_rules! assert_vec_near {
-        ($a:expr, $b:expr) => {{
-            let eps = 1.0e-6;
-            let (a, b) = (&$a, &$b);
-            assert!(
-                (a.x - b.x).abs() < eps && (a.y - b.y) < eps,
-                "assertion failed: `(left !== right)` \
-                 (left: `({:?}, {:?})`, right: `({:?}, {:?})`, \
-                 expect diff: `{:?}`, real diff: `({:?}, {:?})`)",
-                a.x,
-                a.y,
-                b.x,
-                b.y,
-                eps,
-                (a.x - b.x).abs(),
-                (a.y - b.y).abs(),
-            );
-        }};
-        ($a:expr, $b:expr, $eps:expr) => {{
-            let (a, b) = (&$a, &$b);
-            let eps = $eps;
-            assert!(
-                (a.x - b.x).abs() < eps && (a.y - b.y) < eps,
-                "assertion failed: `(left !== right)` \
-                 (left: `({:?}, {:?})`, right: `({:?}, {:?})`, \
-                 expect diff: `{:?}`, real diff: `({:?}, {:?})`)",
-                a.x,
-                a.y,
-                b.x,
-                b.y,
-                eps,
-                (a.x - b.x).abs(),
-                (a.y - b.y).abs(),
-            );
-        }};
-    }
 
     #[test]
     fn test_graph_vertex_pos() {
@@ -418,15 +382,15 @@ mod tests {
         let p12 = graph.pos(Vector2::new(1, 2));
         let p10 = graph.pos(Vector2::new(1, 0));
 
-        assert_vec_near!(p00, Vector2::new(0.0, 0.0));
-        assert_vec_near!(p01, Vector2::new(0.0, 1.0));
-        assert_vec_near!(p02, Vector2::new(0.866025403, 1.5));
-        assert_vec_near!(p03, Vector2::new(0.866025403, 2.5));
-        assert_vec_near!(p04, Vector2::new(0.0, 3.0));
-        assert_vec_near!(p0n1, Vector2::new(0.866025403, -0.5));
-        assert_vec_near!(pn12, Vector2::new(-0.866025403, 1.5));
-        assert_vec_near!(p12, Vector2::new(2.598076211353316, 1.5));
-        assert_vec_near!(p10, Vector2::new(1.7320508, 0.0));
+        assert_vec2_near!(p00, Vector2::new(0.0, 0.0));
+        assert_vec2_near!(p01, Vector2::new(0.0, 1.0));
+        assert_vec2_near!(p02, Vector2::new(0.866025403, 1.5));
+        assert_vec2_near!(p03, Vector2::new(0.866025403, 2.5));
+        assert_vec2_near!(p04, Vector2::new(0.0, 3.0));
+        assert_vec2_near!(p0n1, Vector2::new(0.866025403, -0.5));
+        assert_vec2_near!(pn12, Vector2::new(-0.866025403, 1.5));
+        assert_vec2_near!(p12, Vector2::new(2.598076211353316, 1.5));
+        assert_vec2_near!(p10, Vector2::new(1.7320508, 0.0));
     }
 
     #[test]

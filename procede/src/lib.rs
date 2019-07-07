@@ -42,6 +42,9 @@ extern crate noise;
 extern crate num_traits;
 extern crate wasm_bindgen;
 
+#[macro_use]
+mod test_util;
+
 mod voronoi;
 mod river;
 mod surface;
