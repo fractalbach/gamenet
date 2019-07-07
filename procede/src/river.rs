@@ -7,6 +7,8 @@ use aabb_quadtree::geom::{Rect, Point};
 use cgmath::{Vector2, Vector3};
 use cgmath::InnerSpace;
 use lru_cache::LruCache;
+use std::collections::{VecDeque, HashSet, HashMap};
+use std::usize;
 
 use tectonic::{TectonicLayer, TectonicInfo};
 use util::{hash_indices, sphere_uv_vec};
@@ -34,16 +36,17 @@ struct Region {
 
 /// River node
 struct Node {
-    i: i32,  // Index of Node in river graph.
+    i: usize,  // Index of Node in river graph.
+    indices: Vector2<i64>,
     h: f64,  // Height above mean sea level.
-    neighbors: [i32; 3],  // Neighboring nodes within graph.
-    inlets: [i32; 2],
-    outlet: i32,
+    neighbors: [usize; 3],  // Neighboring nodes within graph.
+    inlets: [usize; 2],
+    outlet: usize,
     strahler: i16
 }
 
 struct GenerationInfo {
-    mouths: Vec<i32>,
+    mouths: Vec<usize>,
     low_corner: Vector2<f64>,
     high_corner: Vector2<f64>,
 }
@@ -120,6 +123,8 @@ impl RiverLayer {
 /// is likely to either border an ocean, or else be bordered by a
 /// mountain range which would realistically separate river basins.
 impl Region {
+    pub const NODE_MEAN_SEPARATION: f64 = 10_000.0;
+
     fn new(
         seed: u32,
         tectonic: &mut TectonicLayer,
@@ -157,12 +162,111 @@ impl Region {
     /// * `seed` - Seed for node graph.
     /// * `tectonic` - Mutable reference to TectonicLayer.
     /// * `tectonic_info` - used to indicate the region.
+    ///
+    /// # Return
+    /// Vec of nodes with all fields except inlets, outlet, and
+    /// strahler set.
     fn create_nodes(
         seed: u32,
         tectonic: &mut TectonicLayer,
         tectonic_info: TectonicInfo,
     ) -> Vec<Node> {
-        Vec::default()  // TODO: Create nodes
+        // Find the first hex index contained within the cell.
+        fn find_first(
+            tectonic: &mut TectonicLayer,
+            cell_indices: Vector3<i64>,
+            hex_graph: &HexGraph
+        ) -> Vector2<i64> {
+            // TODO: Ensure first node is in cell. If not, do quick search.
+            Vector2::new(0, 0)
+        }
+
+        // Run BFS Search until all nodes that are in cell are added
+        // to nodes Vec.
+        // Included indices are added to included set for
+        // quick checking.
+        fn explore_cell(
+            tectonic: &mut TectonicLayer,
+            cell_indices: Vector3<i64>,
+            hex_graph: &HexGraph,
+            first: Vector2<i64>,
+        ) -> (Vec<Node>, HashMap<Vector2<i64>, usize>) {
+            let mut nodes = Vec::new();
+            let mut included = HashMap::with_capacity(100);
+            let mut frontier = VecDeque::with_capacity(100);
+            let mut visited = HashSet::with_capacity(100);
+            frontier.push_back(first);
+            visited.insert(first);
+            while !frontier.is_empty() {
+                let indices = frontier.pop_front().unwrap();
+                let uv = hex_graph.pos(indices);  // TODO: randomize
+                let xyz = Region::uv_to_xyz_norm(uv);
+                let node_info = tectonic.height(xyz);
+                if node_info.indices != cell_indices {
+                    continue;
+                }
+
+                // Add indices to included map and append node to vec.
+                included.insert(indices, nodes.len());
+                let node_i = nodes.len();
+                nodes.push(Node {
+                    i: node_i,
+                    indices,
+                    h: node_info.height,
+                    neighbors: [usize::MAX, usize::MAX, usize::MAX],
+                    inlets: [usize::MAX, usize::MAX],
+                    outlet: usize::MAX,
+                    strahler: -1
+                });
+
+                // Add hex neighbors to frontier.
+                for hex_neighbor in &hex_graph.neighbors(indices) {
+                    if !visited.contains(&hex_neighbor) {
+                        frontier.push_back(*hex_neighbor);
+                    }
+                }
+            }
+
+            (nodes, included)
+        }
+
+        // Set node neighbors.
+        // These are the nodes which are within the cell. If a cell has
+        // fewer than three neighbors, one or more index will be set to
+        // -1 (since usize is unsigned, this will be usize::MAX)
+        fn set_neighbors(
+                nodes: &mut Vec<Node>,
+                included: HashMap<Vector2<i64>, usize>,
+                hex_graph: &HexGraph,
+        ) {
+            for node in nodes {
+                let hex_neighbors = hex_graph.neighbors(node.indices);
+                for (i, neighbor_indices) in hex_neighbors.iter().enumerate() {
+                    // `included` contains node index stored by hex indices key.
+                    let node_index = included.get(neighbor_indices);
+                    if node_index.is_some() {
+                        node.neighbors[i] = *node_index.unwrap();
+                    }
+                }
+            }
+        }
+
+        // Create hex graph to produce nodes.
+        let hex_graph = HexGraph::new(Self::NODE_MEAN_SEPARATION);
+
+        // Find center node.
+        let first = find_first(tectonic, tectonic_info.indices, &hex_graph);
+
+        // Find nodes in cell.
+        let (mut nodes, included) = explore_cell(
+            tectonic,
+            tectonic_info.indices,
+            &hex_graph,
+            first,
+        );
+        set_neighbors(&mut nodes, included, &hex_graph);
+
+        nodes
     }
 
     /// Connects nodes in-place to form rivers.
@@ -180,7 +284,6 @@ impl Region {
             low_corner: Vector2::new(0.0, 0.0),
             high_corner: Vector2::new(0.0, 0.0),
         }
-
     }
 
     /// Finds nodes that represent river mouths.
@@ -206,7 +309,7 @@ impl Region {
     /// Searchable QuadTree of river segments.
     fn create_segments(
         nodes: &Vec<Node>,
-        mouths: &Vec<i32>,
+        mouths: &Vec<usize>,
         shape: Rect,
     ) -> QuadTree<Segment> {
         QuadTree::default(shape) // Todo
@@ -219,7 +322,7 @@ impl Region {
     /// # Arguments
     /// * `v` - Position relative to world center.
     fn height(&self, v: Vector3<f64>) -> RiverInfo {
-        let uv = self.to_uv(v);
+        let uv = self.xyz_to_uv(v);
         let (d, nearest_seg) = self.nearest_segment(uv);
 
         RiverInfo {
@@ -234,8 +337,25 @@ impl Region {
     ///
     /// # Arguments
     /// * `v` - Position relative to world center.
-    fn to_uv(&self, v: Vector3<f64>) -> Vector2<f64> {
+    ///
+    /// # Return
+    /// 2d UV position in plane tangential to region origin.
+    fn xyz_to_uv(&self, v: Vector3<f64>) -> Vector2<f64> {
         Vector2::new(0.0, 0.0)  // Todo: Replace placeholder
+    }
+
+    /// Converts a uv position vector to a 3d world position.
+    ///
+    /// The produced vector identifies a point in 3d space relative
+    /// to the world center.
+    ///
+    /// # Arguments:
+    /// * `uv` - 2d uv position vector.
+    ///
+    /// # Return
+    /// Normalized vector identifying point on surface of world sphere.
+    fn uv_to_xyz_norm(uv: Vector2<f64>) -> Vector3<f64> {
+        Vector3::new(0.0, 0.0, 0.0)  // Todo: Replace placeholder
     }
 
     /// Finds the nearest river segment to a position.
