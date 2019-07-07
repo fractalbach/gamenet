@@ -3,11 +3,12 @@
 use std::f64;
 
 use aabb_quadtree::{QuadTree, ItemId};
+use aabb_quadtree::geom::{Rect, Point};
 use cgmath::{Vector2, Vector3};
 use lru_cache::LruCache;
 
 use tectonic::{TectonicLayer, TectonicInfo};
-use aabb_quadtree::geom::{Rect, Point};
+use util::hash_indices;
 
 
 // --------------------------------------------------------------------
@@ -36,7 +37,7 @@ struct Node {
     neighbors: [i32; 3],  // Neighboring nodes within graph.
     inlets: [i32; 2],
     outlet: i32,
-    stahler: i16
+    strahler: i16
 }
 
 /// River segment
@@ -88,12 +89,13 @@ impl RiverLayer {
             tectonic_info: TectonicInfo,
             tectonic: &mut TectonicLayer,
     ) -> RiverInfo {
-        // TODO: Get Region from cache or create it
-
-        // TODO: Get RiverInfo from region.
-        RiverInfo {
-            height: 0.0, // TODO
+        let indices: Vector3<i64> = tectonic_info.indices;
+        if !self.region_cache.contains_key(&indices) {
+            let region_hash = hash_indices(self.seed, indices);
+            let region = Region::new(region_hash, tectonic, tectonic_info);
+            self.region_cache.insert(indices, region);
         }
+        self.region_cache.get_mut(&indices).unwrap().height(v)
     }
 }
 
@@ -146,7 +148,7 @@ impl Region {
         tectonic: &mut TectonicLayer,
         tectonic_info: TectonicInfo,
     ) -> Vec<Node> {
-        // TODO: Create nodes
+        Vec::default()  // TODO: Create nodes
     }
 
     /// Connects nodes in-place to form rivers.
@@ -159,6 +161,7 @@ impl Region {
     fn generate_rivers(nodes: &mut Vec<Node>) -> Vec<i32> {
         // Todo: Find river mouths
         // Todo: Form Tree using randomized search
+        Vec::default()
     }
 
     /// Finds nodes that represent river mouths.
@@ -169,7 +172,7 @@ impl Region {
     /// # Return
     /// Vector of indices of nodes which are river mouths.
     fn river_mouths(nodes: &Vec<Node>) -> Vec<i32> {
-        // Todo: Search
+        Vec::default()  // Todo: Search
     }
 
     // --------------
@@ -206,8 +209,11 @@ impl Region {
     /// # Returns
     /// * Distance to nearest segment.
     /// * Segment nearest the passed point.
-    fn nearest_segment(uv: Vector2<f64>) -> (f64, Segment) {
-        // TODO: Get distance, nearest segment.
+    fn nearest_segment(&self, uv: Vector2<f64>) -> (f64, Segment) {
+        (  // TODO: Get distance, nearest segment.
+            -1.0,
+            Segment {a: Vector2::new(-1.0, -1.0), b: Vector2::new(1.0, 1.0)}
+        )
     }
 }
 
