@@ -7,6 +7,7 @@ use cgmath::{Vector2, Vector3};
 use lru_cache::LruCache;
 
 use tectonic::{TectonicLayer, TectonicInfo};
+use aabb_quadtree::geom::{Rect, Point};
 
 
 // --------------------------------------------------------------------
