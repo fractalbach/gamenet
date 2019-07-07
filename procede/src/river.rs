@@ -1,5 +1,5 @@
-/// Module containing river procedural generation structs
-/// and functions.
+//! Module containing river procedural generation structs
+//! and functions.
 use std::f64;
 
 use aabb_quadtree::{QuadTree, ItemId};

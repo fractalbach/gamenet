@@ -1,38 +1,38 @@
-/// # Procede
-///
-/// Generates procedural terrain. Called from client and server to
-/// produce height and terrain info.
-///
-/// ## Levels:
-///
-/// ### Tectonic:
-///     For a given point...
-///         * get base height from nearest plate nuclei.
-///         * get ridge / trench height mod from distance to
-///             cell border.
-///         * cache?
-///
-/// ### River:
-///     For a given surface point...
-///         * Get tectonic cell indices
-///         * Get cell nuclei.
-///         * Check for cached map.
-///             * If not cached:
-///             * Create river graph
-///                 * Create delaunay graph
-///                 * Get Delaunay centers
-///                 * Check if inside tectonic cell or in body of water
-///                         and adjacent to cell.
-///                     * If underwater and adjacent, mark as mouth.
-///                 * Connect to neighbors
-///             * propagate uphill from river mouths (Randomly?)
-///             * Set Strahler number for each point.
-///         * Find nearest river edge (between nodes).
-///         * Set height as function of distance to nearest edge.
-///             (and Strahler number?)
-///
-/// ### SubRiver:
-///
+//! # Procede
+//!
+//! Generates procedural terrain. Called from client and server to
+//! produce height and terrain info.
+//!
+//! ## Levels:
+//!
+//! ### Tectonic:
+//!     * For a given point...
+//!         * get base height from nearest plate nuclei.
+//!         * get ridge / trench height mod from distance to
+//!             cell border.
+//!         * cache?
+//!
+//! ### River:
+//!     * For a given surface point...
+//!         * Get tectonic cell indices
+//!         * Get cell nuclei.
+//!         * Check for cached map.
+//!             * If not cached:
+//!             * Create river graph
+//!                 * Create delaunay graph
+//!                 * Get Delaunay centers
+//!                 * Check if inside tectonic cell or in body of water
+//!                         and adjacent to cell.
+//!                     * If underwater and adjacent, mark as mouth.
+//!                 * Connect to neighbors
+//!             * propagate uphill from river mouths (Randomly?)
+//!             * Set Strahler number for each point.
+//!         * Find nearest river edge (between nodes).
+//!         * Set height as function of distance to nearest edge.
+//!             (and Strahler number?)
+//!
+//! ### SubRiver:
+//!
 
 extern crate aabb_quadtree;
 extern crate assert_approx_eq;
@@ -87,6 +87,9 @@ pub fn release_world(world_pos: usize) {
     let world: *mut World = unsafe { std::mem::transmute(world_pos) };
     drop(world)
 }
+
+
+// --------------------------------------------------------------------
 
 
 #[cfg(test)]

@@ -1,15 +1,15 @@
-/// # Voronoi
-///
-/// Specialized voronoi implementation and related helper
-/// functions + types.
-///
-/// ## Terminology:
-///     Nuclei: a Cell center.
-///     Cell: the area of space around a nucleus which is closer to
-///             that nucleus than any other.
-///     Region: An area of space within which N nuclei are generated.
-///     Cluster: A region along with all its adjacent regions.
-///
+//! # Voronoi
+//!
+//! Specialized voronoi implementation and related helper
+//! functions + types.
+//!
+//! ## Terminology:
+//!     Nuclei: a Cell center.
+//!     Cell: the area of space around a nucleus which is closer to
+//!             that nucleus than any other.
+//!     Region: An area of space within which N nuclei are generated.
+//!     Cluster: A region along with all its adjacent regions.
+//!
 
 type Vec3 = cgmath::Vector3<f64>;
 

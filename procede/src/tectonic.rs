@@ -1,5 +1,5 @@
-/// Module containing tectonic plate procedural structs and functions.
-///
+//! Module containing tectonic plate procedural structs and functions.
+//!
 
 use cgmath::{Vector2, Vector3};
 use cgmath::InnerSpace;

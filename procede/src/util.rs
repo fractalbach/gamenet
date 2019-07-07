@@ -3,7 +3,6 @@ use std::num::Wrapping;
 
 use cgmath::{Vector2, Vector3};
 use cgmath::InnerSpace;
-use cgmath::MetricSpace;
 
 // --------------------------------------------------------------------
 
@@ -105,6 +104,7 @@ pub fn sphere_uv_vec(v: Vector3<f64>) -> (Vector3<f64>, Vector3<f64>) {
 }
 
 
+/// Convert vector with 3 f64 elements to an array of 3 f64s.
 pub fn vec2arr(v: Vector3<f64>) -> [f64; 3] {
     [v.x, v.y, v.z]
 }
