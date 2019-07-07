@@ -26,12 +26,17 @@ pub struct RiverInfo {
 
 /// A River Region is associated with a single tectonic cell and
 struct Region {
-    // segment_tree: TODO
+    segment_tree: QuadTree<Segment>
 }
 
 /// River node
 struct Node {
-
+    i: i32,  // Index of Node in river graph.
+    h: f64,  // Height above mean sea level.
+    neighbors: [i32; 3],  // Neighboring nodes within graph.
+    inlets: [i32; 2],
+    outlet: i32,
+    stahler: i16
 }
 
 /// River segment
@@ -66,12 +71,26 @@ impl RiverLayer {
     }
 
     // Height methods
+
+    /// Produces height and related information for a position.
+    ///
+    /// # Arguments
+    /// * `v` - Position in 3d space relative to world center.
+    ///             Will be normalized.
+    /// * `tectonic_info` - Tectonic information for the passed point
+    /// * `tectonic` - Mutable reference to tectonic layer.
+    ///
+    /// # Returns
+    /// RiverInfo containing height and related information.
     pub fn height(
             &mut self,
             v: Vector3<f64>,
             tectonic_info: TectonicInfo,
             tectonic: &mut TectonicLayer,
     ) -> RiverInfo {
+        // TODO: Get Region from cache or create it
+
+        // TODO: Get RiverInfo from region.
         RiverInfo {
             height: 0.0, // TODO
         }
@@ -82,16 +101,113 @@ impl RiverLayer {
 // --------------------------------------------------------------------
 
 
-/// River region
+/// River region.
+///
+/// A River region is associated with a single tectonic cell, and
+/// handles height generation due to river action within its bounds.
+///
+/// A Tectonic cell is an ideal boundary for a river region because it
+/// is likely to either border an ocean, or else be bordered by a
+/// mountain range which would realistically separate river basins.
 impl Region {
     fn new(
         seed: u32,
         tectonic: &mut TectonicLayer,
         tectonic_info: TectonicInfo,
     ) -> Region {
+        // Todo: Get U+V Vectors
+
+        // Todo: Get nucleus surface position mapping
+
+        // Todo: Create nodes
+
+        // Todo: Generate rivers
+
+        // Todo: Replace Placeholder
+        let shape = Rect{
+            top_left: Point {x: -1.0, y: -1.0},
+            bottom_right: Point {x: 1.0, y: 1.0}
+        };
+
+        // Todo: Replace Placeholder
         Region {
-            // TODO
+            segment_tree: QuadTree::default(shape)
         }
+    }
+
+    /// Creates nodes that lie within a river region.
+    ///
+    /// # Arguments
+    /// * `seed` - Seed for node graph.
+    /// * `tectonic` - Mutable reference to TectonicLayer.
+    /// * `tectonic_info` - used to indicate the region.
+    fn create_nodes(
+        seed: u32,
+        tectonic: &mut TectonicLayer,
+        tectonic_info: TectonicInfo,
+    ) -> Vec<Node> {
+        // TODO: Create nodes
+    }
+
+    /// Connects nodes in-place to form rivers.
+    ///
+    /// # Arguments
+    /// * `nodes` River Nodes. This vector will be modified in-place.
+    ///
+    /// # Return
+    /// Vector of river mouth nodes
+    fn generate_rivers(nodes: &mut Vec<Node>) -> Vec<i32> {
+        // Todo: Find river mouths
+        // Todo: Form Tree using randomized search
+    }
+
+    /// Finds nodes that represent river mouths.
+    ///
+    /// # Arguments
+    /// * `nodes` Reference to vector of nodes which will be searched.
+    ///
+    /// # Return
+    /// Vector of indices of nodes which are river mouths.
+    fn river_mouths(nodes: &Vec<Node>) -> Vec<i32> {
+        // Todo: Search
+    }
+
+    // --------------
+
+    /// Gets height at passed position
+    ///
+    /// # Arguments
+    /// * `v` - Position relative to world center.
+    fn height(&self, v: Vector3<f64>) -> RiverInfo {
+        let uv = self.to_uv(v);
+        let (d, nearest_seg) = self.nearest_segment(uv);
+
+        RiverInfo {
+            height: 0.0, // TODO: Replace placeholder
+        }
+    }
+
+    /// Converts a 3d position vector to a 2d uv vector
+    ///
+    /// The produced vector can be used to identify a position
+    /// in the 2d river graph.
+    ///
+    /// # Arguments
+    /// * `v` - Position relative to world center.
+    fn to_uv(&self, v: Vector3<f64>) -> Vector2<f64> {
+        Vector2::new(0.0, 0.0)  // Todo: Replace placeholder
+    }
+
+    /// Finds the nearest river segment to a position.
+    ///
+    /// # Arguments:
+    /// * `uv` - Position in uv space relative to Region center.
+    ///
+    /// # Returns
+    /// * Distance to nearest segment.
+    /// * Segment nearest the passed point.
+    fn nearest_segment(uv: Vector2<f64>) -> (f64, Segment) {
+        // TODO: Get distance, nearest segment.
     }
 }
 
