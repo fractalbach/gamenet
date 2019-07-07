@@ -96,7 +96,7 @@ pub fn sphere_uv_vec(v: Vector3<f64>) -> (Vector3<f64>, Vector3<f64>) {
     if v_norm == z_axis_vector || v_norm == z_axis_vector * -1.0 {
         u_vec = Vector3::new(0.0, 1.0, 0.0);
     } else {
-        u_vec = v_norm.cross(z_axis_vector).normalize();
+        u_vec = z_axis_vector.cross(v_norm).normalize();
     }
     let v_vec = v_norm.cross(u_vec);
 
@@ -113,7 +113,7 @@ pub fn vec2arr(v: Vector3<f64>) -> [f64; 3] {
 #[cfg(test)]
 mod tests {
     use cgmath::{Vector3, Vector2};
-    use util::{idx_hash, hash_indices, rand2, rand3, component_multiply};
+    use util::*;
 
     #[test]
     fn test_component_wise_vector_multiplication() {
@@ -208,5 +208,58 @@ mod tests {
         assert!(mean.y < 0.2);
         assert!(mean.z > -0.2);
         assert!(mean.z < 0.2);
+    }
+
+    #[test]
+    fn test_sphere_uv_vec_basic_use() {
+        let v = Vector3::new(0.3, 0.1, 0.6);
+        let (u_vec, v_vec) = sphere_uv_vec(v);
+
+        assert_gt!(u_vec.y, 0.0);
+        assert_eq!(u_vec.z, 0.0);
+        assert_gt!(v_vec.z, 0.0);
+    }
+
+    #[test]
+    fn test_sphere_uv_vec_basic_use2() {
+        let v = Vector3::new(0.3, 0.1, -0.6);
+        let (u_vec, v_vec) = sphere_uv_vec(v);
+
+        assert_gt!(u_vec.y, 0.0);
+        assert_eq!(u_vec.z, 0.0);
+        assert_gt!(v_vec.z, 0.0);
+    }
+
+    #[test]
+    fn test_sphere_uv_vec_at_north_pole() {
+        let v = Vector3::new(0.0, 0.0, 1.0);
+        let (u_vec, v_vec) = sphere_uv_vec(v);
+
+        assert!(!u_vec.x.is_nan());
+        assert!(!u_vec.y.is_nan());
+        assert!(!v_vec.x.is_nan());
+        assert!(!v_vec.y.is_nan());
+    }
+
+    #[test]
+    fn test_sphere_uv_vec_at_south_pole() {
+        let v = Vector3::new(0.0, 0.0, -1.0);
+        let (u_vec, v_vec) = sphere_uv_vec(v);
+
+        assert!(!u_vec.x.is_nan());
+        assert!(!u_vec.y.is_nan());
+        assert!(!v_vec.x.is_nan());
+        assert!(!v_vec.y.is_nan());
+    }
+
+    #[test]
+    fn test_sphere_uv_vec_at_equator() {
+        let v = Vector3::new(-1.0, 0.1, -0.0);
+        let (u_vec, v_vec) = sphere_uv_vec(v);
+
+        assert_lt!(u_vec.x, 0.0);
+        assert_lt!(u_vec.y, 0.0);
+        assert_eq!(u_vec.z, 0.0);
+        assert_gt!(v_vec.z, 0.0);
     }
 }
