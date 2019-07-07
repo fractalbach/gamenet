@@ -17,8 +17,8 @@ use noise::{Perlin, Fbm, NoiseFn, Seedable};
 /// Highest level tectonic struct. Functions provide access to
 /// individual plates.
 pub struct TectonicLayer {
-    seed: u32,
-    surface: Surface,
+    pub seed: u32,
+    pub surface: Surface,
     cache: LruCache<Vector3<i64>, Plate>,
     h_noise: Fbm,
     x_motion_noise: Fbm,

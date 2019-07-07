@@ -5,10 +5,11 @@ use std::f64;
 use aabb_quadtree::{QuadTree, ItemId};
 use aabb_quadtree::geom::{Rect, Point};
 use cgmath::{Vector2, Vector3};
+use cgmath::InnerSpace;
 use lru_cache::LruCache;
 
 use tectonic::{TectonicLayer, TectonicInfo};
-use util::hash_indices;
+use util::{hash_indices, sphere_uv_vec};
 
 
 // --------------------------------------------------------------------
@@ -27,7 +28,8 @@ pub struct RiverInfo {
 
 /// A River Region is associated with a single tectonic cell and
 struct Region {
-    segment_tree: QuadTree<Segment>
+    segment_tree: QuadTree<Segment>,
+    nodes: Vec<Node>,
 }
 
 /// River node
@@ -38,6 +40,12 @@ struct Node {
     inlets: [i32; 2],
     outlet: i32,
     strahler: i16
+}
+
+struct GenerationInfo {
+    mouths: Vec<i32>,
+    low_corner: Vector2<f64>,
+    high_corner: Vector2<f64>,
 }
 
 /// River segment
@@ -117,23 +125,29 @@ impl Region {
         tectonic: &mut TectonicLayer,
         tectonic_info: TectonicInfo,
     ) -> Region {
-        // Todo: Get U+V Vectors
+        // Get nucleus surface position mapping
+        let center3d = tectonic.surface.surf_pos(
+            tectonic_info.nucleus.normalize()
+        );
+        let (u_vec, v_vec) = sphere_uv_vec(center3d);
 
-        // Todo: Get nucleus surface position mapping
+        let mut nodes = Self::create_nodes(seed, tectonic, tectonic_info);
 
-        // Todo: Create nodes
+        // Connect nodes in-place.
+        let info = Self::generate_rivers(&mut nodes);
 
-        // Todo: Generate rivers
-
-        // Todo: Replace Placeholder
+        // Create bounding shape
         let shape = Rect{
-            top_left: Point {x: -1.0, y: -1.0},
-            bottom_right: Point {x: 1.0, y: 1.0}
+            top_left: vec2pt(info.low_corner),
+            bottom_right: vec2pt(info.high_corner),
         };
 
-        // Todo: Replace Placeholder
+        // Create river segments
+        let segment_tree = Self::create_segments(&nodes, &info.mouths);
+
         Region {
-            segment_tree: QuadTree::default(shape)
+            segment_tree,
+            nodes,
         }
     }
 
@@ -157,11 +171,16 @@ impl Region {
     /// * `nodes` River Nodes. This vector will be modified in-place.
     ///
     /// # Return
-    /// Vector of river mouth nodes
-    fn generate_rivers(nodes: &mut Vec<Node>) -> Vec<i32> {
+    /// GenerationInfo with Vec of river mouth nodes and other info.
+    fn generate_rivers(nodes: &mut Vec<Node>) -> GenerationInfo {
         // Todo: Find river mouths
         // Todo: Form Tree using randomized search
-        Vec::default()
+        GenerationInfo {
+            mouths: Vec::default(),
+            low_corner: Vector2::new(0.0, 0.0),
+            high_corner: Vector2::new(0.0, 0.0),
+        }
+
     }
 
     /// Finds nodes that represent river mouths.
@@ -173,6 +192,22 @@ impl Region {
     /// Vector of indices of nodes which are river mouths.
     fn river_mouths(nodes: &Vec<Node>) -> Vec<i32> {
         Vec::default()  // Todo: Search
+    }
+
+    /// Create river segments from nodes.
+    ///
+    /// # Arguments
+    /// * `nodes` Reference to Vec of river nodes.
+    /// * `mouths` Reference to Vec of indices indicating the nodes at
+    ///             which rivers begin.
+    ///
+    /// # Return
+    /// Searchable QuadTree of river segments.
+    fn create_segments(
+        nodes: &Vec<Node>,
+        mouths: &Vec<i32>
+    ) -> QuadTree<Segment> {
+        QuadTree::default(shape) // Todo
     }
 
     // --------------
@@ -190,7 +225,7 @@ impl Region {
         }
     }
 
-    /// Converts a 3d position vector to a 2d uv vector
+    /// Converts a 3d position vector to a 2d uv position.
     ///
     /// The produced vector can be used to identify a position
     /// in the 2d river graph.
@@ -296,6 +331,25 @@ impl HexGraph {
             ],
             _ => panic!("Unexpected sequence index: {}", i)
         }
+    }
+}
+
+
+/// Converts Vector2 to Point for use in QuadTree.
+///
+/// As the precision is lowered from f64 to f32, some information
+/// will be lost in the conversion.
+///
+/// # Arguments
+/// * `v` - Vector2 to be converted to a Point.
+///
+/// # Return
+/// Point
+#[inline]
+fn vec2pt(v: Vector2<f64>) -> Point {
+    Point {
+        x: v.x as f32,
+        y: v.y as f32,
     }
 }
 
