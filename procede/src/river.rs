@@ -277,24 +277,44 @@ impl Region {
     /// # Return
     /// GenerationInfo with Vec of river mouth nodes and other info.
     fn generate_rivers(nodes: &mut Vec<Node>) -> GenerationInfo {
-        // Todo: Find river mouths
+        let mouths = Self::find_mouths(nodes);
+
         // Todo: Form Tree using randomized search
         GenerationInfo {
-            mouths: Vec::default(),
+            mouths,
             low_corner: Vector2::new(0.0, 0.0),
             high_corner: Vector2::new(0.0, 0.0),
         }
     }
 
-    /// Finds nodes that represent river mouths.
+    /// Finds river mouth nodes.
+    ///
+    /// River mouth nodes are nodes that are within an ocean but which
+    /// are adjacent to one or more nodes on land.
     ///
     /// # Arguments
-    /// * `nodes` Reference to vector of nodes which will be searched.
+    /// * `nodes` River nodes to search for mouths.
     ///
     /// # Return
-    /// Vector of indices of nodes which are river mouths.
-    fn river_mouths(nodes: &Vec<Node>) -> Vec<i32> {
-        Vec::default()  // Todo: Search
+    /// Vec of river node indices that are river mouths.
+    fn find_mouths(nodes: &Vec<Node>) -> Vec<usize> {
+        let mut mouths = Vec::new();
+        for (i, node) in nodes.iter().enumerate() {
+            // If node is not in an ocean, continue search.
+            if node.h >= 0.0 {
+                continue;
+            }
+
+            // Check if any neighbor is on land.
+            for neighbor in &node.neighbors {
+                if *neighbor != usize::MAX && nodes[*neighbor].h >= 0.0 {
+                    mouths.push(i);
+                    break;
+                }
+            }
+        }
+
+        mouths
     }
 
     /// Create river segments from nodes.
