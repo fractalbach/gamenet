@@ -309,10 +309,58 @@ impl Region {
             }
         }
 
+        #[inline]
         fn find_priority(dest: usize, origin: usize) -> u32 {
             let hash = Wrapping(idx_hash(dest as i64)) +
                 Wrapping(idx_hash(origin as i64));
             hash.0
+        }
+
+        #[inline]
+        fn update_corners(
+                uv: Vector2<f64>,
+                low_corner: &mut Vector2<f64>,
+                high_corner: &mut Vector2<f64>
+        ) {
+            // Update low_corner or high_corner if needed.
+            if uv.x < low_corner.x {
+                low_corner.x = uv.x;
+            } else if uv.x > high_corner.x {
+                high_corner.x = uv.x;
+            }
+            if uv.y < low_corner.y {
+                low_corner.y = uv.y;
+            } else if uv.y > high_corner.y {
+                high_corner.y = uv.y;
+            }
+        }
+
+        #[inline]
+        fn create_expeditions(
+                origin: &Node,
+                nodes: &Vec<Node>,
+                visited: &HashSet<usize>,
+                expeditions: &mut BinaryHeap<Expedition>
+        ) {
+            for neighbor in &origin.neighbors {
+                // If already explored, continue.
+                if visited.contains(neighbor) {
+                    continue;
+                }
+
+                // If the neighbor has a lower height than the node
+                // that was just arrived at, then don't try to explore
+                // it from here. Rivers can't flow uphill.
+                if nodes[*neighbor].h < origin.h {
+                    continue;
+                }
+
+                expeditions.push(Expedition {
+                    priority: find_priority(*neighbor, origin.i),
+                    destination: *neighbor,
+                    origin: origin.i
+                });
+            }
         }
 
         // ------------------------
@@ -357,41 +405,18 @@ impl Region {
 
             let destination = &nodes[exp.destination];
 
-            // Update low_corner or high_corner if needed.
-            if destination.uv.x < low_corner.x {
-                low_corner.x = destination.uv.x;
-            } else if destination.uv.x > high_corner.x {
-                high_corner.x = destination.uv.x;
-            }
-            if destination.uv.y < low_corner.y {
-                low_corner.y = destination.uv.y;
-            } else if destination.uv.y > high_corner.y {
-                high_corner.y = destination.uv.y;
-            }
+            update_corners(destination.uv, &mut low_corner, &mut high_corner);
 
             // Add
             visited.insert(exp.destination);
 
             // Create new expeditions
-            for neighbor in &nodes[exp.destination].neighbors {
-                // If already explored, continue.
-                if visited.contains(neighbor) {
-                    continue;
-                }
-
-                // If the neighbor has a lower height than the node
-                // that was just arrived at, then don't try to explore
-                // it from here. Rivers can't flow uphill.
-                if nodes[*neighbor].h < destination.h {
-                    continue;
-                }
-
-                expeditions.push(Expedition {
-                    priority: find_priority(*neighbor, exp.destination),
-                    destination: *neighbor,
-                    origin: exp.destination
-                });
-            }
+            create_expeditions(
+                &nodes[exp.destination],
+                nodes,
+                &visited,
+                &mut expeditions,
+            );
         }
 
         GenerationInfo {
