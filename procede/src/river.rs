@@ -1,17 +1,19 @@
 //! Module containing river procedural generation structs
 //! and functions.
 use std::f64;
+use std::num::Wrapping;
 
 use aabb_quadtree::{QuadTree, ItemId};
 use aabb_quadtree::geom::{Rect, Point};
 use cgmath::{Vector2, Vector3};
 use cgmath::InnerSpace;
 use lru_cache::LruCache;
-use std::collections::{VecDeque, HashSet, HashMap};
+use std::cmp::Ordering;
+use std::collections::{VecDeque, HashSet, HashMap, BinaryHeap};
 use std::usize;
 
 use tectonic::{TectonicLayer, TectonicInfo};
-use util::{hash_indices, sphere_uv_vec};
+use util::{hash_indices, sphere_uv_vec, idx_hash};
 
 
 // --------------------------------------------------------------------
@@ -38,6 +40,7 @@ struct Region {
 struct Node {
     i: usize,  // Index of Node in river graph.
     indices: Vector2<i64>,
+    uv: Vector2<f64>,
     h: f64,  // Height above mean sea level.
     neighbors: [usize; 3],  // Neighboring nodes within graph.
     inlets: [usize; 2],
@@ -212,6 +215,7 @@ impl Region {
                 nodes.push(Node {
                     i: node_i,
                     indices,
+                    uv,
                     h: node_info.height,
                     neighbors: [usize::MAX, usize::MAX, usize::MAX],
                     inlets: [usize::MAX, usize::MAX],
@@ -251,6 +255,8 @@ impl Region {
             }
         }
 
+        // ------------------------
+
         // Create hex graph to produce nodes.
         let hex_graph = HexGraph::new(Self::NODE_MEAN_SEPARATION);
 
@@ -277,13 +283,121 @@ impl Region {
     /// # Return
     /// GenerationInfo with Vec of river mouth nodes and other info.
     fn generate_rivers(nodes: &mut Vec<Node>) -> GenerationInfo {
+        // Structs used in generation
+        #[derive(Copy, Clone, Eq, PartialEq)]
+        struct Expedition {
+            priority: u32,
+            destination: usize,
+            origin: usize,
+        }
+
+        // The priority queue (BinaryHeap) depends on `Ord`.
+        impl Ord for Expedition {
+            fn cmp(&self, other: &Expedition) -> Ordering {
+                // In case of a tie, compare positions.
+                // Required to make implementations of `PartialEq` and
+                // `Ord` consistent.
+                self.priority.cmp(&other.priority)
+                    .then_with(|| self.destination.cmp(&other.destination))
+                    .then_with(|| self.origin.cmp(&other.origin))
+            }
+        }
+
+        impl PartialOrd for Expedition {
+            fn partial_cmp(&self, other: &Expedition) -> Option<Ordering> {
+                Some(self.cmp(other))
+            }
+        }
+
+        fn find_priority(dest: usize, origin: usize) -> u32 {
+            let hash = Wrapping(idx_hash(dest as i64)) +
+                Wrapping(idx_hash(origin as i64));
+            hash.0
+        }
+
+        // ------------------------
+
         let mouths = Self::find_mouths(nodes);
 
-        // Todo: Form Tree using randomized search
+        let mut expeditions = BinaryHeap::with_capacity(100);
+        let mut visited = HashSet::with_capacity(100);
+
+        let mut low_corner = Vector2::new(0.0, 0.0);
+        let mut high_corner = Vector2::new(0.0, 0.0);
+
+        // Initialize expeditions with river mouths
+        for mouth in &mouths {
+            expeditions.push(Expedition {
+                priority: idx_hash(*mouth as i64),
+                destination: *mouth,
+                origin: usize::MAX
+            });
+        }
+
+        // Explore
+        while !expeditions.is_empty() {
+            let exp = expeditions.pop().unwrap();
+
+            // If already explored, continue.
+            if visited.contains(&exp.destination) {
+                continue;
+            }
+
+            // Update inlets + outlets.
+            if exp.origin != usize::MAX {
+                // Update destination
+                nodes[exp.destination].outlet = exp.origin;
+
+                // Update origin.
+                let origin = &mut nodes[exp.origin];
+                debug_assert_eq!(origin.inlets[1], usize::MAX);
+                let i = (origin.inlets[0] != usize::MAX) as usize;
+                origin.inlets[i] = exp.destination;
+            }
+
+            let destination = &nodes[exp.destination];
+
+            // Update low_corner or high_corner if needed.
+            if destination.uv.x < low_corner.x {
+                low_corner.x = destination.uv.x;
+            } else if destination.uv.x > high_corner.x {
+                high_corner.x = destination.uv.x;
+            }
+            if destination.uv.y < low_corner.y {
+                low_corner.y = destination.uv.y;
+            } else if destination.uv.y > high_corner.y {
+                high_corner.y = destination.uv.y;
+            }
+
+            // Add
+            visited.insert(exp.destination);
+
+            // Create new expeditions
+            for neighbor in &nodes[exp.destination].neighbors {
+                // If already explored, continue.
+                if visited.contains(neighbor) {
+                    continue;
+                }
+
+                // If the neighbor has a lower height than the node
+                // that was just arrived at, then don't try to explore
+                // it from here. Rivers can't flow uphill.
+                if nodes[*neighbor].h < destination.h {
+                    continue;
+                }
+
+                expeditions.push(Expedition {
+                    priority: find_priority(*neighbor, exp.destination),
+                    destination: *neighbor,
+                    origin: exp.destination
+                });
+            }
+        }
+
         GenerationInfo {
             mouths,
-            low_corner: Vector2::new(0.0, 0.0),
-            high_corner: Vector2::new(0.0, 0.0),
+            low_corner,
+            high_corner,
         }
     }
 
