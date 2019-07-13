@@ -174,7 +174,17 @@ impl Region {
         tectonic: &mut TectonicLayer,
         tectonic_info: TectonicInfo,
     ) -> Vec<Node> {
-        /// Find the first hex index contained within the cell.
+        /// Finds the first hex index contained within the cell.
+        ///
+        /// # Arguments
+        /// * `tectonic` - Tectonic layer whose cell is being explored.
+        /// * `cell_indices` - Indices of cell being explored.
+        /// * `hex_graph`- HexGraph used to generate base
+        ///             node positions.
+        ///
+        /// # Return
+        /// HexGraph indices of node within the cell from which
+        /// exploration will start.
         fn find_first(
             tectonic: &mut TectonicLayer,
             cell_indices: Vector3<i64>,
@@ -184,10 +194,25 @@ impl Region {
             Vector2::new(0, 0)
         }
 
-        // Run BFS Search until all nodes that are in cell are added
-        // to nodes Vec.
-        // Included indices are added to included set for
-        // quick checking.
+        /// Runs BFS Search until all nodes that are in cell are added
+        /// to nodes Vec.
+        ///
+        /// Included indices are added to included set for
+        /// quick checking.
+        ///
+        /// # Arguments
+        /// * `tectonic` - Reference to tectonic layer used to generate
+        ///             heights for nodes.
+        /// * `cell_indices` - Indices of cell which is being explored.
+        /// * `hex_graph` - HexGraph used to generate nodes and lookup
+        ///             node positions.
+        /// * `first` - HexGraph indices of node at which to
+        ///             start exploration.
+        ///
+        /// # Return
+        /// * Vec of Nodes which are contained by cell.
+        /// * HashMap with the index of each node in the Node Vec,
+        ///             stored with the node's HexGraph indices as key.
         fn explore_cell(
             tectonic: &mut TectonicLayer,
             cell_indices: Vector3<i64>,
@@ -234,10 +259,21 @@ impl Region {
             (nodes, included)
         }
 
-        // Set node neighbors.
-        // These are the nodes which are within the cell. If a cell has
-        // fewer than three neighbors, one or more index will be set to
-        // -1 (since usize is unsigned, this will be usize::MAX)
+        /// Sets node neighbors.
+        ///
+        /// These are the nodes which are within the cell. If a cell has
+        /// fewer than three neighbors, one or more index will be set to
+        /// -1 (since usize is unsigned, this will be usize::MAX)
+        ///
+        /// This function modifies the nodes in-place. It does not
+        /// return a useful value.
+        ///
+        /// # Arguments
+        /// * `nodes` - Vec of nodes in cell.
+        /// * `included` - Map of Node Vec indices stored by their
+        ///             HexGraph indices.
+        /// * `hex_graph` - HexGraph used to generate nodes.
+        ///
         fn set_neighbors(
                 nodes: &mut Vec<Node>,
                 included: HashMap<Vector2<i64>, usize>,
