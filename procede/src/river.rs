@@ -277,6 +277,10 @@ impl Region {
 
     /// Connects nodes in-place to form rivers.
     ///
+    /// This method builds rivers 'backwards', starting at river mouth
+    /// nodes, and proceeding upwards in elevation until all nodes that
+    /// can be reached have been.
+    ///
     /// # Arguments
     /// * `nodes` River Nodes. This vector will be modified in-place.
     ///
@@ -309,14 +313,12 @@ impl Region {
             }
         }
 
-        #[inline]
         fn find_priority(dest: usize, origin: usize) -> u32 {
             let hash = Wrapping(idx_hash(dest as i64)) +
                 Wrapping(idx_hash(origin as i64));
             hash.0
         }
 
-        #[inline]
         fn update_corners(
                 uv: Vector2<f64>,
                 low_corner: &mut Vector2<f64>,
@@ -335,7 +337,6 @@ impl Region {
             }
         }
 
-        #[inline]
         fn create_expeditions(
                 origin: &Node,
                 nodes: &Vec<Node>,
