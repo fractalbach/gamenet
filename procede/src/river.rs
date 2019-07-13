@@ -174,7 +174,7 @@ impl Region {
         tectonic: &mut TectonicLayer,
         tectonic_info: TectonicInfo,
     ) -> Vec<Node> {
-        // Find the first hex index contained within the cell.
+        /// Find the first hex index contained within the cell.
         fn find_first(
             tectonic: &mut TectonicLayer,
             cell_indices: Vector3<i64>,
@@ -282,12 +282,20 @@ impl Region {
     /// can be reached have been.
     ///
     /// # Arguments
-    /// * `nodes` River Nodes. This vector will be modified in-place.
+    /// * `nodes` - River Nodes. This vector will be modified in-place.
     ///
     /// # Return
     /// GenerationInfo with Vec of river mouth nodes and other info.
     fn generate_rivers(nodes: &mut Vec<Node>) -> GenerationInfo {
-        // Structs used in generation
+        /// Struct representing a planned search along a single edge.
+        ///
+        /// This search will be carried out at some point
+        /// in the future determined by a priority generated semi-
+        /// randomly from its destination and origin
+        ///
+        /// An Expedition is assigned a semi-random priority based on
+        /// its destination -and- origin, in order to avoid a pure
+        /// breadth first search.
         #[derive(Copy, Clone, Eq, PartialEq)]
         struct Expedition {
             priority: u32,
@@ -295,8 +303,54 @@ impl Region {
             origin: usize,
         }
 
+        impl Expedition {
+            /// Creates a new Expedition which represents a search
+            /// along an edge from an origin node to a destination
+            /// node.
+            ///
+            /// # Arguments
+            /// * `destination` - Index of node which the Expedition
+            ///             will explore.
+            ///
+            /// # Return
+            /// new Expedition
+            fn new(destination: usize, origin: usize) -> Expedition {
+                Expedition {
+                    priority: Self::find_priority(destination, origin),
+                    destination,
+                    origin,
+                }
+            }
+
+            /// Creates a start point for exploration.
+            ///
+            /// This is an 'Expedition' without an origin.
+            ///
+            /// # Arguments
+            /// * `destination` - Index of node to start
+            ///             exploration at.
+            ///
+            /// # Return
+            /// new Expedition
+            fn start_point(destination: usize) -> Expedition {
+                Expedition {
+                    priority: idx_hash(destination as i64),
+                    destination,
+                    origin: usize::MAX
+                }
+            }
+
+            /// Finds priority of an Expedition.
+            fn find_priority(dest: usize, origin: usize) -> u32 {
+                let hash = Wrapping(idx_hash(dest as i64)) +
+                    Wrapping(idx_hash(origin as i64));
+                hash.0
+            }
+        }
+
         // The priority queue (BinaryHeap) depends on `Ord`.
         impl Ord for Expedition {
+            /// Compares priority of two Expeditions.
             fn cmp(&self, other: &Expedition) -> Ordering {
                 // In case of a tie, compare positions.
                 // Required to make implementations of `PartialEq` and
@@ -313,13 +367,26 @@ impl Region {
             }
         }
 
-        fn find_priority(dest: usize, origin: usize) -> u32 {
-            let hash = Wrapping(idx_hash(dest as i64)) +
-                Wrapping(idx_hash(origin as i64));
-            hash.0
-        }
-
-        fn update_corners(
+        /// Updates corners which track the bounding box that
+        /// contains all nodes of the generated river network.
+        ///
+        /// Given a point in UV space, this function will modify the
+        /// passed corners so that the bounding box described by them
+        /// contains the passed point.
+        ///
+        /// This function modifies its passed bounding box points.
+        /// It does not return anything.
+        ///
+        /// # Arguments
+        /// * `uv` - Position in UV space that will be contained by the
+        ///             bounding box.
+        /// * `low_corner` - Mutable reference to the point in UV space
+        ///             defining the low-x, low-y corner of the
+        ///             bounding box.
+        /// * `high_corner` - Mutable reference to the point in UV
+        ///             space defining the high-x, high-y corner of the
+        ///             bounding box.
+        fn expand_bounds(
                 uv: Vector2<f64>,
                 low_corner: &mut Vector2<f64>,
                 high_corner: &mut Vector2<f64>
@@ -337,6 +404,21 @@ impl Region {
             }
         }
 
+        /// Creates expeditions to all valid unexplored points which
+        /// may be reached from a node.
+        ///
+        /// This function modifies the passed expeditions heap; it does
+        /// not return anything.
+        ///
+        /// # Arguments
+        /// * `origin` Reference to the node from which expeditions
+        ///             will start.
+        /// * `nodes` - Vec of nodes in the graph.
+        /// * `visited` - Set of node indices which have already been
+        ///             visited. Expeditions will not be created to
+        ///             these nodes.
+        /// * `expeditions` - Heap of expeditions which newly created
+        ///             expeditions will be added to.
         fn create_expeditions(
                 origin: &Node,
                 nodes: &Vec<Node>,
@@ -356,11 +438,7 @@ impl Region {
                     continue;
                 }
 
-                expeditions.push(Expedition {
-                    priority: find_priority(*neighbor, origin.i),
-                    destination: *neighbor,
-                    origin: origin.i
-                });
+                expeditions.push(Expedition::new(*neighbor, origin.i));
             }
         }
 
@@ -376,11 +454,7 @@ impl Region {
 
         // Initialize expeditions with river mouths
         for mouth in &mouths {
-            expeditions.push(Expedition {
-                priority: idx_hash(*mouth as i64),
-                destination: *mouth,
-                origin: usize::MAX
-            });
+            expeditions.push(Expedition::start_point(*mouth));
         }
 
         // Explore
@@ -388,11 +462,15 @@ impl Region {
             let exp = expeditions.pop().unwrap();
 
             // If already explored, continue.
+            // Although expeditions are only created with destinations
+            // that are unexplored, multiple expeditions may have the
+            // same destination. Therefore, the destination needs to be
+            // checked again here when the expedition is carried out.
             if visited.contains(&exp.destination) {
                 continue;
             }
 
-            // Update inlets + outlets.
+            // Update inlets + outlets of origin and destination nodes.
             if exp.origin != usize::MAX {
                 // Update destination
                 nodes[exp.destination].outlet = exp.origin;
@@ -405,15 +483,13 @@ impl Region {
             }
 
             let destination = &nodes[exp.destination];
-
-            update_corners(destination.uv, &mut low_corner, &mut high_corner);
-
-            // Add
+            expand_bounds(destination.uv, &mut low_corner, &mut high_corner);
             visited.insert(exp.destination);
 
-            // Create new expeditions
+            // Create new expeditions originating from the newly
+            // explored node to any unexplored neighbors.
             create_expeditions(
-                &nodes[exp.destination],
+                &destination,
                 nodes,
                 &visited,
                 &mut expeditions,
