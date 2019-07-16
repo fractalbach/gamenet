@@ -768,6 +768,7 @@ mod tests {
             Node {
                 i: 0,  // Index of Node in river graph.
                 indices: Vector2::new(0, 0),
+                uv: Vector2::new(0.0, 0.0),
                 h: -13.0,  // Height above mean sea level.
                 neighbors: [1, 2, 3],  // Neighboring nodes within graph.
                 inlets: [usize::MAX, usize::MAX],
@@ -777,6 +778,7 @@ mod tests {
             Node {
                 i: 1,  // Index of Node in river graph.
                 indices: Vector2::new(0, 0),
+                uv: Vector2::new(0.0, 0.0),
                 h: -24.0,  // Height above mean sea level.
                 neighbors: [0, 2, usize::MAX],  // Neighboring nodes within graph.
                 inlets: [usize::MAX, usize::MAX],
@@ -786,6 +788,7 @@ mod tests {
             Node {
                 i: 2,  // Index of Node in river graph.
                 indices: Vector2::new(0, 0),
+                uv: Vector2::new(0.0, 0.0),
                 h: -11.0,  // Height above mean sea level.
                 neighbors: [0, 1, 3],  // Neighboring nodes within graph.
                 inlets: [usize::MAX, usize::MAX],
@@ -795,6 +798,7 @@ mod tests {
             Node {
                 i: 3,  // Index of Node in river graph.
                 indices: Vector2::new(0, 0),
+                uv: Vector2::new(0.0, 0.0),
                 h: 18.0,  // Height above mean sea level.
                 neighbors: [0, 2, usize::MAX],  // Neighboring nodes within graph.
                 inlets: [usize::MAX, usize::MAX],
