@@ -57,6 +57,8 @@ struct GenerationInfo {
 /// River segment
 struct Segment {
     a: Vector2<f64>,
+    ctrl_a: Vector2<f64>,
+    ctrl_b: Vector2<f64>,
     b: Vector2<f64>
 }
 
@@ -584,7 +586,62 @@ impl Region {
         mouths: &Vec<usize>,
         shape: Rect,
     ) -> QuadTree<Segment> {
-        QuadTree::default(shape) // Todo
+        /// Finds outlet direction of node.
+        ///
+        /// This will determine the direction of segment control points
+        /// from the node.
+        ///
+        /// This will differ from the direction of the outlet
+        /// node from the passed node.
+        ///
+        /// # Arguments
+        /// * `i` - Index of node whose outlet direction will
+        ///             be determined.
+        /// * `nodes` - Reference to Node Vec.
+        ///
+        /// # Return
+        /// Vector2 with direction of outlet from node.
+        fn find_outlet_dir(i: usize, nodes: &Vec<Node>) -> Vector2<f64> {
+            Vector2::new(0.0, 0.0)  // TODO
+        }
+
+        /// Finds the angle between node inlets.
+        ///
+        /// This determines the acuteness of the river fork located at
+        /// the passed node.
+        ///
+        /// If a node has only a single inlet, then the returned value
+        /// will be 0.0.
+        ///
+        /// # Arguments
+        /// * `i` - Index of node whose outlet direction will
+        ///             be determined.
+        /// * `nodes` - Reference to Node Vec.
+        ///
+        /// # Return
+        /// Angle of fork in radians.
+        fn find_fork_angle(i: usize, nodes: &Vec<Node>) -> f64 {
+            0.0  // TODO
+        }
+
+        // ------------------------
+
+        let mut tree: QuadTree<Segment> = QuadTree::default(shape);
+        let mut frontier: VecDeque<usize> = VecDeque::with_capacity(100);
+
+        // Add mouths to `frontier` to-do list.
+        for i in mouths {
+            frontier.push_back(*i);
+        }
+
+        // Progress up-river creating segments.
+        while !frontier.is_empty() {
+            // Todo: Find outlet direction.
+
+            // Todo: Find fork angle.
+        }
+
+        tree
     }
 
     // --------------
@@ -641,7 +698,12 @@ impl Region {
     fn nearest_segment(&self, uv: Vector2<f64>) -> (f64, Segment) {
         (  // TODO: Get distance, nearest segment.
             -1.0,
-            Segment {a: Vector2::new(-1.0, -1.0), b: Vector2::new(1.0, 1.0)}
+            Segment {
+                a: Vector2::new(-1.0, -1.0),
+                ctrl_a: Vector2::new(-1.0, -1.0),
+                ctrl_b: Vector2::new(1.0, 1.0),
+                b: Vector2::new(1.0, 1.0)
+            }
         )
     }
 }
@@ -663,8 +725,8 @@ impl HexGraph {
     /// Gets position of vertex with passed indices.
     fn pos(&self, indices: Vector2<i64>) -> Vector2<f64> {
         // Get index within 4 vertex sequence.
-        // This statement is a workaround for the '%' operator
-        // producing the remainder, rather than the modulo.
+        // This statement is a workaround for the '%' operator,
+        // which produces the remainder, rather than the modulo.
         let i = ((indices.y % 4) + 4) % 4;
 
         let seq_iteration;
@@ -698,8 +760,8 @@ impl HexGraph {
     /// Gets indices of neighbors sharing an edge with a vertex.
     fn neighbors(&self, indices: Vector2<i64>) -> [Vector2<i64>; 3] {
         // Get index within 4 vertex sequence.
-        // This statement is a workaround for the '%' operator
-        // producing the remainder, rather than the modulo.
+        // This statement is a workaround for the '%' operator,
+        // which produces the remainder, rather than the modulo.
         let i = ((indices.y % 4) + 4) % 4;
 
         match i {
