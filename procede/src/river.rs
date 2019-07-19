@@ -464,6 +464,11 @@ impl Region {
                 expeditions: &mut BinaryHeap<Expedition>
         ) {
             for neighbor in &origin.neighbors {
+                // Ignore unused neighbor slots.
+                if neighbor == usize::MAX {
+                    continue;
+                }
+
                 // If already explored, continue.
                 if visited.contains(neighbor) {
                     continue;
