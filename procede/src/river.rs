@@ -319,6 +319,10 @@ impl Region {
     /// nodes, and proceeding upwards in elevation until all nodes that
     /// can be reached have been.
     ///
+    /// No node will have more than two inlets, even in the possible
+    /// but unlikely case where the node is a river mouth that has
+    /// three neighbors which are valid as inlets.
+    ///
     /// # Arguments
     /// * `nodes` - River Nodes. This vector will be modified in-place.
     ///
@@ -465,7 +469,7 @@ impl Region {
         ) {
             for neighbor in &origin.neighbors {
                 // Ignore unused neighbor slots.
-                if neighbor == usize::MAX {
+                if *neighbor == usize::MAX {
                     continue;
                 }
 
@@ -515,12 +519,16 @@ impl Region {
 
             // Update inlets + outlets of origin and destination nodes.
             if exp.origin != usize::MAX {
+                // Handle case where origin already has two inlets.
+                // This is rare, but possible for river mouths.
+                if nodes[exp.destination].inlets[1] != usize::MAX {
+                    continue;
+                }
                 // Update destination
                 nodes[exp.destination].outlet = exp.origin;
 
                 // Update origin.
                 let origin = &mut nodes[exp.origin];
-                debug_assert_eq!(origin.inlets[1], usize::MAX);
                 let i = (origin.inlets[0] != usize::MAX) as usize;
                 origin.inlets[i] = exp.destination;
             }
