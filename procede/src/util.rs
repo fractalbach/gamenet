@@ -104,6 +104,20 @@ pub fn sphere_uv_vec(v: Vector3<f64>) -> (Vector3<f64>, Vector3<f64>) {
 }
 
 
+/// Determine whether 2d vector a is clockwise from 2d vector b.
+///
+/// # Arguments
+/// * `a` - Vector2 identifying position a.
+/// * `b` - Vector2 identifying position b.
+///
+/// # Returns
+/// * true if a is < 1pi/180deg clockwise from b. Otherwise false.
+pub fn is_clockwise(a: Vector2<f64>, b: Vector2<f64>) -> bool {
+    let acute_cw = b.y * a.x > b.x * a.y;  // true if acute and clockwise.
+    if a.dot(b) > 0.0 {acute_cw} else {!acute_cw}
+}
+
+
 /// Convert vector with 3 f64 elements to an array of 3 f64s.
 pub fn vec2arr(v: Vector3<f64>) -> [f64; 3] {
     [v.x, v.y, v.z]
@@ -261,5 +275,33 @@ mod tests {
         assert_lt!(u_vec.y, 0.0);
         assert_eq!(u_vec.z, 0.0);
         assert_gt!(v_vec.z, 0.0);
+    }
+
+    #[test]
+    fn test_is_clockwise_basic_cw_case() {
+        assert!(is_clockwise(
+            Vector2::new(1.0, 1.0), Vector2::new(0.5, 1.0))
+        );
+    }
+
+    #[test]
+    fn test_is_clockwise_basic_ccw_case() {
+        assert!(!is_clockwise(
+            Vector2::new(-1.0, 2.0), Vector2::new(1.0, 1.0))
+        );
+    }
+
+    #[test]
+    fn test_is_clockwise_basic_obtuse_cw_case() {
+        assert!(is_clockwise(
+            Vector2::new(0.0, 2.0), Vector2::new(1.0, -1.0))
+        );
+    }
+
+    #[test]
+    fn test_is_clockwise_basic_obtuse_ccw_case() {
+        assert!(!is_clockwise(
+            Vector2::new(-1.0, 2.0), Vector2::new(-1.0, -1.0))
+        );
     }
 }
