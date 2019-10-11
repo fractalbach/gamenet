@@ -13,7 +13,7 @@ use std::collections::{VecDeque, HashSet, HashMap, BinaryHeap};
 use std::usize;
 
 use tectonic::{TectonicLayer, TectonicInfo};
-use util::{hash_indices, sphere_uv_vec, idx_hash};
+use util::{rand1, hash_indices, sphere_uv_vec, idx_hash};
 
 
 // --------------------------------------------------------------------
@@ -30,7 +30,14 @@ pub struct RiverInfo {
     height: f64,
 }
 
-/// A River Region is associated with a single tectonic cell and
+/// River region.
+///
+/// A River region is associated with a single tectonic cell, and
+/// handles height generation due to river action within its bounds.
+///
+/// A Tectonic cell is an ideal boundary for a river region because it
+/// is likely to either border an ocean, or else be bordered by a
+/// mountain range which would realistically separate river basins.
 struct Region {
     segment_tree: QuadTree<Segment>,
     nodes: Vec<Node>,
@@ -45,6 +52,8 @@ struct Node {
     neighbors: [usize; 3],  // Neighboring nodes within graph.
     inlets: [usize; 2],
     outlet: usize,
+    direction: Vector2<f64>,
+    fork_angle: f64,
     strahler: i16
 }
 
@@ -76,11 +85,7 @@ impl RiverLayer {
 
     // Construction
 
-    fn new(
-            seed: u32,
-            tectonic: &mut TectonicLayer,
-            tectonic_info: TectonicInfo
-    ) -> RiverLayer {
+    fn new(seed: u32) -> RiverLayer {
         RiverLayer {
             seed,
             region_cache: LruCache::new(Self::REGION_CACHE_SIZE),
@@ -119,16 +124,9 @@ impl RiverLayer {
 // --------------------------------------------------------------------
 
 
-/// River region.
-///
-/// A River region is associated with a single tectonic cell, and
-/// handles height generation due to river action within its bounds.
-///
-/// A Tectonic cell is an ideal boundary for a river region because it
-/// is likely to either border an ocean, or else be bordered by a
-/// mountain range which would realistically separate river basins.
 impl Region {
     pub const NODE_MEAN_SEPARATION: f64 = 10_000.0;
+    const CONTROL_POINT_DIST: f64 = Self::NODE_MEAN_SEPARATION * 0.2;
 
     fn new(
         seed: u32,
@@ -141,10 +139,12 @@ impl Region {
         );
         let (u_vec, v_vec) = sphere_uv_vec(center3d);
 
+        // Create river nodes.
         let mut nodes = Self::create_nodes(seed, tectonic, tectonic_info);
 
         // Connect nodes in-place.
         let info = Self::generate_rivers(&mut nodes);
+        Self::find_direction_info(&mut nodes);
 
         // Create bounding shape
         let shape = Rect{
@@ -239,16 +239,12 @@ impl Region {
                 // Add indices to included map and append node to vec.
                 included.insert(indices, nodes.len());
                 let node_i = nodes.len();
-                nodes.push(Node {
-                    i: node_i,
+                nodes.push(Node::new(
+                    node_i,
                     indices,
                     uv,
-                    h: node_info.height,
-                    neighbors: [usize::MAX, usize::MAX, usize::MAX],
-                    inlets: [usize::MAX, usize::MAX],
-                    outlet: usize::MAX,
-                    strahler: -1
-                });
+                    node_info.height,
+               ));
 
                 // Add hex neighbors to frontier.
                 for hex_neighbor in &hex_graph.neighbors(indices) {
@@ -584,21 +580,18 @@ impl Region {
         mouths
     }
 
-    /// Create river segments from nodes.
+    /// Sets node information relating to river direction.
+    ///
+    /// Node direction (direction vector of the node's output) and fork
+    /// angle (angle between input rivers at the  point of
+    /// intersection) are set for each node in the nodes vector.
+    ///
+    /// This method does not return useful values. Instead, the passed
+    /// nodes vector is modified in place.
     ///
     /// # Arguments
-    /// * `nodes` - Reference to Vec of river nodes.
-    /// * `mouths` - Reference to Vec of indices indicating the nodes
-    ///             at which rivers begin.
-    /// * `shape` - Reference to river node bounds.
-    ///
-    /// # Return
-    /// Searchable QuadTree of river segments.
-    fn create_segments(
-        nodes: &Vec<Node>,
-        mouths: &Vec<usize>,
-        shape: Rect,
-    ) -> QuadTree<Segment> {
+    /// * `nodes` - Vector of Nodes.
+    fn find_direction_info(nodes: &mut Vec<Node>) {
         /// Finds outlet direction of node.
         ///
         /// This will determine the direction of segment control points
@@ -607,15 +600,29 @@ impl Region {
         /// This will differ from the direction of the outlet
         /// node from the passed node.
         ///
+        /// If no outlet exists (the node is a river mouth), then the
+        /// outlet direction will be (0.0, 0.0).
+        ///
         /// # Arguments
         /// * `i` - Index of node whose outlet direction will
         ///             be determined.
         /// * `nodes` - Reference to Node Vec.
         ///
         /// # Return
-        /// Vector2 with direction of outlet from node.
-        fn find_outlet_dir(i: usize, nodes: &Vec<Node>) -> Vector2<f64> {
-            Vector2::new(0.0, 0.0)  // TODO
+        /// Vector2 with direction of outlet from node if node has an
+        /// outlet, otherwise (0.0, 0.0)
+        fn find_outlet_dir(i: usize, nodes: &mut Vec<Node>) -> Vector2<f64> {
+            let node = &nodes[i];
+            if node.outlet == usize::MAX {
+                return Vector2::new(0.0, 0.0);
+            }
+
+            let node_pos = node.uv;
+            let outlet_pos = nodes[node.outlet].uv;
+
+            let direction = (outlet_pos - node_pos).normalize();
+
+            direction
         }
 
         /// Finds the angle between node inlets.
@@ -633,8 +640,83 @@ impl Region {
         ///
         /// # Return
         /// Angle of fork in radians.
-        fn find_fork_angle(i: usize, nodes: &Vec<Node>) -> f64 {
-            0.0  // TODO
+        fn find_fork_angle(i: usize, nodes: &mut Vec<Node>) -> f64 {
+            let node = &nodes[i];
+            if node.inlets[1] == usize::MAX {
+                return 0.0;
+            }
+
+            // Generate random value between 20 and 50.
+            const MIN_ANGLE: f64 = f64::consts::PI / 9.0;
+            const MAX_ANGLE: f64 = f64::consts::PI / 3.5;
+            const RANGE: f64 = MAX_ANGLE - MIN_ANGLE;
+            const MEAN_ANGLE: f64 = MIN_ANGLE + RANGE / 2.0;
+
+            let rand = rand1(idx_hash(i as i64));
+            let angle = RANGE / 2.0 * rand + MEAN_ANGLE;
+
+            angle
+        }
+
+        // ------------------------
+
+        for i in 0..nodes.len() {
+            let direction = find_outlet_dir(i, nodes);
+            let fork_angle = find_fork_angle(i, nodes);
+
+            let node = nodes.get_mut(i).expect("Invalid node index");
+            node.direction = direction;
+            node.fork_angle = fork_angle;
+        }
+    }
+
+    /// Create river segments from nodes.
+    ///
+    /// A Segment is composed of four points, which form a bezier curve.
+    /// These nodes are the Up-river end node, the Up-river control
+    /// node, the Down-river end node, and the Down-river control node.
+    ///
+    /// # Arguments
+    /// * `nodes` - Reference to Vec of river nodes.
+    /// * `mouths` - Reference to Vec of indices indicating the nodes
+    ///             at which rivers begin.
+    /// * `shape` - Reference to river node bounds.
+    ///
+    /// # Return
+    /// Searchable QuadTree of river segments.
+    fn create_segments(
+        nodes: &Vec<Node>,
+        mouths: &Vec<usize>,
+        shape: Rect,
+    ) -> QuadTree<Segment> {
+        /// Finds downriver control node.
+        ///
+        /// The down-river control node is the control node closer to
+        /// the downriver of the endpoints of a segment.
+        ///
+        /// # Arguments
+        /// * `node` - Reference to downriver node.
+        /// * `i` - Index of the inlet node which this segment
+        ///             connects to. Should be 0 or 1.
+        ///
+        /// # Return
+        /// UV Position of the downriver control node.
+        fn downriver_control_node(node: &Node, i: usize) -> Vector2<f64> {
+            Vector2::new(0.0, 0.0)  // TODO
+        }
+
+        /// Finds up-river control node.
+        ///
+        /// The up-river control node is the control node closer to
+        /// the upriver node of a segment.
+        ///
+        /// # Arguments
+        /// * `node` - Reference to up-river node.
+        ///
+        /// # Return
+        /// UV Position of the up-river control node.
+        fn upriver_control_node(node: &Node) -> Vector2<f64> {
+            Vector2::new(0.0, 0.0)  // TODO
         }
 
         // ------------------------
@@ -649,9 +731,28 @@ impl Region {
 
         // Progress up-river creating segments.
         while !frontier.is_empty() {
-            // Todo: Find outlet direction.
+            let i = frontier.pop_front().unwrap();
+            let node = &nodes[i];
 
-            // Todo: Find fork angle.
+            // Add inlets to frontier.
+            for inlet in &node.inlets {
+                if *inlet != usize::MAX {
+                    frontier.push_back(*inlet);
+                }
+            }
+
+            // If Node has an outlet, create segment connecting node to
+            // outlet node. If node has no outlet, continue.
+            if node.outlet == usize::MAX {
+                continue;
+            }
+
+            // Find upriver control node.
+            let upriver = upriver_control_node(node);
+
+            // Find downriver control node.
+            let outlet = &nodes[node.outlet];
+            //let downriver = downriver_control_node(outlet, )
         }
 
         tree
@@ -725,6 +826,44 @@ impl Region {
 // --------------------------------------------------------------------
 
 
+impl Node {
+    /// Creates new Node.
+    ///
+    /// Takes as arguments values which are available at instantiation,
+    /// and provides default values for the others.
+    ///
+    /// # Arguments
+    /// * `i` - Index of node in nodes vector.
+    /// * `indices` - HexGraph uv indices.
+    /// * `uv` - Position on UV plane.
+    /// * `h` - Height above mean sea level.
+    ///
+    /// # Return
+    /// Partially initialized Node containing passed values.
+    fn new(
+            i: usize,
+            indices: Vector2<i64>,
+            uv: Vector2<f64>,
+            h: f64
+    ) -> Node {
+        Node {
+            i,  // Index of Node in river graph.
+            indices,
+            uv,
+            h,  // Height above mean sea level.
+            neighbors: [usize::MAX, usize::MAX, usize::MAX],
+            inlets: [usize::MAX, usize::MAX],
+            outlet: usize::MAX,
+            direction: Vector2::new(0.0, 0.0),
+            fork_angle: -1.0,
+            strahler: -1
+        }
+    }
+}
+
+// --------------------------------------------------------------------
+
+
 impl HexGraph {
     /// Constructs new HexGraph
     fn new(edge_len: f64) -> HexGraph {
@@ -771,6 +910,7 @@ impl HexGraph {
     }
 
     /// Gets indices of neighbors sharing an edge with a vertex.
+    /// Returned neighbors are clockwise-ordered.
     fn neighbors(&self, indices: Vector2<i64>) -> [Vector2<i64>; 3] {
         // Get index within 4 vertex sequence.
         // This statement is a workaround for the '%' operator,
@@ -814,7 +954,6 @@ impl HexGraph {
 ///
 /// # Return
 /// Point
-#[inline]
 fn vec2pt(v: Vector2<f64>) -> Point {
     Point {
         x: v.x as f32,
@@ -841,44 +980,40 @@ mod tests {
     fn test_find_mouths() {
         let nodes = vec!(
             Node {
-                i: 0,  // Index of Node in river graph.
-                indices: Vector2::new(0, 0),
-                uv: Vector2::new(0.0, 0.0),
-                h: -13.0,  // Height above mean sea level.
-                neighbors: [1, 2, 3],  // Neighboring nodes within graph.
-                inlets: [usize::MAX, usize::MAX],
-                outlet: usize::MAX,
-                strahler: -1
+                neighbors: [1, 2, 3],
+                ..Node::new(
+                    0,
+                    Vector2::new(0, 0),
+                    Vector2::new(0.0, 0.0),
+                    -13.0
+                )
             },
             Node {
-                i: 1,  // Index of Node in river graph.
-                indices: Vector2::new(0, 0),
-                uv: Vector2::new(0.0, 0.0),
-                h: -24.0,  // Height above mean sea level.
-                neighbors: [0, 2, usize::MAX],  // Neighboring nodes within graph.
-                inlets: [usize::MAX, usize::MAX],
-                outlet: usize::MAX,
-                strahler: -1
+                neighbors: [0, 2, usize::MAX],
+                ..Node::new(
+                    1,
+                    Vector2::new(0, 0),
+                    Vector2::new(0.0, 0.0),
+                    -24.0
+                )
             },
             Node {
-                i: 2,  // Index of Node in river graph.
-                indices: Vector2::new(0, 0),
-                uv: Vector2::new(0.0, 0.0),
-                h: -11.0,  // Height above mean sea level.
-                neighbors: [0, 1, 3],  // Neighboring nodes within graph.
-                inlets: [usize::MAX, usize::MAX],
-                outlet: usize::MAX,
-                strahler: -1
+                neighbors: [0, 1, 3],
+                ..Node::new(
+                    2,  // Index of Node in river graph.
+                    Vector2::new(0, 0),
+                    Vector2::new(0.0, 0.0),
+                    -11.0,  // Height above mean sea level.
+                )
             },
             Node {
-                i: 3,  // Index of Node in river graph.
-                indices: Vector2::new(0, 0),
-                uv: Vector2::new(0.0, 0.0),
-                h: 18.0,  // Height above mean sea level.
-                neighbors: [0, 2, usize::MAX],  // Neighboring nodes within graph.
-                inlets: [usize::MAX, usize::MAX],
-                outlet: usize::MAX,
-                strahler: -1
+                neighbors: [0, 2, usize::MAX],
+                ..Node::new(
+                    3,  // Index of Node in river graph.
+                    Vector2::new(0, 0),
+                    Vector2::new(0.0, 0.0),
+                    18.0,  // Height above mean sea level.
+                )
             }
         );
 
