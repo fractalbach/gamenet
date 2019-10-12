@@ -263,6 +263,8 @@ impl Region {
         /// fewer than three neighbors, one or more index will be set to
         /// -1 (since usize is unsigned, this will be usize::MAX)
         ///
+        /// The nodes within the neighbors are ordered clockwise.
+        ///
         /// This function modifies the nodes in-place. It does not
         /// return a useful value.
         ///
@@ -524,9 +526,7 @@ impl Region {
                 nodes[exp.destination].outlet = exp.origin;
 
                 // Update origin.
-                let origin = &mut nodes[exp.origin];
-                let i = (origin.inlets[0] != usize::MAX) as usize;
-                origin.inlets[i] = exp.destination;
+                nodes[exp.origin].add_inlet(exp.destination);
             }
 
             let destination = &nodes[exp.destination];
@@ -689,7 +689,7 @@ impl Region {
         mouths: &Vec<usize>,
         shape: Rect,
     ) -> QuadTree<Segment> {
-        /// Finds downriver control node.
+        /// Finds downriver control node position.
         ///
         /// The down-river control node is the control node closer to
         /// the downriver of the endpoints of a segment.
@@ -705,7 +705,7 @@ impl Region {
             Vector2::new(0.0, 0.0)  // TODO
         }
 
-        /// Finds up-river control node.
+        /// Finds up-river control node position.
         ///
         /// The up-river control node is the control node closer to
         /// the upriver node of a segment.
@@ -859,7 +859,76 @@ impl Node {
             strahler: -1
         }
     }
+
+    /// Adds inlet node.
+    fn add_inlet(&mut self, node_i: usize) -> usize {
+        // Node should not already have two inlets.
+        debug_assert!(!self.is_fork());
+
+        // If no previous inlet exists, inlet index will be set in
+        // inlets[0]. If a previous inlet exists, then the left
+        // tributary index will be set in inlets[0], and the right
+        // tributary index will be set in inlets[1].
+        let inlet_index;
+        if self.inlets[0] == usize::MAX {
+            inlet_index = 0usize;
+        } else {
+            // Use neighbors array to find left/right ordering.
+            // Since the neighbors array should be ordered clockwise,
+            // it provides an efficient way to determine whether a node
+            // is on the left or right.
+            let mut inlet_i = usize::MAX;
+            for i in 0..3 {
+                if node_i == self.neighbors[i] {
+                    inlet_i = i;
+                    break;
+                }
+            }
+            debug_assert!(inlet_i != usize::MAX);
+            // Check if pre-existing inlet is on right side.
+            if self.inlets[0] == self.neighbors[(inlet_i + 1) % 3] {
+                inlet_index = 0;
+                // Move old inlet to right side.
+                self.inlets[1] = self.inlets[0]
+            } else {
+                inlet_index = 1;
+            }
+        }
+        self.inlets[inlet_index] = node_i;
+        inlet_index
+    }
+
+    // Getters
+
+    /// Checks whether node is a fork.
+    fn is_fork(&self) -> bool {
+        self.inlets[1] != usize::MAX
+    }
+
+    /// Gets left side of fork
+    ///
+    /// Left and right inlets are based on the perspective of an
+    /// observer facing upstream.
+    fn left_inlet(&self) -> usize {
+        debug_assert!(self.is_fork());
+        self.inlets[0]
+    }
+
+    /// Gets right side of fork
+    ///
+    /// Left and right inlets are based on the perspective of an
+    /// observer facing upstream.
+    fn right_inlet(&self) -> usize {
+        debug_assert!(self.is_fork());
+        self.inlets[1]
+    }
+
+    /// Checks if node is a river mouth (has no outlet)
+    fn is_mouth(&self) -> bool {
+        self.outlet == usize::MAX
+    }
 }
+
 
 // --------------------------------------------------------------------
 
@@ -1020,6 +1089,60 @@ mod tests {
         let mouths = Region::find_mouths(&nodes);
 
         assert_eq!(mouths, vec!(0, 2));
+    }
+
+    // ----------------------------------------------------------------
+    // Node
+
+    #[test]
+    fn test_node_add_inlet_handles_clockwise_addition() {
+        let mut node = Node::new(
+            0,
+            Vector2::new(0, 1),
+            Vector2::new(10.0, 0.0),
+            124.0
+        );
+
+        node.neighbors = [10, 20, 30];
+        node.add_inlet(20);
+        node.add_inlet(30);
+
+        assert_eq!(node.left_inlet(), 20);
+        assert_eq!(node.right_inlet(), 30);
+    }
+
+    #[test]
+    fn test_node_add_inlet_handles_clockwise_addition2() {
+        let mut node = Node::new(
+            0,
+            Vector2::new(0, 1),
+            Vector2::new(10.0, 0.0),
+            124.0
+        );
+
+        node.neighbors = [10, 20, 30];
+        node.add_inlet(30);
+        node.add_inlet(10);
+
+        assert_eq!(node.left_inlet(), 30);
+        assert_eq!(node.right_inlet(), 10);
+    }
+
+    #[test]
+    fn test_node_add_inlet_handles_counter_clockwise_addition() {
+        let mut node = Node::new(
+            0,
+            Vector2::new(0, 1),
+            Vector2::new(10.0, 0.0),
+            124.0
+        );
+
+        node.neighbors = [10, 20, 30];
+        node.add_inlet(20);
+        node.add_inlet(10);
+
+        assert_eq!(node.left_inlet(), 10);
+        assert_eq!(node.right_inlet(), 20);
     }
 
     // ----------------------------------------------------------------
