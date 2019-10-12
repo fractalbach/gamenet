@@ -19,6 +19,16 @@ use util::{rand1, hash_indices, sphere_uv_vec, idx_hash};
 // --------------------------------------------------------------------
 
 
+/// Struct handling generation of major river effects on the map
+///
+/// The RiverInfo produced by this layer includes an updated height
+/// value that includes the effects of river valley formation, as well
+/// as other major-river related information.
+///
+/// The .height() method is the main public method exposed by
+/// a RiverLayer. When passed a position, and TectonicInfo struct, the
+/// RiverLayer will generate or retrieve a river Region, and then yield
+/// a RiverInfo struct instance for that position.
 pub struct RiverLayer {
     seed: u32,
     region_cache: LruCache<Vector3<i64>, Region>,
@@ -116,7 +126,8 @@ impl RiverLayer {
             let region = Region::new(region_hash, tectonic, tectonic_info);
             self.region_cache.insert(indices, region);
         }
-        self.region_cache.get_mut(&indices).unwrap().height(v)
+        let region = self.region_cache.get_mut(&indices).unwrap();
+        region.height(v)
     }
 }
 
