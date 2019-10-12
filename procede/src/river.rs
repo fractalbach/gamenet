@@ -1145,6 +1145,38 @@ mod tests {
         assert_eq!(node.right_inlet(), 20);
     }
 
+    #[test]
+    fn test_node_is_fork() {
+        let mut node = Node::new(
+            0,
+            Vector2::new(0, 1),
+            Vector2::new(10.0, 0.0),
+            124.0
+        );
+        node.neighbors = [10, 20, 30];
+
+        assert!(!node.is_fork());
+        node.add_inlet(20);
+        assert!(!node.is_fork());
+        node.add_inlet(10);
+        assert!(node.is_fork());
+    }
+
+    #[test]
+    fn test_node_is_mouth() {
+        let mut node = Node::new(
+            0,
+            Vector2::new(0, 1),
+            Vector2::new(10.0, 0.0),
+            124.0
+        );
+        node.neighbors = [10, 20, 30];
+
+        assert!(node.is_mouth());
+        node.outlet = 20;
+        assert!(!node.is_mouth());
+    }
+
     // ----------------------------------------------------------------
     // HexGraph
 
