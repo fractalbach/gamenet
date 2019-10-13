@@ -1,6 +1,5 @@
-
 use aabb_quadtree::geom::{Rect, Point};
-use aabb_quadtree::{Spatial};
+use aabb_quadtree::Spatial;
 use cgmath::Vector2;
 
 use river::common::{RiverInfo, get_base_width};

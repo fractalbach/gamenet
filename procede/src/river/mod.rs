@@ -9,15 +9,13 @@ use std::f64;
 use std::collections::{VecDeque, HashSet, HashMap};
 use std::usize;
 
-use aabb_quadtree::{QuadTree, ItemId, Spatial};
-use aabb_quadtree::geom::{Rect, Point};
 use cgmath::{Vector2, Vector3};
 use cgmath::InnerSpace;
 use lru_cache::LruCache;
 
 use tectonic::{TectonicLayer, TectonicInfo};
-use util::{rand1, hash_indices, sphere_uv_vec, idx_hash};
-use river::common::{RiverInfo, get_base_width};
+use util::{hash_indices, sphere_uv_vec};
+use river::common::RiverInfo;
 use river::hex::HexGraph;
 use river::river_graph::{RiverGraph, Node};
 use river::segment::Segment;
@@ -378,9 +376,7 @@ impl Region {
 
 #[cfg(test)]
 mod tests {
-    use assert_approx_eq::assert_approx_eq;
     use cgmath::Vector2;
-    use cgmath::MetricSpace;
 
     use river::*;
     use river::river_graph::Node;

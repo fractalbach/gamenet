@@ -1,6 +1,5 @@
-
-use aabb_quadtree::geom::{Point};
-use cgmath::{Vector2};
+use aabb_quadtree::geom::Point;
+use cgmath::Vector2;
 
 /// Struct used to return height and related information about
 /// a position from the RiverLayer.

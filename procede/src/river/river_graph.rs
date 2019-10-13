@@ -4,8 +4,8 @@ use std::f64;
 use std::num::Wrapping;
 use std::usize;
 
-use aabb_quadtree::{QuadTree};
-use aabb_quadtree::geom::{Rect};
+use aabb_quadtree::QuadTree;
+use aabb_quadtree::geom::Rect;
 use cgmath::Vector2;
 use cgmath::InnerSpace;
 
