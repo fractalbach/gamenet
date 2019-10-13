@@ -86,3 +86,24 @@ macro_rules! assert_gt {
         );
     }};
 }
+
+/// Checks that b is between a and c.
+///
+/// # Arguments
+/// * a first value. Left side of comparison. Must be comparable to b
+/// * b second value. Center of comparison.
+/// * c second value. Right side of comparison.
+#[macro_export]
+macro_rules! assert_in_range {
+    ($a:expr, $b:expr, $c:expr) => {{
+        let (a, b, c) = (&$a, &$b, &$c);
+        assert!(
+            a <= b && b < c,
+            "assertion failed: `(left <= mid < right)` \
+             (left: `{:?}`, mid: `{:?}`, right: `{:?}`",
+            a,
+            b,
+            c,
+        );
+    }};
+}
