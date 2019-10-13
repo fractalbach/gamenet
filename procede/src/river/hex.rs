@@ -1,7 +1,6 @@
 use std::f64;
 
 use cgmath::Vector2;
-use cgmath::InnerSpace;
 
 pub struct HexGraph {
     edge_len: f64,  // Distance from vertex to vertex.
@@ -92,6 +91,7 @@ impl HexGraph {
 
 #[cfg(test)]
 mod tests {
+    use assert_approx_eq::assert_approx_eq;
     use cgmath::Vector2;
     use cgmath::MetricSpace;
 
