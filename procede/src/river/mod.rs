@@ -380,6 +380,7 @@ mod tests {
 
     use river::*;
     use river::river_graph::Node;
+    use tectonic::TectonicLayer;
 
     // ----------------------------------------------------------------
     // Region
@@ -428,5 +429,22 @@ mod tests {
         let mouths = Region::find_mouths(&nodes);
 
         assert_eq!(mouths, vec!(0, 2));
+    }
+
+    #[test]
+    fn test_region_graph() {
+        let mut tectonic = TectonicLayer::new(13);
+        let mut river = RiverLayer::new(13);
+
+        // Find good tectonic cell with height above sea level.
+        for (x, y, z) in iproduct!(-10..11, -10..11, -10..11) {
+            
+        }
+
+        // Get river region
+        // TODO
+
+        // Serialize graph.
+        // TODO
     }
 }

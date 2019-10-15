@@ -40,6 +40,8 @@ extern crate cgmath;
 extern crate lru_cache;
 extern crate noise;
 extern crate num_traits;
+extern crate serde;
+extern crate serde_json;
 extern crate wasm_bindgen;
 
 #[macro_use]
@@ -47,6 +49,7 @@ mod test_util;
 
 mod voronoi;
 mod river;
+mod serde_util;
 mod surface;
 mod tectonic;
 mod util;

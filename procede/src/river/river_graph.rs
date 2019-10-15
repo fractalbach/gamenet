@@ -8,8 +8,12 @@ use aabb_quadtree::QuadTree;
 use aabb_quadtree::geom::Rect;
 use cgmath::Vector2;
 use cgmath::InnerSpace;
+use serde::{Deserialize, Serialize};
+use serde::Serializer;
+use serde::ser::SerializeStruct;
 
 use util::{idx_hash, rand1};
+use serde_util::SerializableVector2;
 use river::common::{get_base_width, vec2pt};
 use river::segment::Segment;
 
@@ -443,6 +447,14 @@ impl RiverGraph {
     }
 }
 
+impl Serialize for RiverGraph {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: serde::Serializer
+    {
+        serializer.serialize_some(&self.nodes)
+    }
+}
+
 
 // --------------------------------------------------------------------
 
@@ -564,6 +576,31 @@ impl Node {
         get_base_width(self.strahler)
     }
 }
+
+impl Serialize for Node {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: serde::Serializer
+    {
+        let mut state = serializer.serialize_struct("RiverNode", 2)?;
+        state.serialize_field("i", &self.i)?;
+        let ser_indices = SerializableVector2::new(&self.indices);
+        state.serialize_field("indices", &ser_indices)?;
+        let ser_uv = SerializableVector2::new(&self.uv);
+        state.serialize_field("uv", &ser_uv)?;
+        state.serialize_field("h", &self.h)?;
+        state.serialize_field("neighbors", &self.neighbors)?;
+        state.serialize_field("inlets", &self.inlets)?;
+        state.serialize_field("outlet", &self.outlet)?;
+        let ser_direction = SerializableVector2::new(&self.direction);
+        state.serialize_field("direction", &ser_direction)?;
+        state.serialize_field("fork_angle", &self.fork_angle)?;
+        state.serialize_field("strahler", &self.strahler)?;
+        state.end()
+    }
+}
+
+
+// --------------------------------------------------------------------
 
 
 #[cfg(test)]
