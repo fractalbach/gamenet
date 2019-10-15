@@ -102,6 +102,13 @@ impl TectonicLayer {
 
     /// Gets height at surface position identified by direction vector
     /// from origin.
+    ///
+    /// # Arguments
+    /// * `v` - Position Vector3. Does not require normalization:
+    ///             Will be mapped to world surface.
+    ///
+    /// # Return
+    /// TectonicInfo with height and plate info for the passed position.
     pub fn height(&mut self, v: Vector3<f64>) -> TectonicInfo {
         let adj_pos = self.adjust_pos(v);
         let near_result = self.surface.near4(adj_pos);
@@ -168,7 +175,18 @@ impl TectonicLayer {
         }
     }
 
-    /// Adjust input world position
+    /// Adjust input world position.
+    ///
+    /// Input vector will be normalized and then modified according to
+    /// the tectonic warp noise, and then shrunk on the z axis in order
+    /// to more closely resemble real-world tectonic plate behavior.
+    ///
+    /// # Arguments
+    /// * `v` - Position Vector3. Does not require normalization:
+    ///             Will be mapped to world surface.
+    ///
+    /// # Return
+    /// Modified position Vector3.
     fn adjust_pos(&self, v: Vector3<f64>) -> Vector3<f64> {
         let v = v.normalize();
         let noise_amp = 0.6;

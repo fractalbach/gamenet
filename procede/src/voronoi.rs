@@ -65,7 +65,7 @@ impl VoronoiSpace {
                         continue;
                     }
 
-                    // Get indices of visted region
+                    // Get indices of visited region
                     let indices = Vector3::new(
                         v_region.x + i,
                         v_region.y + j,
