@@ -4,6 +4,11 @@ use std::num::Wrapping;
 use cgmath::{Vector2, Vector3};
 use cgmath::InnerSpace;
 
+
+pub struct TangentPlane {
+    origin: Vector3<f64>
+}
+
 // --------------------------------------------------------------------
 
 
@@ -83,8 +88,10 @@ pub fn hash_indices(seed: u32, indices: Vector3<i64>) -> u32 {
 /// * u vector - Vector tangential to the surface, aligned with the
 ///             longitude line of the passed position.
 ///             (side to side)
+///             Will be normalized (magnitude 1).
 /// * v vector - Vector tangential to the surface, pointing towards
 ///             the north pole.
+///             Will be normalized (magnitude 1).
 pub fn sphere_uv_vec(v: Vector3<f64>) -> (Vector3<f64>, Vector3<f64>) {
     assert_ne!(v, Vector3::new(0.0, 0.0, 0.0));
 
@@ -121,6 +128,30 @@ pub fn is_clockwise(a: Vector2<f64>, b: Vector2<f64>) -> bool {
 /// Convert vector with 3 f64 elements to an array of 3 f64s.
 pub fn vec2arr(v: Vector3<f64>) -> [f64; 3] {
     [v.x, v.y, v.z]
+}
+
+
+impl TangentPlane {
+    pub fn new(origin: Vector3<f64>) -> TangentPlane {
+        TangentPlane { origin }
+    }
+
+    /// Generates xyz position from a uv position on the TangentPlane
+    ///
+    /// # Arguments
+    /// * `uv` - Position relative to the origin on the TangentPlane.
+    ///
+    /// # Returns
+    /// XYZ Vector3 of position in world-space. Not normalized.
+    pub fn xyz(&self, uv: Vector2<f64>) -> Vector3<f64> {
+        let (u_vec, v_vec) = sphere_uv_vec(self.origin);
+        u_vec * uv.x + v_vec * uv.y + self.origin
+    }
+
+    pub fn uv(&self, xyz: Vector3<f64>) -> Vector2<f64> {
+        assert!(false);
+        Vector2::new(0.0, 0.0)
+    }
 }
 
 
