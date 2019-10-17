@@ -12,6 +12,8 @@ use std::usize;
 use cgmath::{Vector2, Vector3};
 use cgmath::InnerSpace;
 use lru_cache::LruCache;
+use serde::{Deserialize, Serialize};
+use serde::ser::SerializeStruct;
 
 use tectonic::{TectonicLayer, TectonicInfo};
 use util::{hash_indices, sphere_uv_vec, TangentPlane};
@@ -19,6 +21,7 @@ use river::common::RiverInfo;
 use river::hex::HexGraph;
 use river::river_graph::{RiverGraph, Node};
 use river::segment::Segment;
+use serde_util::SerializableVector3;
 
 
 // --------------------------------------------------------------------
@@ -380,6 +383,18 @@ impl Region {
             // TODO: Replace placeholder.
             Segment::new(&node, &node)
         )
+    }
+}
+
+impl Serialize for Region {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: serde::Serializer
+    {
+        let mut state = serializer.serialize_struct("RiverNode", 10)?;
+        let serializable_nucleus = SerializableVector3::new(&self.nucleus);
+        state.serialize_field("nucleus", &serializable_nucleus)?;
+        state.serialize_field("graph", &self.graph)?;
+        state.end()
     }
 }
 
