@@ -219,6 +219,7 @@ impl Region {
             frontier.push_back(first);
             visited.insert(first);
             while !frontier.is_empty() {
+                // TODO: Debug
                 let indices = frontier.pop_front().unwrap();
                 let uv = hex_graph.pos(indices);  // TODO: randomize.
                 let xyz = TangentPlane::new(tectonic_info.nucleus).xyz(uv);
@@ -404,11 +405,14 @@ impl Serialize for Region {
 
 #[cfg(test)]
 mod tests {
-    use cgmath::Vector2;
+    use std::fs;
+
+    use cgmath::{Vector2, Vector3};
+    use serde_json;
 
     use river::*;
     use river::river_graph::Node;
-    use tectonic::TectonicLayer;
+    use tectonic::{TectonicLayer, TectonicInfo};
 
     // ----------------------------------------------------------------
     // Region
@@ -465,14 +469,29 @@ mod tests {
         let mut river = RiverLayer::new(13);
 
         // Find good tectonic cell with height above sea level.
+        let mut tectonic_info = TectonicInfo {
+            height: -1.0,
+            indices: Vector3::new(0, 0, 0),
+            nucleus: Vector3::new(0.0, 0.0, 0.0)
+        };
+        let mut v = Vector3::new(0.0, 0.0, 0.0);
         for (x, y, z) in iproduct!(-10..11, -10..11, -10..11) {
-            
+            v = Vector3::new(x as f64, y as f64, z as f64);
+            tectonic_info = tectonic.height(v);
+            if tectonic_info.height > 0.0 {
+                break;
+            }
         }
+        assert_gt!(v.magnitude(), 0.0);
+        assert_gt!(tectonic_info.height, 0.0);
 
         // Get river region
-        // TODO
+        let region = river.region(v, tectonic_info, &mut tectonic);
+
+        assert_gt!(region.graph.len(), 0);
 
         // Serialize graph.
-        // TODO
+        let s = serde_json::to_string_pretty(&region).unwrap();
+        fs::write("test_region_graph.json", &s).expect("Unable to write");
     }
 }

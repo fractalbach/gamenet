@@ -445,6 +445,10 @@ impl RiverGraph {
 
         tree
     }
+
+    pub fn len(&self) -> usize {
+        self.nodes.len()
+    }
 }
 
 impl Serialize for RiverGraph {
