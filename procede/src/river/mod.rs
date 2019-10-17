@@ -14,7 +14,7 @@ use cgmath::InnerSpace;
 use lru_cache::LruCache;
 
 use tectonic::{TectonicLayer, TectonicInfo};
-use util::{hash_indices, sphere_uv_vec};
+use util::{hash_indices, sphere_uv_vec, TangentPlane};
 use river::common::RiverInfo;
 use river::hex::HexGraph;
 use river::river_graph::{RiverGraph, Node};
@@ -48,6 +48,7 @@ pub struct RiverLayer {
 /// is likely to either border an ocean, or else be bordered by a
 /// mountain range which would realistically separate river basins.
 struct Region {
+    nucleus: Vector3<f64>,
     graph: RiverGraph
 }
 
@@ -85,6 +86,29 @@ impl RiverLayer {
             tectonic_info: TectonicInfo,
             tectonic: &mut TectonicLayer,
     ) -> RiverInfo {
+        self.region(v, tectonic_info, tectonic).height(v)
+    }
+
+    /// Gets Region for passed position vector and tectonic data.
+    ///
+    /// If Region has not yet been created, it is generated. If it has
+    /// already been generated, a reference to the cached region
+    /// is provided.
+    ///
+    /// # Arguments
+    /// * `v` - Position in 3d space relative to world center.
+    ///             Will be normalized.
+    /// * `tectonic_info` - Tectonic information for the passed point
+    /// * `tectonic` - Mutable reference to tectonic layer.
+    ///
+    /// # Returns
+    /// Mutable Region reference.
+    pub fn region(
+        &mut self,
+        v: Vector3<f64>,
+        tectonic_info: TectonicInfo,
+        tectonic: &mut TectonicLayer,
+    ) -> &mut Region {
         let indices: Vector3<i64> = tectonic_info.indices;
         if !self.region_cache.contains_key(&indices) {
             let region_hash = hash_indices(self.seed, indices);
@@ -92,7 +116,7 @@ impl RiverLayer {
             self.region_cache.insert(indices, region);
         }
         let region = self.region_cache.get_mut(&indices).unwrap();
-        region.height(v)
+        region
     }
 }
 
@@ -116,10 +140,11 @@ impl Region {
         let (u_vec, v_vec) = sphere_uv_vec(center3d);
 
         // Create river nodes.
-        let nodes = Self::create_nodes(seed, tectonic, tectonic_info);
+        let nodes = Self::create_nodes(seed, tectonic, &tectonic_info);
         let mouths = Self::find_mouths(&nodes);
 
         Region {
+            nucleus: tectonic_info.nucleus,
             graph: RiverGraph::new(nodes, &mouths),
         }
     }
@@ -137,7 +162,7 @@ impl Region {
     fn create_nodes(
         seed: u32,
         tectonic: &mut TectonicLayer,
-        tectonic_info: TectonicInfo,
+        tectonic_info: &TectonicInfo,
     ) -> Vec<Node> {
         /// Finds the first hex index contained within the cell.
         ///
@@ -180,7 +205,7 @@ impl Region {
         ///             stored with the node's HexGraph indices as key.
         fn explore_cell(
             tectonic: &mut TectonicLayer,
-            cell_indices: Vector3<i64>,
+            tectonic_info: &TectonicInfo,
             hex_graph: &HexGraph,
             first: Vector2<i64>,
         ) -> (Vec<Node>, HashMap<Vector2<i64>, usize>) {
@@ -192,10 +217,10 @@ impl Region {
             visited.insert(first);
             while !frontier.is_empty() {
                 let indices = frontier.pop_front().unwrap();
-                let uv = hex_graph.pos(indices);  // TODO: randomize
-                let xyz = Region::uv_to_xyz_norm(uv);
+                let uv = hex_graph.pos(indices);  // TODO: randomize.
+                let xyz = TangentPlane::new(tectonic_info.nucleus).xyz(uv);
                 let node_info = tectonic.height(xyz);
-                if node_info.indices != cell_indices {
+                if node_info.indices != tectonic_info.indices {
                     continue;
                 }
 
@@ -265,7 +290,7 @@ impl Region {
         // Find nodes in cell.
         let (mut nodes, included) = explore_cell(
             tectonic,
-            tectonic_info.indices,
+            &tectonic_info,
             &hex_graph,
             first,
         );
@@ -314,6 +339,7 @@ impl Region {
         let uv = self.xyz_to_uv(v);
         let (d, nearest_seg) = self.nearest_segment(uv);
 
+        assert!(false);
         RiverInfo {
             height: 0.0, // TODO: Replace placeholder
         }
@@ -330,21 +356,8 @@ impl Region {
     /// # Return
     /// 2d UV position in plane tangential to region origin.
     fn xyz_to_uv(&self, v: Vector3<f64>) -> Vector2<f64> {
+        assert!(false);
         Vector2::new(0.0, 0.0)  // Todo: Replace placeholder
-    }
-
-    /// Converts a uv position vector to a 3d world position.
-    ///
-    /// The produced vector identifies a point in 3d space relative
-    /// to the world center.
-    ///
-    /// # Arguments:
-    /// * `uv` - 2d uv position vector.
-    ///
-    /// # Return
-    /// Normalized vector identifying point on surface of world sphere.
-    fn uv_to_xyz_norm(uv: Vector2<f64>) -> Vector3<f64> {
-        Vector3::new(0.0, 0.0, 0.0)  // Todo: Replace placeholder
     }
 
     /// Finds the nearest river segment to a position.
