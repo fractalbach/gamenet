@@ -581,7 +581,7 @@ impl Serialize for Node {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: serde::Serializer
     {
-        let mut state = serializer.serialize_struct("RiverNode", 2)?;
+        let mut state = serializer.serialize_struct("RiverNode", 10)?;
         state.serialize_field("i", &self.i)?;
         let ser_indices = SerializableVector2::new(&self.indices);
         state.serialize_field("indices", &ser_indices)?;
