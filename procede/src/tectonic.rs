@@ -340,6 +340,16 @@ impl Plate {
     }
 }
 
+/// Scale a value using sqrt.
+///
+/// If the passed value is negative, it is scaled as if it were a
+/// positive value. Ex: `sign_safe_sqrt(-4)` returns `-2`.
+///
+/// # Arguments
+/// * `x` - Value to scale
+///
+/// # Return
+/// Sqrt-scaled value.
 fn sign_safe_sqrt(x: f64) -> f64 {
     if x == 0.0 {
         return 0.0;
