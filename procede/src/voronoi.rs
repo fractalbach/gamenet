@@ -57,7 +57,6 @@ impl VoronoiSpace {
             dist: [-1.0; 4]
         };
 
-        // TODO: Use itertools product.
         for i in -2i64..3 {
             for j in -2i64..3 {
                 for k in -2i64..3 {

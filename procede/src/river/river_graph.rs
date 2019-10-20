@@ -272,7 +272,7 @@ impl RiverGraph {
             if exp.origin != usize::MAX {
                 // Handle case where origin already has two inlets.
                 // This is rare, but possible for river mouths.
-                if nodes[exp.destination].inlets[1] != usize::MAX {
+                if nodes[exp.origin].is_fork() {
                     continue;
                 }
                 // Update destination
@@ -364,7 +364,7 @@ impl RiverGraph {
         /// Angle of fork in radians.
         fn find_fork_angle(i: usize, nodes: &mut Vec<Node>) -> f64 {
             let node = &nodes[i];
-            if node.inlets[1] == usize::MAX {
+            if !node.is_fork() {
                 return 0.0;
             }
 
