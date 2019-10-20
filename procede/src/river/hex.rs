@@ -30,7 +30,7 @@ impl HexGraph {
         if indices.y >= 0 {
             seq_iteration = indices.y / 4;
         } else {
-            seq_iteration = indices.y / 4 - 1;
+            seq_iteration = (indices.y + 1) / 4 - 1;
         }
 
         let seq_pos0 = Vector2::new(
