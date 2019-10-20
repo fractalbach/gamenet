@@ -1,7 +1,7 @@
 //! Module containing tectonic plate procedural structs and functions.
 //!
 
-use cgmath::{Vector2, Vector3};
+use cgmath::{Basis3, Rotation, Vector2, Vector3, vec3};
 use cgmath::InnerSpace;
 use lru_cache::LruCache;
 
@@ -297,6 +297,23 @@ impl TectonicLayer {
 
         u_vec * motion.x + v_vec * motion.y
     }
+
+    /// Find input position that corresponds to a plate's nucleus
+    pub fn raw_v(&self, mod_v: Vector3<f64>) -> Vector3<f64> {
+        // Set vector to modified pos.
+        let mut v = mod_v;
+
+        // Rotate nucleus vector until modified vector aligns with
+        // modified origin.
+        // This vector is the (local) origin of the region.
+        for i in 0..16 {
+            let res_v = self.adjust_pos(v);
+            let rotation: Basis3<f64> = Rotation::between_vectors(res_v, mod_v);
+            v = rotation.rotate_vector(v);
+        }
+
+        v
+    }
 }
 
 
@@ -366,7 +383,10 @@ fn sign_safe_sqrt(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use cgmath::Vector3;
+    use cgmath::{Vector3, vec3};
+
+    use surface::Surface;
+    use voronoi::NearResult;
 
     use tectonic::*;
 
@@ -398,5 +418,25 @@ mod tests {
         ).unwrap().motion;
 
         assert_eq!(motion1, motion2);
+    }
+
+    #[test]
+    fn test_result_info_is_consistent() {
+        let mut tectonic = TectonicLayer::new(1);
+        let v = Vector3::new(-2.0, -2.0, -2.0);
+        let info_a: TectonicInfo = tectonic.height(v);
+        let info_b: TectonicInfo = tectonic.height(v);
+
+        assert_eq!(info_a.indices, info_b.indices);
+        assert_vec3_near!(info_a.nucleus, info_b.nucleus);
+    }
+
+    #[test]
+    fn test_raw_v_produces_accurate_result() {
+        let mut tectonic = TectonicLayer::new(1);
+        let mod_v = tectonic.adjust_pos(vec3(1.0, 1.0, 1.0));
+        let raw_v = tectonic.raw_v(mod_v);
+
+        assert_vec3_near!(mod_v, tectonic.adjust_pos(raw_v));
     }
 }
