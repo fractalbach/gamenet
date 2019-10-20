@@ -60,7 +60,7 @@ struct Region {
 
 
 impl RiverLayer {
-    pub const REGION_CACHE_SIZE: usize = 1_00;
+    pub const REGION_CACHE_SIZE: usize = 100;
 
     // Construction
 

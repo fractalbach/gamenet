@@ -1,10 +1,10 @@
+use num_traits::abs;
 use std::cmp::Ordering;
 use std::collections::{VecDeque, HashSet, BinaryHeap};
 use std::f64;
 use std::num::Wrapping;
 use std::usize;
 use std::u32;
-use num_traits::abs;
 
 use aabb_quadtree::QuadTree;
 use aabb_quadtree::geom::Rect;
