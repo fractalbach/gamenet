@@ -19,7 +19,7 @@ use tectonic::{TectonicLayer, TectonicInfo};
 use util::{hash_indices, sphere_uv_vec, TangentPlane};
 use river::common::RiverInfo;
 use river::hex::HexGraph;
-use river::river_graph::{RiverGraph, Node};
+use river::river_graph::{RiverGraph, Mouth, Node};
 use river::segment::Segment;
 use serde_util::SerializableVector3;
 
@@ -129,8 +129,9 @@ impl RiverLayer {
 
 impl Region {
     pub const NODE_MEAN_SEPARATION: f64 = 10_000.0;
-    const MIN_STRAHLER: i8 = 2;
     const CONTROL_POINT_DIST: f64 = Self::NODE_MEAN_SEPARATION * 0.2;
+    const MIN_STRAHLER: i8 = 2;
+    const BIAS_MAGNITUDE: f64 = 0.05;  // Should be < 0.1
 
     fn new(
         seed: u32,
@@ -307,8 +308,12 @@ impl Region {
     ///
     /// # Return
     /// Vec of river node indices that are river mouths.
-    fn find_mouths(nodes: &Vec<Node>) -> Vec<usize> {
-        let mut mouths = Vec::new();
+    fn find_mouths(nodes: &Vec<Node>) -> Vec<Mouth> {
+        // TODO:
+        // Find Plate-wide bias.
+        // This provides a somewhat more consistent direction for rivers.
+
+        let mut mouths = Vec::with_capacity(100);
         for (i, node) in nodes.iter().enumerate() {
             // If node is not in an ocean, continue search.
             if node.h >= 0.0 {
@@ -318,7 +323,11 @@ impl Region {
             // Check if any neighbor is on land.
             for &neighbor in &node.neighbors {
                 if neighbor != usize::MAX && nodes[neighbor].h >= 0.0 {
-                    mouths.push(i);
+
+                    let dir = (nodes[neighbor].uv - node.uv).normalize();
+                    let bias = dir * Self::BIAS_MAGNITUDE;
+
+                    mouths.push(Mouth{i, bias});
                     break;
                 }
             }
@@ -455,7 +464,8 @@ mod tests {
 
         let mouths = Region::find_mouths(&nodes);
 
-        assert_eq!(mouths, vec!(0, 2));
+        assert_eq!(0, mouths[0].i);
+        assert_eq!(2, mouths[1].i);
     }
 
     #[test]

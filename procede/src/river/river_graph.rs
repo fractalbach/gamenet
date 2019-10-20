@@ -3,6 +3,8 @@ use std::collections::{VecDeque, HashSet, BinaryHeap};
 use std::f64;
 use std::num::Wrapping;
 use std::usize;
+use std::u32;
+use num_traits::abs;
 
 use aabb_quadtree::QuadTree;
 use aabb_quadtree::geom::Rect;
@@ -20,6 +22,11 @@ use river::segment::Segment;
 pub struct RiverGraph {
     pub segment_tree: QuadTree<Segment>,
     pub nodes: Vec<Node>,
+}
+
+pub struct Mouth {
+    pub i: usize,  // Index of Node.
+    pub bias: Vector2<f64>,  // Direction bias. Magnitude determines weight.
 }
 
 /// River node
@@ -48,7 +55,7 @@ pub struct GenerationInfo {
 impl RiverGraph {
     pub fn new(
         mut nodes: Vec<Node>,
-        mouths: &Vec<usize>,
+        mouths: &Vec<Mouth>,
         min_strahler: i8,
     ) -> RiverGraph {
         // Connect nodes in-place.
@@ -86,7 +93,9 @@ impl RiverGraph {
     ///
     /// # Return
     /// GenerationInfo with Vec of river mouth nodes and other info.
-    fn generate_rivers(nodes: &mut Vec<Node>, mouths: &Vec<usize>) -> GenerationInfo {
+    fn generate_rivers(
+        nodes: &mut Vec<Node>, mouths: &Vec<Mouth>
+    ) -> GenerationInfo {
         /// Struct representing a planned search along a single edge.
         ///
         /// This search will be carried out at some point
@@ -96,11 +105,12 @@ impl RiverGraph {
         /// An Expedition is assigned a semi-random priority based on
         /// its destination -and- origin, in order to avoid a pure
         /// breadth first search.
-        #[derive(Copy, Clone, Eq, PartialEq)]
+        #[derive(Copy, Clone, PartialEq)]
         struct Expedition {
             priority: u32,
             destination: usize,
             origin: usize,
+            bias: Vector2<f64>,
         }
 
         impl Expedition {
@@ -114,11 +124,14 @@ impl RiverGraph {
             ///
             /// # Return
             /// new Expedition
-            fn new(destination: usize, origin: usize) -> Expedition {
+            fn new(
+                destination: &Node, origin: &Node, bias: Vector2<f64>
+            ) -> Expedition {
                 Expedition {
-                    priority: Self::find_priority(destination, origin),
-                    destination,
-                    origin,
+                    priority: Self::find_priority(destination, origin, bias),
+                    destination: destination.i,
+                    origin: origin.i,
+                    bias
                 }
             }
 
@@ -132,21 +145,40 @@ impl RiverGraph {
             ///
             /// # Return
             /// new Expedition
-            fn start_point(destination: usize) -> Expedition {
+            fn start_point(mouth: &Mouth) -> Expedition {
                 Expedition {
-                    priority: idx_hash(destination as i64),
-                    destination,
-                    origin: usize::MAX
+                    priority: idx_hash(mouth.i as i64),
+                    destination: mouth.i,
+                    origin: usize::MAX,
+                    bias: mouth.bias,
                 }
             }
 
             /// Finds priority of an Expedition.
-            fn find_priority(dest: usize, origin: usize) -> u32 {
-                let hash = Wrapping(idx_hash(dest as i64)) +
-                    Wrapping(idx_hash(origin as i64));
-                hash.0
+            fn find_priority(
+                dest: &Node, origin: &Node, bias: Vector2<f64>
+            ) -> u32 {
+                let hash = Wrapping(idx_hash(dest.i as i64)) +
+                    Wrapping(idx_hash(origin.i as i64));
+
+                let bias_effect = Self::bias_effect(dest, origin, bias);
+
+                let base_priority = ((hash.0 / 2) + u32::MAX / 4) as i64;
+                let priority = base_priority + bias_effect as i64;
+
+                debug_assert!(priority >= 0 && priority < u32::MAX as i64);
+                priority as u32
+            }
+
+            fn bias_effect(dest: &Node, origin: &Node, bias: Vector2<f64>) -> i64 {
+                let dir = (dest.uv - origin.uv).normalize();
+                let direction_effect = dir.dot(bias) * u32::MAX as f64;
+
+                (direction_effect) as i64
             }
         }
+
+        impl Eq for Expedition {}
 
         // The priority queue (BinaryHeap) depends on `Ord`.
         impl Ord for Expedition {
@@ -223,7 +255,8 @@ impl RiverGraph {
             origin: &Node,
             nodes: &Vec<Node>,
             visited: &HashSet<usize>,
-            expeditions: &mut BinaryHeap<Expedition>
+            expeditions: &mut BinaryHeap<Expedition>,
+            bias: Vector2<f64>,
         ) {
             for &neighbor in &origin.neighbors {
                 // Ignore unused neighbor slots.
@@ -247,7 +280,9 @@ impl RiverGraph {
                     continue;
                 }
 
-                expeditions.push(Expedition::new(neighbor, origin.i));
+                expeditions.push(Expedition::new(
+                    &nodes[neighbor], origin, bias
+                ));
             }
         }
 
@@ -261,7 +296,7 @@ impl RiverGraph {
 
         // Initialize expeditions with river mouths
         for mouth in mouths {
-            expeditions.push(Expedition::start_point(*mouth));
+            expeditions.push(Expedition::start_point(mouth));
         }
 
         // Explore
@@ -302,6 +337,7 @@ impl RiverGraph {
                 nodes,
                 &visited,
                 &mut expeditions,
+                exp.bias,
             );
         }
 
@@ -313,7 +349,7 @@ impl RiverGraph {
 
     /// Finds strahler number of each node.
     fn find_strahler_numbers(
-        nodes: &mut Vec<Node>, mouths: &Vec<usize>, min_strahler: i8
+        nodes: &mut Vec<Node>, mouths: &Vec<Mouth>, min_strahler: i8
     ) {
         // Recursion is not an option due to the potential river length.
         // The default recursion limit is 128 in rust, and the max
@@ -327,7 +363,8 @@ impl RiverGraph {
         let mut ordering = Vec::with_capacity(100);
         let mut frontier = VecDeque::with_capacity(100);
 
-        for &mouth in mouths {
+        for mouth in mouths {
+            let mouth = mouth.i;
             // Create ordering which will later be traversed over in the
             // opposite order from which they were added.
             frontier.push_back(mouth);
@@ -478,15 +515,15 @@ impl RiverGraph {
     /// Searchable QuadTree of river segments.
     fn create_segments(
         nodes: &Vec<Node>,
-        mouths: &Vec<usize>,
+        mouths: &Vec<Mouth>,
         shape: Rect,
     ) -> QuadTree<Segment> {
         let mut tree: QuadTree<Segment> = QuadTree::default(shape);
         let mut frontier: VecDeque<usize> = VecDeque::with_capacity(100);
 
         // Add mouths to `frontier` to-do list.
-        for i in mouths {
-            frontier.push_back(*i);
+        for mouth in mouths {
+            frontier.push_back(mouth.i);
         }
 
         // Progress up-river creating segments.
