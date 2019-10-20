@@ -630,9 +630,14 @@ mod tests {
         );
 
         node.neighbors = [10, 20, 30];
+        assert_eq!(usize::MAX, node.inlets[0]);
+        assert_eq!(usize::MAX, node.inlets[1]);
         node.add_inlet(20);
+        assert_eq!(20, node.inlets[0]);
+        assert_eq!(usize::MAX, node.inlets[1]);
         node.add_inlet(30);
-
+        assert_eq!(20, node.inlets[0]);
+        assert_eq!(30, node.inlets[1]);
         assert_eq!(node.left_inlet(), 20);
         assert_eq!(node.right_inlet(), 30);
     }
@@ -647,9 +652,14 @@ mod tests {
         );
 
         node.neighbors = [10, 20, 30];
+        assert_eq!(usize::MAX, node.inlets[0]);
+        assert_eq!(usize::MAX, node.inlets[1]);
         node.add_inlet(30);
+        assert_eq!(30, node.inlets[0]);
+        assert_eq!(usize::MAX, node.inlets[1]);
         node.add_inlet(10);
-
+        assert_eq!(30, node.inlets[0]);
+        assert_eq!(10, node.inlets[1]);
         assert_eq!(node.left_inlet(), 30);
         assert_eq!(node.right_inlet(), 10);
     }
@@ -664,9 +674,14 @@ mod tests {
         );
 
         node.neighbors = [10, 20, 30];
+        assert_eq!(usize::MAX, node.inlets[0]);
+        assert_eq!(usize::MAX, node.inlets[1]);
         node.add_inlet(20);
+        assert_eq!(20, node.inlets[0]);
+        assert_eq!(usize::MAX, node.inlets[1]);
         node.add_inlet(10);
-
+        assert_eq!(10, node.inlets[0]);
+        assert_eq!(20, node.inlets[1]);
         assert_eq!(node.left_inlet(), 10);
         assert_eq!(node.right_inlet(), 20);
     }
