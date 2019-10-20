@@ -14,12 +14,12 @@ use serde::ser::SerializeStruct;
 
 use util::{idx_hash, rand1};
 use serde_util::SerializableVector2;
-use river::common::{get_base_width, vec2pt};
+use river::common::{get_base_width, vec2pt, MAX_STRAHLER};
 use river::segment::Segment;
 
 pub struct RiverGraph {
     pub segment_tree: QuadTree<Segment>,
-    pub nodes: Vec<Node>
+    pub nodes: Vec<Node>,
 }
 
 /// River node
@@ -46,9 +46,14 @@ pub struct GenerationInfo {
 
 
 impl RiverGraph {
-    pub fn new(mut nodes: Vec<Node>, mouths: &Vec<usize>) -> RiverGraph {
+    pub fn new(
+        mut nodes: Vec<Node>,
+        mouths: &Vec<usize>,
+        min_strahler: i8,
+    ) -> RiverGraph {
         // Connect nodes in-place.
         let info = Self::generate_rivers(&mut nodes, mouths);
+        Self::find_strahler_numbers(&mut nodes, mouths, min_strahler);
         Self::find_direction_info(&mut nodes);
 
         // Create bounding shape
@@ -220,25 +225,29 @@ impl RiverGraph {
             visited: &HashSet<usize>,
             expeditions: &mut BinaryHeap<Expedition>
         ) {
-            for neighbor in &origin.neighbors {
+            for &neighbor in &origin.neighbors {
                 // Ignore unused neighbor slots.
-                if *neighbor == usize::MAX {
+                if neighbor == usize::MAX {
                     continue;
                 }
 
                 // If already explored, continue.
-                if visited.contains(neighbor) {
+                if visited.contains(&neighbor) {
                     continue;
                 }
 
                 // If the neighbor has a lower height than the node
                 // that was just arrived at, then don't try to explore
                 // it from here. Rivers can't flow uphill.
-                if nodes[*neighbor].h < origin.h {
+                //
+                // Alternatively, if the neighbor's height is below sea
+                // level, it should also be ignored.
+                let h = nodes[neighbor].h;
+                if h < 0.0 || h < origin.h {
                     continue;
                 }
 
-                expeditions.push(Expedition::new(*neighbor, origin.i));
+                expeditions.push(Expedition::new(neighbor, origin.i));
             }
         }
 
@@ -300,6 +309,67 @@ impl RiverGraph {
             low_corner,
             high_corner,
         }
+    }
+
+    /// Finds strahler number of each node.
+    fn find_strahler_numbers(
+        nodes: &mut Vec<Node>, mouths: &Vec<usize>, min_strahler: i8
+    ) {
+        // Recursion is not an option due to the potential river length.
+        // The default recursion limit is 128 in rust, and the max
+        // length of a river is a similar order of magnitude, meaning
+        // that a recursive approach may infrequently, but potentially
+        // exceed the limit.
+        //
+        // Instead, a non-recursive Depth First Search (DFS) is
+        // performed, where the strahler number is set on each node as
+        // it is iterated over.
+        let mut ordering = Vec::with_capacity(100);
+        let mut frontier = VecDeque::with_capacity(100);
+
+        for &mouth in mouths {
+            // Create ordering which will later be traversed over in the
+            // opposite order from which they were added.
+            frontier.push_back(mouth);
+            while !frontier.is_empty() {
+                let i = frontier.pop_front().unwrap();
+                ordering.push(i);
+                for &inlet_i in &nodes[i].inlets {
+                    if inlet_i != usize::MAX {
+                        frontier.push_back(inlet_i);
+                    }
+                }
+            }
+
+            // Iterate from springs to mouths, setting strahler numbers.
+            while !ordering.is_empty() {
+                let i = ordering.pop().unwrap();
+                let strahler;
+                if nodes[i].is_source() {
+                    strahler = min_strahler;
+                } else if nodes[i].is_fork() {
+                    let left_strahler = nodes[nodes[i].left_inlet()].strahler;
+                    let right_strahler = nodes[nodes[i].right_inlet()].strahler;
+                    if left_strahler > right_strahler {
+                        strahler = left_strahler;
+                    } else if left_strahler < right_strahler {
+                        strahler = right_strahler;
+                    } else if left_strahler < MAX_STRAHLER {
+                        // Both inlets are same.
+                        strahler = left_strahler + 1;
+                    } else {
+                        // Max Strahler reached.
+                        strahler = MAX_STRAHLER;
+                    }
+                } else {
+                    strahler = nodes[nodes[i].upriver()].strahler;
+                }
+                debug_assert!(nodes[i].strahler == -1);
+                nodes[i].strahler = strahler;
+            }
+        }
+
+        // Todo: check max order and frontier capacities.
     }
 
     /// Sets node information relating to river direction.
@@ -546,6 +616,19 @@ impl Node {
     /// Checks whether node is a fork.
     pub fn is_fork(&self) -> bool {
         self.inlets[1] != usize::MAX
+    }
+
+    /// Checks whether node is a river source
+    pub fn is_source(&self) -> bool {
+        self.inlets[0] == usize::MAX
+    }
+
+    /// Gets upriver node.
+    ///
+    /// Only expected to be called when the node is not a fork.
+    pub fn upriver(&self) -> usize {
+        debug_assert!(!self.is_fork());
+        self.inlets[0]
     }
 
     /// Gets left side of fork

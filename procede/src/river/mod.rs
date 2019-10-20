@@ -129,6 +129,7 @@ impl RiverLayer {
 
 impl Region {
     pub const NODE_MEAN_SEPARATION: f64 = 10_000.0;
+    const MIN_STRAHLER: i8 = 2;
     const CONTROL_POINT_DIST: f64 = Self::NODE_MEAN_SEPARATION * 0.2;
 
     fn new(
@@ -148,7 +149,7 @@ impl Region {
 
         Region {
             nucleus: tectonic_info.nucleus,
-            graph: RiverGraph::new(nodes, &mouths),
+            graph: RiverGraph::new(nodes, &mouths, Self::MIN_STRAHLER),
         }
     }
 
@@ -237,6 +238,8 @@ impl Region {
                 }
             }
 
+            // TODO: Log max frontier, visited, and included capacities.
+
             (nodes, included)
         }
 
@@ -313,8 +316,8 @@ impl Region {
             }
 
             // Check if any neighbor is on land.
-            for neighbor in &node.neighbors {
-                if *neighbor != usize::MAX && nodes[*neighbor].h >= 0.0 {
+            for &neighbor in &node.neighbors {
+                if neighbor != usize::MAX && nodes[neighbor].h >= 0.0 {
                     mouths.push(i);
                     break;
                 }

@@ -7,6 +7,7 @@ pub struct RiverInfo {
     pub height: f64,
 }
 
+pub const MAX_STRAHLER: i8 = 12;
 
 pub const fn get_base_width(strahler: i8) -> f64 {
     // Width table based on real-world measurements.
