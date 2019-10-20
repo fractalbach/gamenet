@@ -39,6 +39,7 @@ pub struct TectonicInfo {
     pub height: f64,
     pub indices: Vector3<i64>,
     pub nucleus: Vector3<f64>,
+    pub mod_input: Vector3<f64>,
 }
 
 /// Individual tectonic Plate.
@@ -172,6 +173,7 @@ impl TectonicLayer {
             height: h,
             indices: near_result.regions[0],
             nucleus: near_result.points[0],
+            mod_input: v,
         }
     }
 

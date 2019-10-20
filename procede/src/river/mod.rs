@@ -9,7 +9,7 @@ use std::f64;
 use std::collections::{VecDeque, HashSet, HashMap};
 use std::usize;
 
-use cgmath::{Vector2, Vector3};
+use cgmath::{Vector2, Vector3, vec2};
 use cgmath::InnerSpace;
 use lru_cache::LruCache;
 use serde::{Deserialize, Serialize};
@@ -167,25 +167,6 @@ impl Region {
         tectonic: &mut TectonicLayer,
         tectonic_info: &TectonicInfo,
     ) -> Vec<Node> {
-        /// Finds the first hex index contained within the cell.
-        ///
-        /// # Arguments
-        /// * `tectonic` - Tectonic layer whose cell is being explored.
-        /// * `cell_indices` - Indices of cell being explored.
-        /// * `hex_graph`- HexGraph used to generate base
-        ///             node positions.
-        ///
-        /// # Return
-        /// HexGraph indices of node within the cell from which
-        /// exploration will start.
-        fn find_first(
-            tectonic: &mut TectonicLayer,
-            cell_indices: Vector3<i64>,
-            hex_graph: &HexGraph
-        ) -> Vector2<i64> {
-            // TODO: Ensure first node is in cell. If not, do quick search.
-            Vector2::new(0, 0)
-        }
 
         /// Runs BFS Search until all nodes that are in cell are added
         /// to nodes Vec.
@@ -210,25 +191,32 @@ impl Region {
             tectonic: &mut TectonicLayer,
             tectonic_info: &TectonicInfo,
             hex_graph: &HexGraph,
-            first: Vector2<i64>,
+            origin: Vector3<f64>,
         ) -> (Vec<Node>, HashMap<Vector2<i64>, usize>) {
+            {
+                let xyz = TangentPlane::new(origin).xyz(vec2(0.0, 0.0));
+                let first_indices = tectonic.height(xyz).indices;
+                debug_assert!(tectonic_info.indices == first_indices);
+            }
             let mut nodes = Vec::new();
             let mut included = HashMap::with_capacity(100);
             let mut frontier = VecDeque::with_capacity(100);
             let mut visited = HashSet::with_capacity(100);
-            frontier.push_back(first);
+            let first = vec2(0, 0);
+            frontier.push_back(first);  // Add first.
             visited.insert(first);
             while !frontier.is_empty() {
                 // TODO: Debug
                 let indices = frontier.pop_front().unwrap();
                 let uv = hex_graph.pos(indices);  // TODO: randomize.
-                let xyz = TangentPlane::new(tectonic_info.nucleus).xyz(uv);
+                let xyz = TangentPlane::new(origin).xyz(uv);
                 let node_info = tectonic.height(xyz);
                 if node_info.indices != tectonic_info.indices {
                     continue;
                 }
 
                 // Add indices to included map and append node to vec.
+                debug_assert!(!included.contains_key(&indices));
                 included.insert(indices, nodes.len());
                 let node_i = nodes.len();
                 nodes.push(Node::new(
@@ -240,7 +228,10 @@ impl Region {
 
                 // Add hex neighbors to frontier.
                 for hex_neighbor in &hex_graph.neighbors(indices) {
-                    if !visited.contains(&hex_neighbor) {
+                    if !visited.contains(hex_neighbor) {
+                        // Add to 'visited' set here, so that the same
+                        // set of indices are not added more than once.
+                        visited.insert(*hex_neighbor);
                         frontier.push_back(*hex_neighbor);
                     }
                 }
@@ -288,15 +279,15 @@ impl Region {
         // Create hex graph to produce nodes.
         let hex_graph = HexGraph::new(Self::NODE_MEAN_SEPARATION);
 
-        // Find center node.
-        let first = find_first(tectonic, tectonic_info.indices, &hex_graph);
+        // Find center node position.
+        let origin = tectonic.raw_v(tectonic_info.nucleus);
 
         // Find nodes in cell.
         let (mut nodes, included) = explore_cell(
             tectonic,
             &tectonic_info,
             &hex_graph,
-            first,
+            origin,
         );
         set_neighbors(&mut nodes, included, &hex_graph);
 
@@ -405,9 +396,10 @@ impl Serialize for Region {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::{HashSet, HashMap};
     use std::fs;
 
-    use cgmath::{Vector2, Vector3};
+    use cgmath::{Vector2, Vector3, vec2};
     use serde_json;
 
     use river::*;
@@ -472,10 +464,14 @@ mod tests {
         let mut tectonic_info = TectonicInfo {
             height: -1.0,
             indices: Vector3::new(0, 0, 0),
-            nucleus: Vector3::new(0.0, 0.0, 0.0)
+            nucleus: Vector3::new(0.0, 0.0, 0.0),
+            mod_input: Vector3::new(0.0, 0.0, 0.0),
         };
         let mut v = Vector3::new(0.0, 0.0, 0.0);
         for (x, y, z) in iproduct!(-10..11, -10..11, -10..11) {
+            if x == 0 && y == 0 && z == 0 {
+                continue;
+            }
             v = Vector3::new(x as f64, y as f64, z as f64);
             tectonic_info = tectonic.height(v);
             if tectonic_info.height > 0.0 {
@@ -493,5 +489,29 @@ mod tests {
         // Serialize graph.
         let s = serde_json::to_string_pretty(&region).unwrap();
         fs::write("test_region_graph.json", &s).expect("Unable to write");
+    }
+
+    #[test]
+    fn test_vector_is_unique_in_set() {
+        let mut map = HashSet::with_capacity(100);
+        let v1 = vec2(1, 2);
+        let v2 = vec2(1, 2);
+        let v3 = vec2(1, 2);
+        map.insert(v1);
+        map.insert(v2);
+        assert_eq!(1, map.len());
+        assert!(map.contains(&v3));
+    }
+
+    #[test]
+    fn test_vector_is_unique_in_map() {
+        let mut map = HashMap::with_capacity(100);
+        let v1 = vec2(1, 2);
+        let v2 = vec2(1, 2);
+        let v3 = vec2(1, 2);
+        map.insert(v1, 5);
+        map.insert(v2, 7);
+        assert_eq!(1, map.len());
+        assert!(map.contains_key(&v3));
     }
 }
