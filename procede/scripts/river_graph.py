@@ -70,13 +70,18 @@ def graph(args: ty.Sequence[str]) -> None:
     for i, node in enumerate(nodes):
         for inlet in node.inlets:
             if inlet != USIZE_MAX:
-                graph.add_edge(node.i, inlet)
+                graph.add_edge(
+                    node.i, inlet, color='b', width=nodes[inlet].strahler
+                )
         print(f'Adding edges... {i / len(data["graph"]) * 100:.2f}%\r', end='')
     print(f'Adding edges... 100.00%!')
 
+    edges = graph.edges()
     nx.draw(
         graph,
         pos=nx.get_node_attributes(graph, 'pos'),
+        edge_color=[graph[u][v]['color'] for u, v in edges],
+        width=[graph[u][v]['width'] for u, v in edges],
         node_size=2,
     )
     plt.axis('equal')
