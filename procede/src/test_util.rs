@@ -60,15 +60,12 @@ macro_rules! assert_vec3_near {
         assert!(
             (a.x - b.x).abs() < eps && (a.y - b.y) < eps && (a.z - a.z) < eps,
             "assertion failed: `(left !== right)` \
-             (left: `({:?}, {:?})`, right: `({:?}, {:?})`, \
-             expect diff: `{:?}`, real diff: `({:?}, {:?})`)",
-            a.x,
-            a.y,
-            b.x,
-            b.y,
+             (left: `({:?}, {:?}, {:?})`, right: `({:?}, {:?}, {:?})`, \
+             expect diff: `{:?}`, real diff: `({:?}, {:?}, {:?})`)",
+            a.x, a.y, a.z,
+            b.x, b.y, a.z,
             eps,
-            (a.x - b.x).abs(),
-            (a.y - b.y).abs(),
+            (a.x - b.x).abs(), (a.y - b.y).abs(), (a.z - b.z).abs(),
         );
     }};
 }
