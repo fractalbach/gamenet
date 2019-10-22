@@ -19,7 +19,7 @@ use tectonic::{TectonicLayer, TectonicInfo};
 use util::{hash_indices, sphere_uv_vec, TangentPlane};
 use river::common::RiverInfo;
 use river::hex::HexGraph;
-use river::river_graph::{RiverGraph, Mouth, Node};
+use river::river_graph::{RiverGraph, Mouth, Node, NearRiverInfo};
 use river::segment::Segment;
 use serde_util::SerializableVector3;
 
@@ -344,7 +344,7 @@ impl Region {
     /// * `v` - Position relative to world center.
     fn height(&self, v: Vector3<f64>) -> RiverInfo {
         let uv = self.xyz_to_uv(v);
-        let (d, nearest_seg) = self.nearest_segment(uv);
+        let nearest_rivers = self.graph.nearest_rivers(uv);
 
         assert!(false);
         RiverInfo {
@@ -365,28 +365,6 @@ impl Region {
     fn xyz_to_uv(&self, v: Vector3<f64>) -> Vector2<f64> {
         assert!(false);
         Vector2::new(0.0, 0.0)  // Todo: Replace placeholder
-    }
-
-    /// Finds the nearest river segment to a position.
-    ///
-    /// # Arguments:
-    /// * `uv` - Position in uv space relative to Region center.
-    ///
-    /// # Returns
-    /// * Distance to nearest segment.
-    /// * Segment nearest the passed point.
-    fn nearest_segment(&self, uv: Vector2<f64>) -> (f64, Segment) {
-        let node= Node::new(
-            usize::MAX,
-            Vector2::new(-1, -1),
-            Vector2::new(-1.0, -1.0),
-            -1.0
-        );
-        (  // TODO: Get distance, nearest segment.
-            -1.0,
-            // TODO: Replace placeholder.
-            Segment::new(&node, &node)
-        )
     }
 }
 

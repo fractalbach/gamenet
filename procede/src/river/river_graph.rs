@@ -17,7 +17,7 @@ use serde::ser::SerializeStruct;
 use util::{idx_hash, rand1};
 use serde_util::SerializableVector2;
 use river::common::{get_base_width, vec2pt, MAX_STRAHLER};
-use river::segment::Segment;
+use river::segment::{Segment, NearSegmentInfo};
 
 pub struct RiverGraph {
     pub segment_tree: QuadTree<Segment>,
@@ -46,6 +46,11 @@ pub struct Node {
 pub struct GenerationInfo {
     pub low_corner: Vector2<f64>,
     pub high_corner: Vector2<f64>,
+}
+
+pub struct NearRiverInfo {
+    pub left: NearSegmentInfo,
+    pub right: NearSegmentInfo,
 }
 
 
@@ -553,6 +558,40 @@ impl RiverGraph {
         tree
     }
 
+    /// Finds the nearest river segment to a position.
+    ///
+    /// # Arguments:
+    /// * `uv` - Position in uv space relative to Region center.
+    ///
+    /// # Returns
+    /// * Distance to nearest segment.
+    /// * Segment nearest the passed point.
+    pub fn nearest_rivers(&self, uv: Vector2<f64>) -> NearRiverInfo {
+        NearRiverInfo {
+            left: NearSegmentInfo {
+                side: 0,
+                dist: -1.0,
+                dist_widths: -1.0,
+                w: 10.0,
+                depth: 2.0,
+                upriver_strahler: 4,
+                fp_strahler: 4.0,
+                band_w: 100.0,
+            },
+            right: NearSegmentInfo {
+                side: 1,
+                dist: 1.0,
+                dist_widths: 1.0,
+                w: 10.0,
+                depth: 2.0,
+                upriver_strahler: 4,
+                fp_strahler: 4.0,
+                band_w: 100.0,
+            }
+        }
+    }
+
+    /// Returns the number of nodes in the RiverGraph.
     pub fn len(&self) -> usize {
         self.nodes.len()
     }

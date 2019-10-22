@@ -19,6 +19,19 @@ pub struct Segment {
     downriver_w: f64,
 }
 
+/// Struct containing data about a position relative to a nearby
+/// river segment.
+pub struct NearSegmentInfo {
+    pub side: i8,  // TODO: enum
+    pub dist: f64,
+    pub dist_widths: f64,
+    pub w: f64,
+    pub depth: f64,
+    pub upriver_strahler: i8,
+    pub fp_strahler: f64,
+    pub band_w: f64,
+}
+
 /// A single river bezier curve.
 ///
 /// Handles calculation of a point's distance to a curve.
