@@ -51,10 +51,10 @@ impl Segment {
 
     pub fn new(downriver: &Node, upriver: &Node) -> Segment {
         let base_curve = Curve {
-            a: Vector2::new(-1.0, -1.0),
-            ctrl_a: Vector2::new(-1.0, -1.0),
-            ctrl_b: Vector2::new(1.0, 1.0),
-            b: Vector2::new(1.0, 1.0)
+            a: upriver.uv,
+            ctrl_a: Self::upriver_control_node(upriver),
+            ctrl_b: Self::downriver_control_node(downriver, upriver.i),
+            b: downriver.uv
         };
         let bounds = Self::find_bounds(&base_curve, Self::BASE_BOUND_MARGIN);
         let upriver_w = upriver.width();
@@ -81,8 +81,7 @@ impl Segment {
     ///
     /// # Arguments
     /// * `node` - Reference to downriver node.
-    /// * `i` - Index of the inlet node which this segment
-    ///             connects to. Should be 0 or 1.
+    /// * `i` - Index of the upriver node.
     ///
     /// # Return
     /// UV Position of the downriver control node.
