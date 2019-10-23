@@ -537,9 +537,9 @@ impl RiverGraph {
             let node = &nodes[i];
 
             // Add inlets to frontier.
-            for inlet in &node.inlets {
-                if *inlet != usize::MAX {
-                    frontier.push_back(*inlet);
+            for &inlet in &node.inlets {
+                if inlet != usize::MAX {
+                    frontier.push_back(inlet);
                 }
             }
 
