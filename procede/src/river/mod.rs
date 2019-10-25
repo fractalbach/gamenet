@@ -21,7 +21,6 @@ use river::common::RiverInfo;
 use river::hex::HexGraph;
 use river::river_graph::{RiverGraph, Mouth, Node, NearRiverInfo};
 use river::segment::Segment;
-use serde_util::SerializableVector3;
 
 
 // --------------------------------------------------------------------
@@ -50,6 +49,7 @@ pub struct RiverLayer {
 /// A Tectonic cell is an ideal boundary for a river region because it
 /// is likely to either border an ocean, or else be bordered by a
 /// mountain range which would realistically separate river basins.
+#[derive(Serialize)]
 struct Region {
     nucleus: Vector3<f64>,
     graph: RiverGraph
@@ -106,7 +106,7 @@ impl RiverLayer {
     ///
     /// # Returns
     /// Mutable Region reference.
-    pub fn region(
+    fn region(
         &mut self,
         v: Vector3<f64>,
         tectonic_info: TectonicInfo,
@@ -365,18 +365,6 @@ impl Region {
     fn xyz_to_uv(&self, v: Vector3<f64>) -> Vector2<f64> {
         assert!(false);
         Vector2::new(0.0, 0.0)  // Todo: Replace placeholder
-    }
-}
-
-impl Serialize for Region {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: serde::Serializer
-    {
-        let mut state = serializer.serialize_struct("RiverNode", 10)?;
-        let serializable_nucleus = SerializableVector3::new(&self.nucleus);
-        state.serialize_field("nucleus", &serializable_nucleus)?;
-        state.serialize_field("graph", &self.graph)?;
-        state.end()
     }
 }
 

@@ -50,7 +50,6 @@ mod test_util;
 
 mod voronoi;
 mod river;
-mod serde_util;
 mod surface;
 mod tectonic;
 mod util;

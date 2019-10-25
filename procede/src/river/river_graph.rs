@@ -15,7 +15,6 @@ use serde::Serializer;
 use serde::ser::SerializeStruct;
 
 use util::{idx_hash, rand1};
-use serde_util::SerializableVector2;
 use river::common::{get_base_width, vec2pt, MAX_STRAHLER};
 use river::segment::{Segment, NearSegmentInfo};
 
@@ -30,6 +29,7 @@ pub struct Mouth {
 }
 
 /// River node
+#[derive(Serialize, Deserialize)]
 pub struct Node {
     pub i: usize,  // Index of Node in river graph.
     pub indices: Vector2<i64>,
@@ -737,28 +737,6 @@ impl Node {
     pub fn width(&self) -> f64 {
         // May be replaced later if node widths are blended.
         get_base_width(self.strahler)
-    }
-}
-
-impl Serialize for Node {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: serde::Serializer
-    {
-        let mut state = serializer.serialize_struct("RiverNode", 10)?;
-        state.serialize_field("i", &self.i)?;
-        let ser_indices = SerializableVector2::new(&self.indices);
-        state.serialize_field("indices", &ser_indices)?;
-        let ser_uv = SerializableVector2::new(&self.uv);
-        state.serialize_field("uv", &ser_uv)?;
-        state.serialize_field("h", &self.h)?;
-        state.serialize_field("neighbors", &self.neighbors)?;
-        state.serialize_field("inlets", &self.inlets)?;
-        state.serialize_field("outlet", &self.outlet)?;
-        let ser_direction = SerializableVector2::new(&self.direction);
-        state.serialize_field("direction", &ser_direction)?;
-        state.serialize_field("fork_angle", &self.fork_angle)?;
-        state.serialize_field("strahler", &self.strahler)?;
-        state.end()
     }
 }
 

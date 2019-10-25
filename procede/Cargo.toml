@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 [dependencies]
 aabb-quadtree = "0.1.0"
 assert_approx_eq = "1.1.0"
-cgmath = "0.17.0"
+cgmath = { version = "0.17.0", features = ["serde"] }
 euclid = "0.19.9"
 itertools = "0.8.0"
 lru-cache = "0.1.2"
