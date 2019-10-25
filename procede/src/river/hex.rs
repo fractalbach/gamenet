@@ -1,6 +1,6 @@
 use std::f64;
 
-use cgmath::Vector2;
+use cgmath::{Vector2, vec2};
 
 pub struct HexGraph {
     edge_len: f64,  // Distance from vertex to vertex.
@@ -33,7 +33,7 @@ impl HexGraph {
             seq_iteration = (indices.y + 1) / 4 - 1;
         }
 
-        let seq_pos0 = Vector2::new(
+        let seq_pos0 = vec2(
             indices.x as f64 * self.x_step,
             seq_iteration as f64 * self.seq_len
         );
@@ -41,12 +41,12 @@ impl HexGraph {
         // Find pos
         match i {
             0 => seq_pos0,
-            1 => Vector2::new(seq_pos0.x, seq_pos0.y + self.edge_len),
-            2 => Vector2::new(
+            1 => vec2(seq_pos0.x, seq_pos0.y + self.edge_len),
+            2 => vec2(
                 seq_pos0.x + (f64::consts::PI / 3.0).sin() * self.edge_len,
                 seq_pos0.y + self.edge_len * 1.5
             ),
-            3 => Vector2::new(
+            3 => vec2(
                 seq_pos0.x + (f64::consts::PI / 3.0).sin() * self.edge_len,
                 seq_pos0.y + self.edge_len * 2.5
             ),
@@ -64,24 +64,24 @@ impl HexGraph {
 
         match i {
             0 => [
-                Vector2::new(indices.x, indices.y + 1),
-                Vector2::new(indices.x, indices.y - 1),
-                Vector2::new(indices.x - 1, indices.y - 1)
+                vec2(indices.x, indices.y + 1),
+                vec2(indices.x, indices.y - 1),
+                vec2(indices.x - 1, indices.y - 1)
             ],
             1 => [
-                Vector2::new(indices.x, indices.y + 1),
-                Vector2::new(indices.x, indices.y - 1),
-                Vector2::new(indices.x - 1, indices.y + 1)
+                vec2(indices.x, indices.y + 1),
+                vec2(indices.x, indices.y - 1),
+                vec2(indices.x - 1, indices.y + 1)
             ],
             2 => [
-                Vector2::new(indices.x, indices.y + 1),
-                Vector2::new(indices.x + 1, indices.y - 1),
-                Vector2::new(indices.x, indices.y - 1)
+                vec2(indices.x, indices.y + 1),
+                vec2(indices.x + 1, indices.y - 1),
+                vec2(indices.x, indices.y - 1)
             ],
             3 => [
-                Vector2::new(indices.x, indices.y + 1),
-                Vector2::new(indices.x + 1, indices.y + 1),
-                Vector2::new(indices.x, indices.y - 1)
+                vec2(indices.x, indices.y + 1),
+                vec2(indices.x + 1, indices.y + 1),
+                vec2(indices.x, indices.y - 1)
             ],
             _ => panic!("Unexpected sequence index: {}", i)
         }
@@ -92,7 +92,7 @@ impl HexGraph {
 #[cfg(test)]
 mod tests {
     use assert_approx_eq::assert_approx_eq;
-    use cgmath::Vector2;
+    use cgmath::{Vector2, vec2};
     use cgmath::MetricSpace;
 
     use river::hex::HexGraph;
@@ -101,74 +101,74 @@ mod tests {
     fn test_graph_vertex_pos() {
         let graph = HexGraph::new(1.0);
 
-        let p00 = graph.pos(Vector2::new(0, 0));
-        let p01 = graph.pos(Vector2::new(0, 1));
-        let p02 = graph.pos(Vector2::new(0, 2));
-        let p03 = graph.pos(Vector2::new(0, 3));
-        let p04 = graph.pos(Vector2::new(0, 4));
-        let p0n1 = graph.pos(Vector2::new(0, -1));
-        let pn12 = graph.pos(Vector2::new(-1, 2));
-        let p12 = graph.pos(Vector2::new(1, 2));
-        let p10 = graph.pos(Vector2::new(1, 0));
+        let p00 = graph.pos(vec2(0, 0));
+        let p01 = graph.pos(vec2(0, 1));
+        let p02 = graph.pos(vec2(0, 2));
+        let p03 = graph.pos(vec2(0, 3));
+        let p04 = graph.pos(vec2(0, 4));
+        let p0n1 = graph.pos(vec2(0, -1));
+        let pn12 = graph.pos(vec2(-1, 2));
+        let p12 = graph.pos(vec2(1, 2));
+        let p10 = graph.pos(vec2(1, 0));
 
-        assert_vec2_near!(p00, Vector2::new(0.0, 0.0));
-        assert_vec2_near!(p01, Vector2::new(0.0, 1.0));
-        assert_vec2_near!(p02, Vector2::new(0.866025403, 1.5));
-        assert_vec2_near!(p03, Vector2::new(0.866025403, 2.5));
-        assert_vec2_near!(p04, Vector2::new(0.0, 3.0));
-        assert_vec2_near!(p0n1, Vector2::new(0.866025403, -0.5));
-        assert_vec2_near!(pn12, Vector2::new(-0.866025403, 1.5));
-        assert_vec2_near!(p12, Vector2::new(2.598076211353316, 1.5));
-        assert_vec2_near!(p10, Vector2::new(1.7320508, 0.0));
+        assert_vec2_near!(p00, vec2(0.0, 0.0));
+        assert_vec2_near!(p01, vec2(0.0, 1.0));
+        assert_vec2_near!(p02, vec2(0.866025403, 1.5));
+        assert_vec2_near!(p03, vec2(0.866025403, 2.5));
+        assert_vec2_near!(p04, vec2(0.0, 3.0));
+        assert_vec2_near!(p0n1, vec2(0.866025403, -0.5));
+        assert_vec2_near!(pn12, vec2(-0.866025403, 1.5));
+        assert_vec2_near!(p12, vec2(2.598076211353316, 1.5));
+        assert_vec2_near!(p10, vec2(1.7320508, 0.0));
     }
 
     #[test]
     fn test_graph_neighbors_of_i0() {
         let graph = HexGraph::new(1.0);
 
-        let neighbors = graph.neighbors(Vector2::new(0, 0));
-        assert_eq!(neighbors[0], Vector2::new(0, 1));
-        assert_eq!(neighbors[1], Vector2::new(0, -1));
-        assert_eq!(neighbors[2], Vector2::new(-1, -1));
+        let neighbors = graph.neighbors(vec2(0, 0));
+        assert_eq!(neighbors[0], vec2(0, 1));
+        assert_eq!(neighbors[1], vec2(0, -1));
+        assert_eq!(neighbors[2], vec2(-1, -1));
     }
 
     #[test]
     fn test_graph_neighbors_of_i1() {
         let graph = HexGraph::new(1.0);
 
-        let neighbors = graph.neighbors(Vector2::new(1, 1));
-        assert_eq!(neighbors[0], Vector2::new(1, 2));
-        assert_eq!(neighbors[1], Vector2::new(1, 0));
-        assert_eq!(neighbors[2], Vector2::new(0, 2));
+        let neighbors = graph.neighbors(vec2(1, 1));
+        assert_eq!(neighbors[0], vec2(1, 2));
+        assert_eq!(neighbors[1], vec2(1, 0));
+        assert_eq!(neighbors[2], vec2(0, 2));
     }
 
     #[test]
     fn test_graph_neighbors_of_i2() {
         let graph = HexGraph::new(1.0);
 
-        let neighbors = graph.neighbors(Vector2::new(-1, 2));
-        assert_eq!(neighbors[0], Vector2::new(-1, 3));
-        assert_eq!(neighbors[1], Vector2::new(0, 1));
-        assert_eq!(neighbors[2], Vector2::new(-1, 1));
+        let neighbors = graph.neighbors(vec2(-1, 2));
+        assert_eq!(neighbors[0], vec2(-1, 3));
+        assert_eq!(neighbors[1], vec2(0, 1));
+        assert_eq!(neighbors[2], vec2(-1, 1));
     }
 
     #[test]
     fn test_graph_neighbors_of_i3() {
         let graph = HexGraph::new(1.0);
 
-        let neighbors = graph.neighbors(Vector2::new(0, -1));
-        assert_eq!(neighbors[0], Vector2::new(0, 0));
-        assert_eq!(neighbors[1], Vector2::new(1, 0));
-        assert_eq!(neighbors[2], Vector2::new(0, -2));
+        let neighbors = graph.neighbors(vec2(0, -1));
+        assert_eq!(neighbors[0], vec2(0, 0));
+        assert_eq!(neighbors[1], vec2(1, 0));
+        assert_eq!(neighbors[2], vec2(0, -2));
     }
 
     #[test]
     fn test_neighbor_distances() {
         let test_indices = [
-            Vector2::new(0, 0),
-            Vector2::new(1, 1),
-            Vector2::new(-1, 2),
-            Vector2::new(0, -1)
+            vec2(0, 0),
+            vec2(1, 1),
+            vec2(-1, 2),
+            vec2(0, -1)
         ];
 
         let graph = HexGraph::new(1.0);

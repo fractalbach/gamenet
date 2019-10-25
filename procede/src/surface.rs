@@ -1,7 +1,7 @@
 //! Module containing a wrapper class for helping use 3d voronoi noise
 //! on a spherical surface.
 
-use cgmath::Vector3;
+use cgmath::{Vector3, vec3};
 use cgmath::InnerSpace;
 
 use voronoi::{VoronoiSpace, NearResult};
@@ -63,7 +63,7 @@ mod tests {
         let surface = Surface::new(
             VoronoiSpace::new(
                 88,
-                Vector3::new(
+                vec3(
                     WIDTH,
                     WIDTH,
                     WIDTH,
@@ -71,9 +71,9 @@ mod tests {
             ),
             RADIUS,
         );
-        let a = surface.cell_indices(Vector3::new(1.0, 2.0, -3.0));
-        let b = surface.cell_indices(Vector3::new(1.0, 2.0, 3.0));
-        let c = surface.cell_indices(Vector3::new(-1.0, -2.0, 3.0));
+        let a = surface.cell_indices(vec3(1.0, 2.0, -3.0));
+        let b = surface.cell_indices(vec3(1.0, 2.0, 3.0));
+        let c = surface.cell_indices(vec3(-1.0, -2.0, 3.0));
 
         assert_ne!(a, b);
         assert_ne!(a, c);

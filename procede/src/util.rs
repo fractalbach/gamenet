@@ -1,7 +1,7 @@
 
 use std::num::Wrapping;
 
-use cgmath::{Vector2, Vector3};
+use cgmath::{Vector2, Vector3, vec2, vec3};
 use cgmath::InnerSpace;
 
 
@@ -36,7 +36,7 @@ pub fn rand1(x: u32) -> f64 {
 ///
 /// Produced x and y values are all between -1.0 and 1.0.
 pub fn rand2(x: u32) -> Vector2<f64> {
-    Vector2::new(
+    vec2(
         ((x & 0xFFFF) as f64) / 32768.0 - 1.0,
         (((x >> 16) & 0xFFFF) as f64) / 32768.0 - 1.0,
     )
@@ -47,7 +47,7 @@ pub fn rand2(x: u32) -> Vector2<f64> {
 ///
 /// Produced x, y, and z values are all between -1.0 and 1.0.
 pub fn rand3(x: u32) -> Vector3<f64> {
-    Vector3::new(
+    vec3(
         ((x & 0x7FF) as f64) / 1024.0 - 1.0,
         (((x >> 11) & 0x3FF) as f64) / 512.0 - 1.0,
         (((x >> 21) & 0x7FF) as f64) / 1024.0 - 1.0
@@ -57,7 +57,7 @@ pub fn rand3(x: u32) -> Vector3<f64> {
 
 /// Multiply vectors component-wise.
 pub fn component_multiply(a: Vector3<f64>, b: Vector3<f64>) -> Vector3<f64> {
-    Vector3::new(
+    vec3(
         a.x * b.x,
         a.y * b.y,
         a.z * b.z
@@ -93,15 +93,15 @@ pub fn hash_indices(seed: u32, indices: Vector3<i64>) -> u32 {
 ///             the north pole.
 ///             Will be normalized (magnitude 1).
 pub fn sphere_uv_vec(v: Vector3<f64>) -> (Vector3<f64>, Vector3<f64>) {
-    assert_ne!(v, Vector3::new(0.0, 0.0, 0.0));
+    assert_ne!(v, vec3(0.0, 0.0, 0.0));
 
-    let z_axis_vector = Vector3::new(0.0, 0.0, 1.0);
+    let z_axis_vector = vec3(0.0, 0.0, 1.0);
     let v_norm = v.normalize();
 
     // Get u_vec and v_vec.
     let u_vec: Vector3<f64>;
     if v_norm == z_axis_vector || v_norm == z_axis_vector * -1.0 {
-        u_vec = Vector3::new(0.0, 1.0, 0.0);
+        u_vec = vec3(0.0, 1.0, 0.0);
     } else {
         u_vec = z_axis_vector.cross(v_norm).normalize();
     }
@@ -150,7 +150,7 @@ impl TangentPlane {
 
     pub fn uv(&self, xyz: Vector3<f64>) -> Vector2<f64> {
         assert!(false);
-        Vector2::new(0.0, 0.0)
+        vec2(0.0, 0.0)
     }
 }
 
@@ -162,8 +162,8 @@ mod tests {
 
     #[test]
     fn test_component_wise_vector_multiplication() {
-        let a = Vector3::new(1.0, 2.0, 3.0);
-        let b = Vector3::new(2.0, 3.0, 4.0);
+        let a = vec3(1.0, 2.0, 3.0);
+        let b = vec3(2.0, 3.0, 4.0);
 
         let r = component_multiply(a, b);
 
@@ -194,7 +194,7 @@ mod tests {
                 for k in -5..5 {
                     for seed in 0..5 {
                         mean += hash_indices(
-                            seed, Vector3::new(i, j, k)
+                            seed, vec3(i, j, k)
                         ) / n_hashes;
                     }
                 }
@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_rand2_produces_results_in_range() {
-        let mut mean = Vector2::new(0.0, 0.0);
+        let mut mean = vec2(0.0, 0.0);
 
         for i in 0..1000 {
             let hash = idx_hash(i);
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_rand3_produces_results_in_range() {
-        let mut mean = Vector3::new(0.0, 0.0, 0.0);
+        let mut mean = vec3(0.0, 0.0, 0.0);
 
         for i in 0..1000 {
             let hash = idx_hash(i);
@@ -257,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_sphere_uv_vec_basic_use() {
-        let v = Vector3::new(0.3, 0.1, 0.6);
+        let v = vec3(0.3, 0.1, 0.6);
         let (u_vec, v_vec) = sphere_uv_vec(v);
 
         assert_gt!(u_vec.y, 0.0);
@@ -267,7 +267,7 @@ mod tests {
 
     #[test]
     fn test_sphere_uv_vec_basic_use2() {
-        let v = Vector3::new(0.3, 0.1, -0.6);
+        let v = vec3(0.3, 0.1, -0.6);
         let (u_vec, v_vec) = sphere_uv_vec(v);
 
         assert_gt!(u_vec.y, 0.0);
@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn test_sphere_uv_vec_at_north_pole() {
-        let v = Vector3::new(0.0, 0.0, 1.0);
+        let v = vec3(0.0, 0.0, 1.0);
         let (u_vec, v_vec) = sphere_uv_vec(v);
 
         assert!(!u_vec.x.is_nan());
@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn test_sphere_uv_vec_at_south_pole() {
-        let v = Vector3::new(0.0, 0.0, -1.0);
+        let v = vec3(0.0, 0.0, -1.0);
         let (u_vec, v_vec) = sphere_uv_vec(v);
 
         assert!(!u_vec.x.is_nan());
@@ -299,7 +299,7 @@ mod tests {
 
     #[test]
     fn test_sphere_uv_vec_at_equator() {
-        let v = Vector3::new(-1.0, 0.1, -0.0);
+        let v = vec3(-1.0, 0.1, -0.0);
         let (u_vec, v_vec) = sphere_uv_vec(v);
 
         assert_lt!(u_vec.x, 0.0);
@@ -311,28 +311,28 @@ mod tests {
     #[test]
     fn test_is_clockwise_basic_cw_case() {
         assert!(is_clockwise(
-            Vector2::new(1.0, 1.0), Vector2::new(0.5, 1.0))
+            vec2(1.0, 1.0), vec2(0.5, 1.0))
         );
     }
 
     #[test]
     fn test_is_clockwise_basic_ccw_case() {
         assert!(!is_clockwise(
-            Vector2::new(-1.0, 2.0), Vector2::new(1.0, 1.0))
+            vec2(-1.0, 2.0), vec2(1.0, 1.0))
         );
     }
 
     #[test]
     fn test_is_clockwise_basic_obtuse_cw_case() {
         assert!(is_clockwise(
-            Vector2::new(0.0, 2.0), Vector2::new(1.0, -1.0))
+            vec2(0.0, 2.0), vec2(1.0, -1.0))
         );
     }
 
     #[test]
     fn test_is_clockwise_basic_obtuse_ccw_case() {
         assert!(!is_clockwise(
-            Vector2::new(-1.0, 2.0), Vector2::new(-1.0, -1.0))
+            vec2(-1.0, 2.0), vec2(-1.0, -1.0))
         );
     }
 }

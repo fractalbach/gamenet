@@ -7,7 +7,7 @@ use std::u32;
 
 use aabb_quadtree::QuadTree;
 use aabb_quadtree::geom::Rect;
-use cgmath::Vector2;
+use cgmath::{Vector2, vec2};
 use cgmath::InnerSpace;
 use serde::{Deserialize, Serialize};
 use serde::Serializer;
@@ -294,8 +294,8 @@ impl RiverGraph {
         let mut expeditions = BinaryHeap::with_capacity(100);
         let mut visited = HashSet::with_capacity(100);
 
-        let mut low_corner = Vector2::new(0.0, 0.0);
-        let mut high_corner = Vector2::new(0.0, 0.0);
+        let mut low_corner = vec2(0.0, 0.0);
+        let mut high_corner = vec2(0.0, 0.0);
 
         // Initialize expeditions with river mouths
         for mouth in mouths {
@@ -446,7 +446,7 @@ impl RiverGraph {
         fn find_outlet_dir(i: usize, nodes: &mut Vec<Node>) -> Vector2<f64> {
             let node = &nodes[i];
             if node.outlet == usize::MAX {
-                return Vector2::new(0.0, 0.0);
+                return vec2(0.0, 0.0);
             }
 
             let node_pos = node.uv;
@@ -635,7 +635,7 @@ impl Node {
             neighbors: [usize::MAX, usize::MAX, usize::MAX],
             inlets: [usize::MAX, usize::MAX],
             outlet: usize::MAX,
-            direction: Vector2::new(0.0, 0.0),
+            direction: vec2(0.0, 0.0),
             fork_angle: -1.0,
             strahler: -1
         }
@@ -759,8 +759,8 @@ mod tests {
     fn test_node_add_inlet_handles_clockwise_addition() {
         let mut node = Node::new(
             0,
-            Vector2::new(0, 1),
-            Vector2::new(10.0, 0.0),
+            vec2(0, 1),
+            vec2(10.0, 0.0),
             124.0
         );
 
@@ -781,8 +781,8 @@ mod tests {
     fn test_node_add_inlet_handles_clockwise_addition2() {
         let mut node = Node::new(
             0,
-            Vector2::new(0, 1),
-            Vector2::new(10.0, 0.0),
+            vec2(0, 1),
+            vec2(10.0, 0.0),
             124.0
         );
 
@@ -803,8 +803,8 @@ mod tests {
     fn test_node_add_inlet_handles_counter_clockwise_addition() {
         let mut node = Node::new(
             0,
-            Vector2::new(0, 1),
-            Vector2::new(10.0, 0.0),
+            vec2(0, 1),
+            vec2(10.0, 0.0),
             124.0
         );
 
@@ -825,8 +825,8 @@ mod tests {
     fn test_node_is_fork() {
         let mut node = Node::new(
             0,
-            Vector2::new(0, 1),
-            Vector2::new(10.0, 0.0),
+            vec2(0, 1),
+            vec2(10.0, 0.0),
             124.0
         );
         node.neighbors = [10, 20, 30];
@@ -842,8 +842,8 @@ mod tests {
     fn test_node_is_mouth() {
         let mut node = Node::new(
             0,
-            Vector2::new(0, 1),
-            Vector2::new(10.0, 0.0),
+            vec2(0, 1),
+            vec2(10.0, 0.0),
             124.0
         );
         node.neighbors = [10, 20, 30];

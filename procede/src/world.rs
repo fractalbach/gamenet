@@ -1,5 +1,5 @@
 
-use cgmath::Vector3;
+use cgmath::{Vector3, vec3};
 use tectonic::TectonicLayer;
 
 
@@ -16,7 +16,7 @@ impl World {
     }
 
     pub fn height(&mut self, v: Vector3<f64>) -> f64 {
-        assert_ne!(v, Vector3::new(0.0, 0.0, 0.0));
+        assert_ne!(v, vec3(0.0, 0.0, 0.0));
 
         let tectonic_info = self.tectonic.height(v);
 

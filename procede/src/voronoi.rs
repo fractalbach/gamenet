@@ -13,7 +13,7 @@
 
 type Vec3 = cgmath::Vector3<f64>;
 
-use cgmath::Vector3;
+use cgmath::{Vector3, vec3};
 use cgmath::MetricSpace;
 
 use util::{rand3, component_multiply, hash_indices};
@@ -52,7 +52,7 @@ impl VoronoiSpace {
         let v_region = self.region(v);
 
         let mut result: NearResult = NearResult {
-            regions: [Vector3::new(0, 0, 0); 4],
+            regions: [vec3(0, 0, 0); 4],
             points: [Vec3::new(0.0, 0.0, 0.0); 4],
             dist: [-1.0; 4]
         };
@@ -66,7 +66,7 @@ impl VoronoiSpace {
                     }
 
                     // Get indices of visited region
-                    let indices = Vector3::new(
+                    let indices = vec3(
                         v_region.x + i,
                         v_region.y + j,
                         v_region.z + k
@@ -126,7 +126,7 @@ impl VoronoiSpace {
     ///
     /// Returns Vector3 of the regions x, y, z indices.
     pub fn region(&self, v: Vec3) -> cgmath::Vector3<i64> {
-        Vector3::new(
+        vec3(
             (v.x / self.region_shape.x).floor() as i64,
             (v.y / self.region_shape.y).floor() as i64,
             (v.z / self.region_shape.z).floor() as i64
@@ -169,17 +169,17 @@ mod tests {
 
         assert_eq!(
             voronoi.region(Vec3::new(0.5, 9.0, 3.0)),
-            Vector3::new(0, 0, 0)
+            vec3(0, 0, 0)
         );
 
         assert_eq!(
             voronoi.region(Vec3::new(15.1, 9.0, 3.0)),
-            Vector3::new(1, 0, 0)
+            vec3(1, 0, 0)
         );
 
         assert_eq!(
             voronoi.region(Vec3::new(15.1, -5.0, -3.0)),
-            Vector3::new(1, -1, -1)
+            vec3(1, -1, -1)
         );
     }
 
@@ -187,8 +187,8 @@ mod tests {
     fn test_region_has_consistent_points() {
         let voronoi = VoronoiSpace::new(0, Vec3::new(10.0, 10.0, 10.0));
 
-        let point1 = voronoi.region_point(Vector3::new(1, 2, 3));
-        let point2 = voronoi.region_point(Vector3::new(1, 2, 3));
+        let point1 = voronoi.region_point(vec3(1, 2, 3));
+        let point2 = voronoi.region_point(vec3(1, 2, 3));
 
         assert_eq!(point1, point2);
     }
@@ -197,8 +197,8 @@ mod tests {
     fn test_points_differ_between_regions() {
         let voronoi = VoronoiSpace::new(0, Vec3::new(10.0, 10.0, 10.0));
 
-        let point1 = voronoi.region_point(Vector3::new(1, 2, 3));
-        let point2 = voronoi.region_point(Vector3::new(3, 5, 7));
+        let point1 = voronoi.region_point(vec3(1, 2, 3));
+        let point2 = voronoi.region_point(vec3(3, 5, 7));
 
         assert_ne!(point1, point2);
     }
@@ -207,8 +207,8 @@ mod tests {
     fn test_points_differ_between_inverse_regions() {
         let voronoi = VoronoiSpace::new(0, Vec3::new(10.0, 10.0, 10.0));
 
-        let point1 = voronoi.region_point(Vector3::new(0, 0, 0));
-        let point2 = voronoi.region_point(Vector3::new(-1, -1, -1));
+        let point1 = voronoi.region_point(vec3(0, 0, 0));
+        let point2 = voronoi.region_point(vec3(-1, -1, -1));
 
         assert_ne!(point1, point2);
     }

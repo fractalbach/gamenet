@@ -9,7 +9,7 @@ use std::f64;
 use std::collections::{VecDeque, HashSet, HashMap};
 use std::usize;
 
-use cgmath::{Vector2, Vector3, vec2};
+use cgmath::{Vector2, Vector3, vec2, vec3};
 use cgmath::InnerSpace;
 use lru_cache::LruCache;
 use serde::Serialize;
@@ -362,7 +362,7 @@ impl Region {
     /// 2d UV position in plane tangential to region origin.
     fn xyz_to_uv(&self, v: Vector3<f64>) -> Vector2<f64> {
         assert!(false);
-        Vector2::new(0.0, 0.0)  // Todo: Replace placeholder
+        vec2(0.0, 0.0)  // Todo: Replace placeholder
     }
 }
 
@@ -392,8 +392,8 @@ mod tests {
                 neighbors: [1, 2, 3],
                 ..Node::new(
                     0,
-                    Vector2::new(0, 0),
-                    Vector2::new(0.0, 0.0),
+                    vec2(0, 0),
+                    vec2(0.0, 0.0),
                     -13.0
                 )
             },
@@ -401,8 +401,8 @@ mod tests {
                 neighbors: [0, 2, usize::MAX],
                 ..Node::new(
                     1,
-                    Vector2::new(0, 0),
-                    Vector2::new(0.0, 0.0),
+                    vec2(0, 0),
+                    vec2(0.0, 0.0),
                     -24.0
                 )
             },
@@ -410,8 +410,8 @@ mod tests {
                 neighbors: [0, 1, 3],
                 ..Node::new(
                     2,  // Index of Node in river graph.
-                    Vector2::new(0, 0),
-                    Vector2::new(0.0, 0.0),
+                    vec2(0, 0),
+                    vec2(0.0, 0.0),
                     -11.0,  // Height above mean sea level.
                 )
             },
@@ -419,8 +419,8 @@ mod tests {
                 neighbors: [0, 2, usize::MAX],
                 ..Node::new(
                     3,  // Index of Node in river graph.
-                    Vector2::new(0, 0),
-                    Vector2::new(0.0, 0.0),
+                    vec2(0, 0),
+                    vec2(0.0, 0.0),
                     18.0,  // Height above mean sea level.
                 )
             }
@@ -440,16 +440,16 @@ mod tests {
         // Find good tectonic cell with height above sea level.
         let mut tectonic_info = TectonicInfo {
             height: -1.0,
-            indices: Vector3::new(0, 0, 0),
-            nucleus: Vector3::new(0.0, 0.0, 0.0),
-            mod_input: Vector3::new(0.0, 0.0, 0.0),
+            indices: vec3(0, 0, 0),
+            nucleus: vec3(0.0, 0.0, 0.0),
+            mod_input: vec3(0.0, 0.0, 0.0),
         };
-        let mut v = Vector3::new(0.0, 0.0, 0.0);
+        let mut v = vec3(0.0, 0.0, 0.0);
         for (x, y, z) in iproduct!(-10..11, -10..11, -10..11) {
             if x == 0 && y == 0 && z == 0 {
                 continue;
             }
-            v = Vector3::new(x as f64, y as f64, z as f64);
+            v = vec3(x as f64, y as f64, z as f64);
             tectonic_info = tectonic.height(v);
             if tectonic_info.height > 0.0 {
                 break;

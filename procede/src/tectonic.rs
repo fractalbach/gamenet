@@ -1,7 +1,7 @@
 //! Module containing tectonic plate procedural structs and functions.
 //!
 
-use cgmath::{Basis3, Rotation, Vector2, Vector3, vec3};
+use cgmath::{Basis3, Rotation, Vector2, Vector3, vec2, vec3};
 use cgmath::InnerSpace;
 use lru_cache::LruCache;
 
@@ -74,7 +74,7 @@ impl TectonicLayer {
             surface: Surface::new(
                 VoronoiSpace::new(
                     seed,
-                    Vector3::new(
+                    vec3(
                         Self::DEFAULT_REGION_WIDTH,
                         Self::DEFAULT_REGION_WIDTH,
                         Self::DEFAULT_REGION_WIDTH,
@@ -120,7 +120,7 @@ impl TectonicLayer {
         let mut base_weight_sum = 1.0;
         let mut ridge_mean = 0.0;
         let mut ridge_weight_sum = 0.0;
-        let mut nearest_motion = Vector2::new(0.0, 0.0);
+        let mut nearest_motion = vec2(0.0, 0.0);
 
         for i in 0..4 {
             // Find distance to edge of cell.
@@ -195,13 +195,13 @@ impl TectonicLayer {
         let noise_frq = 0.6;
         let x_noise = self.pos_noise.get(vec2arr(v * noise_frq)) * noise_amp;
         let y_noise = self.pos_noise.get(
-            vec2arr(v * noise_frq + Vector3::new(0.5, 0.0, 0.0) * noise_frq)
+            vec2arr(v * noise_frq + vec3(0.5, 0.0, 0.0) * noise_frq)
         ) * noise_amp;
         let z_noise = self.pos_noise.get(
-            vec2arr(v * noise_frq - Vector3::new(0.7, 0.0, 0.0) * noise_frq)
+            vec2arr(v * noise_frq - vec3(0.7, 0.0, 0.0) * noise_frq)
         ) * noise_amp;
 
-        Vector3::new(
+        vec3(
             v.x + x_noise,
             v.y + y_noise,
             (v.z + z_noise) * 0.66,
@@ -285,13 +285,13 @@ impl TectonicLayer {
 
     /// Convert lat/lon motion vector into 3d.
     fn lat_lon_2_3d(p: Vector3<f64>, motion: Vector2<f64>) -> Vector3<f64> {
-        let z_axis_vector = Vector3::new(0.0, 0.0, 1.0);
+        let z_axis_vector = vec3(0.0, 0.0, 1.0);
         let v_norm = p.normalize();
 
         // Get u_vec and v_vec.
         let u_vec: Vector3<f64>;
         if v_norm == z_axis_vector || v_norm == z_axis_vector * -1.0 {
-            u_vec = Vector3::new(0.0, 1.0, 0.0);
+            u_vec = vec3(0.0, 1.0, 0.0);
         } else {
             u_vec = v_norm.cross(z_axis_vector).normalize();
         }
@@ -344,7 +344,7 @@ impl Plate {
         // desired (0.3)
         let base_height = sign_safe_sqrt(noise) *
             layer.base_height_range / 1.86 + layer.mean_base_height;
-        let motion = Vector2::new(
+        let motion = vec2(
             layer.x_motion_noise.get(vec2arr(sample_p)),
             layer.y_motion_noise.get(vec2arr(sample_p)),
         );
@@ -396,13 +396,13 @@ mod tests {
     fn test_plate_motion_differs() {
         let mut tectonic = TectonicLayer::new(1);
         let motion1 = tectonic.plate(
-            Vector3::new(1, 2, -3), Vector3::new(1.0, 2.0, -3.0)
+            vec3(1, 2, -3), vec3(1.0, 2.0, -3.0)
         ).unwrap().motion;
         let motion2 = tectonic.plate(
-            Vector3::new(1, 2, 3), Vector3::new(1.0, 2.0, 3.0)
+            vec3(1, 2, 3), vec3(1.0, 2.0, 3.0)
         ).unwrap().motion;
         let motion3 = tectonic.plate(
-            Vector3::new(-1, -2, -3), Vector3::new(-1.0, -2.0, 3.0)
+            vec3(-1, -2, -3), vec3(-1.0, -2.0, 3.0)
         ).unwrap().motion;
 
         assert_ne!(motion1, motion2);
@@ -413,10 +413,10 @@ mod tests {
     fn test_plate_motion_is_consistent() {
         let mut tectonic = TectonicLayer::new(1);
         let motion1 = tectonic.plate(
-            Vector3::new(1, 2, 3), Vector3::new(1.0, 2.0, 3.0)
+            vec3(1, 2, 3), vec3(1.0, 2.0, 3.0)
         ).unwrap().motion;
         let motion2 = tectonic.plate(
-            Vector3::new(1, 2, 3), Vector3::new(1.0, 2.0, 3.0)
+            vec3(1, 2, 3), vec3(1.0, 2.0, 3.0)
         ).unwrap().motion;
 
         assert_eq!(motion1, motion2);
@@ -425,7 +425,7 @@ mod tests {
     #[test]
     fn test_result_info_is_consistent() {
         let mut tectonic = TectonicLayer::new(1);
-        let v = Vector3::new(-2.0, -2.0, -2.0);
+        let v = vec3(-2.0, -2.0, -2.0);
         let info_a: TectonicInfo = tectonic.height(v);
         let info_b: TectonicInfo = tectonic.height(v);
 
