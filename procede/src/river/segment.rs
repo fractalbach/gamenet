@@ -1,6 +1,7 @@
 use aabb_quadtree::geom::{Rect, Point};
 use aabb_quadtree::Spatial;
-use cgmath::Vector2;
+use cgmath::{Basis2, Vector2, Rad, Rotation, Rotation2};
+use cgmath::InnerSpace;
 
 use river::common::{RiverInfo, get_base_width};
 use river::river_graph::Node;
@@ -48,12 +49,13 @@ impl Segment {
     const MAX_MEANDER_BAND: f64 = get_base_width(Self::MAX_STRAHLER) * 20.0;
     const BASE_BOUND_MARGIN: f64 = Self::MAX_MEANDER_BAND * 2.0;
     const STRAHLER_INC_W_RATIO: f64 = 0.7;
+    const CONTROL_NODE_DIST_RATIO: f64 = 0.25;
 
     pub fn new(downriver: &Node, upriver: &Node) -> Segment {
         let base_curve = Curve {
             a: upriver.uv,
-            ctrl_a: Self::upriver_control_node(upriver),
-            ctrl_b: Self::downriver_control_node(downriver, upriver.i),
+            ctrl_a: Self::upriver_control_node(downriver, upriver),
+            ctrl_b: Self::downriver_control_node(downriver, upriver),
             b: downriver.uv
         };
         let bounds = Self::find_bounds(&base_curve, Self::BASE_BOUND_MARGIN);
@@ -80,13 +82,35 @@ impl Segment {
     /// the downriver of the endpoints of a segment.
     ///
     /// # Arguments
-    /// * `node` - Reference to downriver node.
-    /// * `i` - Index of the upriver node.
+    /// * `downriver` - Reference to downriver node.
+    /// * `upriver` - Reference to upriver node.
     ///
     /// # Return
     /// UV Position of the downriver control node.
-    fn downriver_control_node(node: &Node, i: usize) -> Vector2<f64> {
-        Vector2::new(0.0, 0.0)  // TODO
+    fn downriver_control_node(
+        downriver: &Node, upriver: &Node
+    ) -> Vector2<f64> {
+        // Determine distance of control node from downriver node.
+        let end_node_separation = (upriver.uv - downriver.uv).magnitude();
+        let distance = Self::CONTROL_NODE_DIST_RATIO * end_node_separation;
+
+        // Determine direction from downriver end node.
+        let direction;
+        if downriver.is_fork() {
+            let rotation: Basis2<f64> = if downriver.left_inlet() == upriver.i {
+                Rotation2::from_angle(Rad(downriver.fork_angle / -2.0))
+            } else {
+                Rotation2::from_angle(Rad(downriver.fork_angle / 2.0))
+            };
+            direction = rotation.rotate_vector(-downriver.direction);
+        } else {
+            direction = downriver.direction * -1.0;
+        }
+
+        // Determine node position.
+        // Direction points downriver, so the reciprocal is used.
+        let pos = downriver.uv + direction * distance;
+        pos
     }
 
     /// Finds up-river control node position.
@@ -95,12 +119,21 @@ impl Segment {
     /// the upriver node of a segment.
     ///
     /// # Arguments
-    /// * `node` - Reference to up-river node.
+    /// * `downriver` - Reference to downriver node.
+    /// * `upriver` - Reference to upriver node.
     ///
     /// # Return
     /// UV Position of the up-river control node.
-    fn upriver_control_node(node: &Node) -> Vector2<f64> {
-        Vector2::new(0.0, 0.0)  // TODO
+    fn upriver_control_node(
+        downriver: &Node, upriver: &Node
+    ) -> Vector2<f64> {
+        // Determine distance of control node from downriver node.
+        let end_node_separation = (upriver.uv - downriver.uv).magnitude();
+        let distance = Self::CONTROL_NODE_DIST_RATIO * end_node_separation;
+
+        // Determine node position.
+        let pos = upriver.uv + upriver.direction * distance;
+        pos
     }
 
     fn find_bounds(base_curve: &Curve, margin: f64) -> Rect {
