@@ -1,4 +1,3 @@
-use num_traits::abs;
 use std::cmp::Ordering;
 use std::collections::{VecDeque, HashSet, BinaryHeap};
 use std::f64;
@@ -12,7 +11,6 @@ use cgmath::Vector2;
 use cgmath::InnerSpace;
 use serde::{Deserialize, Serialize};
 use serde::Serializer;
-use serde::ser::SerializeStruct;
 
 use util::{idx_hash, rand1};
 use river::common::{get_base_width, vec2pt, MAX_STRAHLER};

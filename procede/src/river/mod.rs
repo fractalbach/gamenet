@@ -12,8 +12,7 @@ use std::usize;
 use cgmath::{Vector2, Vector3, vec2};
 use cgmath::InnerSpace;
 use lru_cache::LruCache;
-use serde::{Deserialize, Serialize};
-use serde::ser::SerializeStruct;
+use serde::Serialize;
 
 use tectonic::{TectonicLayer, TectonicInfo};
 use util::{hash_indices, sphere_uv_vec, TangentPlane};
@@ -129,7 +128,6 @@ impl RiverLayer {
 
 impl Region {
     pub const NODE_MEAN_SEPARATION: f64 = 10_000.0;
-    const CONTROL_POINT_DIST: f64 = Self::NODE_MEAN_SEPARATION * 0.2;
     const MIN_STRAHLER: i8 = 2;
     const BIAS_MAGNITUDE: f64 = 0.05;  // Should be < 0.1
 
