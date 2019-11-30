@@ -11,11 +11,15 @@ pub struct Curve {
     segment: CubicBezierSegment<f64>,
 }
 
+#[derive(PartialEq)]
+#[derive(Debug)]
+pub enum RiverSide { Left, Right }
+
 /// Struct containing the results of a projection.
 pub struct ProjectionInfo {
     pub point: Vector2<f64>,
     pub distance: f64,
-    pub side: i8,
+    pub side: RiverSide,
     pub t: f64,
 }
 
@@ -197,9 +201,20 @@ impl Curve {
     }
 
     /// Finds which side of the curve a point is on.
-    fn find_side(&self, p: Point<f64>, projection_t: f64) -> i8 {
+    fn find_side(&self, p: Point<f64>, projection_t: f64) -> RiverSide {
         let derivative = self.segment.derivative(projection_t);
-        -1  // TODO
+        let sample = self.segment.sample(projection_t);
+
+        // Get a vector pointing directly right from the river;
+        // perpendicular to the river direction.
+        let right = Vector2D::new(derivative.y, -derivative.x);
+
+        // Find direction from sample point to p, and compare it to the
+        // 'right' vector. If the angular difference is < 90, then the
+        // point p is on the right side.
+        let uv_diff = p - sample;
+        let cos = right.dot(uv_diff);
+        if cos < 0.0 { RiverSide::Left } else { RiverSide::Right }
     }
 }
 
@@ -294,5 +309,33 @@ mod tests {
         let exhaustive = exhaustive_search(&curve, p);
 
         assert_vec2_near!(smart, exhaustive, 10.0);
+    }
+
+    #[test]
+    fn test_projection_from_left_river_side_is_identified() {
+        let curve = Curve::new(
+            vec2(0.0, 0.0),
+            vec2(2000.0, 1000.0),
+            vec2(8000.0, -1000.0),
+            vec2(10_000.0, 0.0),
+        );
+
+        let projection_info = curve.project(vec2(5000.0, 5000.0));
+
+        assert_eq!(projection_info.side, RiverSide::Left);
+    }
+
+    #[test]
+    fn test_projection_from_right_river_side_is_identified() {
+        let curve = Curve::new(
+            vec2(0.0, 0.0),
+            vec2(2000.0, 1000.0),
+            vec2(8000.0, -1000.0),
+            vec2(10_000.0, 0.0),
+        );
+
+        let projection_info = curve.project(vec2(5000.0, -5000.0));
+
+        assert_eq!(projection_info.side, RiverSide::Right);
     }
 }
