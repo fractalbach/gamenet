@@ -14,7 +14,7 @@ use serde::Serializer;
 
 use util::{idx_hash, rand1};
 use river::common::{get_base_width, vec2pt, MAX_STRAHLER};
-use river::segment::{Segment, NearSegmentInfo};
+use river::segment::{Segment, NearSegmentInfo, RiverSide};
 
 pub struct RiverGraph {
     pub segment_tree: QuadTree<Segment>,
@@ -567,7 +567,7 @@ impl RiverGraph {
     pub fn nearest_rivers(&self, uv: Vector2<f64>) -> NearRiverInfo {
         NearRiverInfo {
             left: NearSegmentInfo {
-                side: 0,
+                side: RiverSide::Left,
                 dist: -1.0,
                 dist_widths: -1.0,
                 w: 10.0,
@@ -577,7 +577,7 @@ impl RiverGraph {
                 band_w: 100.0,
             },
             right: NearSegmentInfo {
-                side: 1,
+                side: RiverSide::Left,
                 dist: 1.0,
                 dist_widths: 1.0,
                 w: 10.0,

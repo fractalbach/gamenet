@@ -39,6 +39,7 @@ extern crate assert_approx_eq;
 extern crate cgmath;
 #[macro_use] extern crate itertools;
 extern crate lru_cache;
+extern crate lyon_geom;
 extern crate noise;
 extern crate num_traits;
 extern crate serde;

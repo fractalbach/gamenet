@@ -1,10 +1,12 @@
 use aabb_quadtree::geom::{Rect, Point};
 use aabb_quadtree::Spatial;
-use cgmath::{Basis2, Vector2, Rad, Rotation, Rotation2};
+use cgmath::{Basis2, Vector2, Rad, Rotation, Rotation2, vec2};
 use cgmath::InnerSpace;
 
-use river::common::{RiverInfo, get_base_width};
+use river::common::get_base_width;
 use river::river_graph::Node;
+use river::curve::{Curve, ProjectionInfo};
+pub use river::curve::RiverSide;
 
 
 /// River segment joining two nodes.
@@ -18,12 +20,15 @@ pub struct Segment {
     bounds: Rect,
     upriver_w: f64,
     downriver_w: f64,
+    slope: f64,
+    upriver_strahler: i8,
+    downriver_strahler: i8,
 }
 
 /// Struct containing data about a position relative to a nearby
 /// river segment.
 pub struct NearSegmentInfo {
-    pub side: i8,  // TODO: enum
+    pub side: RiverSide,  // TODO: enum
     pub dist: f64,
     pub dist_widths: f64,
     pub w: f64,
@@ -33,31 +38,22 @@ pub struct NearSegmentInfo {
     pub band_w: f64,
 }
 
-/// A single river bezier curve.
-///
-/// Handles calculation of a point's distance to a curve.
-struct Curve {
-    a: Vector2<f64>,
-    ctrl_a: Vector2<f64>,
-    ctrl_b: Vector2<f64>,
-    b: Vector2<f64>
-}
-
 
 impl Segment {
     const MAX_STRAHLER: i8 = 12;
     const MAX_MEANDER_BAND: f64 = get_base_width(Self::MAX_STRAHLER) * 20.0;
+    const MIN_BAND_WIDTH_SOPE: f64 = 0.1;
     const BASE_BOUND_MARGIN: f64 = Self::MAX_MEANDER_BAND * 2.0;
     const STRAHLER_INC_W_RATIO: f64 = 0.7;
     const CONTROL_NODE_DIST_RATIO: f64 = 0.25;
 
     pub fn new(downriver: &Node, upriver: &Node) -> Segment {
-        let base_curve = Curve {
-            a: upriver.uv,
-            ctrl_a: Self::upriver_control_node(downriver, upriver),
-            ctrl_b: Self::downriver_control_node(downriver, upriver),
-            b: downriver.uv
-        };
+        let base_curve = Curve::new(
+            upriver.uv,
+            Self::upriver_control_node(downriver, upriver),
+            Self::downriver_control_node(downriver, upriver),
+            downriver.uv
+        );
         let bounds = Self::find_bounds(&base_curve, Self::BASE_BOUND_MARGIN);
         let upriver_w = upriver.width();
         let downriver_w = if downriver.strahler > upriver.strahler {
@@ -71,6 +67,9 @@ impl Segment {
             bounds,
             upriver_w,
             downriver_w,
+            upriver_strahler: upriver.strahler,
+            downriver_strahler: downriver.strahler,
+            slope: Self::find_slope(downriver, upriver),
         }
     }
 
@@ -136,13 +135,21 @@ impl Segment {
         pos
     }
 
-    fn find_bounds(base_curve: &Curve, margin: f64) -> Rect {
-        let mut min_x: f64 = base_curve.a.x;
-        let mut max_x: f64 = base_curve.a.x;
-        let mut min_y: f64 = base_curve.a.y;
-        let mut max_y: f64 = base_curve.a.y;
+    /// Finds the bounding box for a river segment from its base curve.
+    ///
+    /// # Arguments
+    /// * `curve` - Base curve of the Segment.
+    /// * `margin` - Margin around curve which is added to bounding box.
+    ///
+    /// # Return
+    /// Bounding box Rect.
+    fn find_bounds(curve: &Curve, margin: f64) -> Rect {
+        let mut min_x: f64 = curve.a().x;
+        let mut max_x: f64 = curve.a().x;
+        let mut min_y: f64 = curve.a().y;
+        let mut max_y: f64 = curve.a().y;
 
-        for point in &[base_curve.b, base_curve.ctrl_b, base_curve.ctrl_a] {
+        for point in &[curve.b(), curve.ctrl_b(), curve.ctrl_a()] {
             if point.x < min_x {
                 min_x = point.x;
             } else if point.x > max_x {
@@ -170,6 +177,24 @@ impl Segment {
         }
     }
 
+    /// Finds slope of river segment.
+    ///
+    /// The returned slope is approximate. It treats the segment as a
+    /// straight line between the upriver and downriver nodes.
+    ///
+    /// # Arguments
+    /// * `downriver` - Node at downriver end of segment.
+    /// * `upriver` - Node at upriver end of segment.
+    ///
+    /// # Return
+    /// The slope of the river segment as a ratio between 0.0 and -1.0.
+    fn find_slope(downriver: &Node, upriver: &Node) -> f64 {
+        let diff = downriver.h - upriver.h;
+        debug_assert!(diff <= 0.0);
+        let dist = (downriver.uv - upriver.uv).magnitude();
+        diff / dist
+    }
+
     // Instance methods.
 
     /// Finds river info determined by the segment at a given position.
@@ -179,20 +204,97 @@ impl Segment {
     ///
     /// # Return
     /// RiverInfo determined by Segment.
-    fn info(&self, uv: Vector2<f64>) -> RiverInfo {
-        return RiverInfo { height: -1.0 }
+    fn info(&self, uv: Vector2<f64>) -> NearSegmentInfo {
+        let curve_info = self.base_curve.project(uv);
+        let d = curve_info.distance;
+        let w = self.base_width(curve_info.t);
+        let dist_widths = d / w;
+        let depth = if d < w { (w - d).sqrt() } else { 0.0 };
+
+        // TODO: populate struct.
+        NearSegmentInfo {
+            side: curve_info.side,  // TODO: enum
+            dist: curve_info.distance,
+            dist_widths,
+            w,
+            depth,
+            upriver_strahler: self.upriver_strahler,
+            fp_strahler: self.find_fp_strahler(curve_info.t),
+            band_w: self.find_band_width(w, self.slope),
+        }
     }
 
     /// Finds base river width at passed ratio of length.
     ///
     /// # Arguments
-    /// * `ratio` - Ratio of distance upriver.
+    /// * `t` - Ratio of distance upriver.
     ///             0.0 == downriver end, 1.0 == upriver end.
     ///
     /// # Return
     /// Base width of river at identified point.
-    fn base_width(&self, ratio: f64) -> f64 {
-        self.downriver_w * ratio + self.upriver_w * (1.0 - ratio)
+    fn base_width(&self, t: f64) -> f64 {
+        self.downriver_w * t + self.upriver_w * (1.0 - t)
+    }
+    
+    /// Finds river depth at a uv position
+    ///
+    /// # Arguments
+    /// * `curve_info` - Curve info from the point at which depth is desired
+    ///
+    /// # Return
+    /// River water depth in meters at passed position.
+    fn find_depth(&self, curve_info: ProjectionInfo) -> f64 {
+        let w = self.base_width(curve_info.t);
+        let d = curve_info.distance;
+        let depth;
+        if d >= w {
+            depth = 0.0;
+        } else {
+            depth = (w - d).sqrt();
+        }
+        depth
+    }
+    
+    /// Finds floating point strahler value at a sample point.
+    ///
+    /// A true strahler number is only ever an integer, however some
+    /// algorithms used by the river module require smooth transitions
+    /// along a river segment, and therefore a floating point
+    /// interpolation of the strahler number is provided.
+    ///
+    /// This method returns an interpolation between the strahler
+    /// number at the segment's downriver and upriver ends.
+    ///
+    /// # Arguments
+    /// * `t` - Ratio of distance upriver.
+    ///             0.0 == downriver end, 1.0 == upriver end.
+    ///
+    /// # Return
+    /// Strahler number interpolation.
+    fn find_fp_strahler(&self, t: f64) -> f64 {
+        self.upriver_strahler as f64 * t + 
+                self.downriver_strahler as f64 * (1.0 - t)
+    }
+    
+    /// Finds the river band width at a sample point.
+    ///
+    /// The river band is the region within which a river meanders,
+    /// and is usually visible as a flat area around the river with
+    /// soft, heavily vegitated ground, and little or no construction.
+    ///
+    /// # Arguments
+    /// * `w` - Width at passed sample point
+    /// * `slope` - Approximate slope of the Segment.
+    ///
+    /// # Return
+    /// River band width in meters.
+    fn find_band_width(&self, w: f64, slope: f64) -> f64 {
+        if slope <= Self::MIN_BAND_WIDTH_SOPE {
+            return w;
+        }
+        let max_slope_ratio = slope / Self::MIN_BAND_WIDTH_SOPE;
+        let band_ratio = (1.0 - max_slope_ratio) * Self::MAX_MEANDER_BAND;
+        band_ratio * w
     }
 }
 
@@ -201,3 +303,6 @@ impl Spatial for Segment {
         self.bounds
     }
 }
+
+
+// --------------------------------------------------------------------
