@@ -211,9 +211,8 @@ impl Segment {
         let dist_widths = d / w;
         let depth = if d < w { (w - d).sqrt() } else { 0.0 };
 
-        // TODO: populate struct.
         NearSegmentInfo {
-            side: curve_info.side,  // TODO: enum
+            side: curve_info.side,
             dist: curve_info.distance,
             dist_widths,
             w,
