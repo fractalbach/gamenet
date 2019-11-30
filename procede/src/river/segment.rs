@@ -279,7 +279,7 @@ impl Segment {
     ///
     /// The river band is the region within which a river meanders,
     /// and is usually visible as a flat area around the river with
-    /// soft, heavily vegitated ground, and little or no construction.
+    /// soft, heavily vegetated ground, and little or no construction.
     ///
     /// # Arguments
     /// * `w` - Width at passed sample point
