@@ -9,6 +9,16 @@ pub struct RiverInfo {
 
 pub const MAX_STRAHLER: i8 = 12;
 
+/// Gets base width of a river with a given strahler number.
+///
+/// The base width is the mean width of the river before noise, curves,
+/// or other varying features.
+///
+/// # Arguments
+/// * `strahler` - Strahler number.
+///
+/// # Return
+/// River base width in meters.
 pub const fn get_base_width(strahler: i8) -> f64 {
     // Width table based on real-world measurements.
     const LOOKUP: [f64; 13] = [
