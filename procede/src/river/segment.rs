@@ -42,7 +42,7 @@ pub struct NearSegmentInfo {
 impl Segment {
     const MAX_STRAHLER: i8 = 12;
     const MAX_MEANDER_BAND: f64 = get_base_width(Self::MAX_STRAHLER) * 20.0;
-    const MIN_BAND_WIDTH_SOPE: f64 = 0.1;
+    const MIN_BAND_WIDTH_SLOPE: f64 = 0.1;
     const BASE_BOUND_MARGIN: f64 = Self::MAX_MEANDER_BAND * 2.0;
     const STRAHLER_INC_W_RATIO: f64 = 0.7;
     const CONTROL_NODE_DIST_RATIO: f64 = 0.25;
@@ -288,10 +288,10 @@ impl Segment {
     /// # Return
     /// River band width in meters.
     fn find_band_width(&self, w: f64, slope: f64) -> f64 {
-        if slope <= Self::MIN_BAND_WIDTH_SOPE {
+        if slope <= Self::MIN_BAND_WIDTH_SLOPE {
             return w;
         }
-        let max_slope_ratio = slope / Self::MIN_BAND_WIDTH_SOPE;
+        let max_slope_ratio = slope / Self::MIN_BAND_WIDTH_SLOPE;
         let band_ratio = (1.0 - max_slope_ratio) * Self::MAX_MEANDER_BAND;
         band_ratio * w
     }
