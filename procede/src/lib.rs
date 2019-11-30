@@ -77,13 +77,14 @@ pub fn create_world() -> usize {
 }
 
 
+/// Retrieve height of world at the specified position.
 #[wasm_bindgen]
 pub fn height(world_pos: usize, x: f64, y: f64, z: f64) -> f64 {
     let world_ptr: *mut World = unsafe { std::mem::transmute(world_pos) };
     let world: &mut World = unsafe { world_ptr.as_mut().unwrap() };
 
     let h = world.height(Vec3::new(x, y, z));
-    assert_eq!(h, h);
+    assert_eq!(h, h);  // Check h is not NaN.
     h
 }
 
