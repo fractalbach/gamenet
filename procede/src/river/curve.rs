@@ -7,6 +7,7 @@ use lyon_geom::euclid::default::Point2D as Point;
 /// A single river bezier curve.
 ///
 /// Handles calculation of a point's distance to a curve.
+#[derive(Debug)]
 pub struct Curve {
     segment: CubicBezierSegment<f64>,
 }

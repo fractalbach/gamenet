@@ -6,7 +6,7 @@ use std::usize;
 use std::u32;
 
 use aabb_quadtree::QuadTree;
-use aabb_quadtree::geom::Rect;
+use aabb_quadtree::geom::{Rect, Point};
 use cgmath::{Vector2, vec2};
 use cgmath::InnerSpace;
 use serde::{Deserialize, Serialize};
@@ -19,6 +19,11 @@ use river::segment::{Segment, NearSegmentInfo, RiverSide};
 pub struct RiverGraph {
     pub segment_tree: QuadTree<Segment>,
     pub nodes: Vec<Node>,
+    settings: RiverSettings,
+}
+
+pub struct RiverSettings {
+    pub max_influence_r: f64,
 }
 
 pub struct Mouth {
@@ -47,8 +52,7 @@ pub struct GenerationInfo {
 }
 
 pub struct NearRiverInfo {
-    pub left: NearSegmentInfo,
-    pub right: NearSegmentInfo,
+    pub segment_info: Vec<NearSegmentInfo>,
 }
 
 
@@ -60,6 +64,7 @@ impl RiverGraph {
         mut nodes: Vec<Node>,
         mouths: &Vec<Mouth>,
         min_strahler: i8,
+        settings: RiverSettings,
     ) -> RiverGraph {
         // Connect nodes in-place.
         let info = Self::generate_rivers(&mut nodes, mouths);
@@ -77,7 +82,8 @@ impl RiverGraph {
 
         RiverGraph {
             nodes,
-            segment_tree
+            segment_tree,
+            settings,
         }
     }
 
@@ -564,28 +570,23 @@ impl RiverGraph {
     /// # Returns
     /// * Distance to nearest segment.
     /// * Segment nearest the passed point.
-    pub fn nearest_rivers(&self, uv: Vector2<f64>) -> NearRiverInfo {
+    pub fn info(&self, uv: Vector2<f64>) -> NearRiverInfo {
+        let r = self.settings.max_influence_r;
+        let segment_box = Rect {
+            top_left: Point { x: (uv.x - r) as f32, y: (uv.y - r) as f32 },
+            bottom_right: Point { x: (uv.x + r) as f32, y: (uv.y + r) as f32 },
+        };
+
+        // Get and sort NearSegmentInfo from each segment in search radius.
+        let query_res = self.segment_tree.query(segment_box);
+        let mut segment_info = Vec::with_capacity(query_res.len());
+        for res_item in query_res {
+            let seg = res_item.0;
+            segment_info.push(seg.info(uv));
+        }
+
         NearRiverInfo {
-            left: NearSegmentInfo {
-                side: RiverSide::Left,
-                dist: -1.0,
-                dist_widths: -1.0,
-                w: 10.0,
-                depth: 2.0,
-                upriver_strahler: 4,
-                fp_strahler: 4.0,
-                band_w: 100.0,
-            },
-            right: NearSegmentInfo {
-                side: RiverSide::Left,
-                dist: 1.0,
-                dist_widths: 1.0,
-                w: 10.0,
-                depth: 2.0,
-                upriver_strahler: 4,
-                fp_strahler: 4.0,
-                band_w: 100.0,
-            }
+            segment_info
         }
     }
 

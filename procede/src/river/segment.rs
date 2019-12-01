@@ -15,6 +15,7 @@ pub use river::curve::RiverSide;
 /// Segment's river course.
 ///
 /// The Segment will handle any blending of data from different curves,
+#[derive(Debug)]
 pub struct Segment {
     base_curve: Curve,
     bounds: Rect,
@@ -204,7 +205,7 @@ impl Segment {
     ///
     /// # Return
     /// RiverInfo determined by Segment.
-    fn info(&self, uv: Vector2<f64>) -> NearSegmentInfo {
+    pub fn info(&self, uv: Vector2<f64>) -> NearSegmentInfo {
         let curve_info = self.base_curve.project(uv);
         let d = curve_info.distance;
         let w = self.base_width(curve_info.t);
