@@ -32,6 +32,21 @@
 //!             (and Strahler number?)
 //!
 //! ### SubRiver:
+//!     * Adds smaller streams to landscape.
+//!
+//! ### HardProps:
+//!     * Adds major static objects that are not moved by settlements
+//!             or roads.
+//!
+//! ### Settlement:
+//!     * Generates town & street map.
+//!
+//! ### Town:
+//!     * Generates street & building map for towns.
+//!
+//! ### SoftProps:
+//!     * Adds small or movable static objects whose placement is
+//!             potentially affected by towns or roads.
 //!
 
 extern crate aabb_quadtree;
