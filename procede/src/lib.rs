@@ -49,11 +49,12 @@ extern crate wasm_bindgen;
 #[macro_use]
 mod test_util;
 
-mod voronoi;
+mod pop;
 mod river;
 mod surface;
 mod tectonic;
 mod util;
+mod voronoi;
 mod world;
 
 type Vec3 = cgmath::Vector3<f64>;
