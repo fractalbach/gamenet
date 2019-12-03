@@ -372,10 +372,10 @@ mod tests {
     use std::collections::{HashSet, HashMap};
     use std::fs;
 
-    use cgmath::{Vector2, Vector3, vec2};
+    use cgmath::{Vector2, Vector3, vec2, vec3};
     use serde_json;
 
-    use river::*;
+    use river::major::*;
     use river::river_graph::Node;
     use tectonic::{TectonicLayer, TectonicInfo};
 
