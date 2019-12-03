@@ -50,7 +50,7 @@ impl Surface {
 
 #[cfg(test)]
 mod tests {
-    use cgmath::Vector3;
+    use cgmath::{Vector3, vec3};
 
     use surface::*;
     use voronoi::VoronoiSpace;
