@@ -85,7 +85,8 @@ struct ObstacleLine {
 pub struct StreetSettings {
     base_edge_len: f64,
     max_edge_len_ratio: f64,
-    min_edge_len_ratio: f64
+    min_edge_len_ratio: f64,
+    node_merge_dist: f64,
     // As const settings are required, they should be added here.
 }
 
@@ -180,7 +181,14 @@ impl StreetMap {
     /// # Return
     /// NodeId pointing to added node, or existing nearby node which
     /// should be used instead.
-    fn add_node(&mut self, node: &Node) -> NodeId {
+    pub fn add_node(&mut self, node: &Node) -> NodeId {
+        let existing = self.find_nearest_node(
+            node.uv, self.settings.node_merge_dist
+        );
+        if existing.is_some() {
+            return existing.2;
+        }
+
         NodeId(self.nodes.insert(node.clone()))
     }
 
@@ -340,11 +348,12 @@ mod tests {
 
     use pop::streets::{StreetSegmentBuilder, StreetMap, StreetSettings, Node};
 
-    fn get_default_settings() -> StreetSettings {
+    fn get_default_test_settings() -> StreetSettings {
         StreetSettings {
             base_edge_len: 100.0,
             max_edge_len_ratio: 1.5,
             min_edge_len_ratio: 0.5,
+            node_merge_dist: 0.1,
         }
     }
 
@@ -368,7 +377,7 @@ mod tests {
     /// Test that the nearest node to a passed position can be found.
     #[test]
     fn test_find_nearest_node() {
-        let settings = get_default_settings();
+        let settings = get_default_test_settings();
         let mut map = StreetMap::new(settings);
 
         map.add_node(&Node::new(vec2(0.0, 1000.0)));
@@ -388,7 +397,7 @@ mod tests {
     /// if the radius is too small.
     #[test]
     fn test_find_nearest_node_returns_none_if_radius_too_small() {
-        let settings = get_default_settings();
+        let settings = get_default_test_settings();
         let mut map = StreetMap::new(settings);
 
         map.add_node(&Node::new(vec2(0.0, 1000.0)));
