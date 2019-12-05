@@ -167,7 +167,7 @@ impl StreetMap {
     /// will be added to the StreetMap and its id returned.
     ///
     /// # Arguments
-    /// `node` - Node reference to be added.
+    /// * `node` - Node reference to be added.
     ///
     /// # Return
     /// NodeId pointing to added node, or existing nearby node which
@@ -182,8 +182,18 @@ impl StreetMap {
         self.nodes.get(id.0)
     }
 
-    /// Gets node nearest to the passed UV coordinates,
-    /// within the passed radius.
+    /// Gets node nearest to a set of UV coordinates within a radius.
+    ///
+    /// # Arguments
+    /// * `uv` - Vector2<f64> specifying the center of the search area.
+    /// * `r` - Radius around the position specified by `uv` within
+    ///             which to search for the nearest Node.
+    ///
+    /// # Returns
+    /// Tuple of:
+    /// * Reference to the nearest node.
+    /// * Distance to the nearest node.
+    /// * NodeId of the nearest node.
     fn find_nearest_node(
         &self, uv: Vector2<f64>, r: f64
     ) -> Option<(&Node, f64, NodeId)> {
