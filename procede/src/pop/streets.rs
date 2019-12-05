@@ -368,6 +368,20 @@ mod tests {
         assert_vec2_near!(node.uv, vec2(0.0, 0.0));
     }
 
+    /// Test that the nearest node to a passed position is not returned
+    /// if the radius is too small.
+    #[test]
+    fn test_find_nearest_node_returns_none_if_radius_too_small() {
+        let settings = get_default_settings();
+        let mut map = StreetMap::new(settings);
+
+        map.add_node(&Node::new(vec2(0.0, 1000.0)));
+        map.add_node(&Node::new(vec2(0.0, 0.0)));  // Nearest.
+        map.add_node(&Node::new(vec2(1000.0, 0.0)));
+
+        assert!(map.find_nearest_node(vec2(200.0, 200.0), 220.0).is_none());
+    }
+
     // ----------------------------
     // StreetSegment
 
