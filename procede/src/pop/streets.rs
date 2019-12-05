@@ -137,6 +137,13 @@ impl StreetMap {
         bottom_right: Point { x: 3000.0f32, y: 3000.0f32 }
     };
 
+    const DEFAULT_SETTINGS: StreetSettings = StreetSettings {
+        base_edge_len: 100.0,
+        max_edge_len_ratio: 1.5,
+        min_edge_len_ratio: 0.5,
+        node_merge_dist: 0.1,
+    };
+
     // Construction
 
     /// Produce new StreetMap.
