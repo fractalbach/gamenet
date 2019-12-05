@@ -138,6 +138,14 @@ impl StreetMap {
 
     // Construction
 
+    /// Produce new StreetMap.
+    ///
+    /// # Arguments
+    /// * `settings` - StreetSettings with immutable settings which
+    ///             will be kept for the lifetime of the StreetMap.
+    /// 
+    /// # Return
+    /// StreetMap
     pub fn new(settings: StreetSettings) -> StreetMap {
         StreetMap {
             obstacles: QuadTree::default(Self::DEFAULT_SHAPE),
@@ -178,6 +186,13 @@ impl StreetMap {
 
     // Accessors
 
+    /// Get Node from NodeId
+    ///
+    /// # Arguments
+    /// * `id` - NodeId specifying a Node
+    ///
+    /// # Return
+    /// Node
     fn get_node(&self, id: NodeId) -> Option<&Node> {
         self.nodes.get(id.0)
     }
@@ -350,6 +365,7 @@ mod tests {
         assert!(true);  // Placeholder
     }
 
+    /// Test that the nearest node to a passed position can be found.
     #[test]
     fn test_find_nearest_node() {
         let settings = get_default_settings();
