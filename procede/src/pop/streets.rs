@@ -232,8 +232,6 @@ impl StreetMap {
     }
 }
 
-// TODO: Add Object create() and Description implementations.
-
 impl Node {
     fn new(uv: Vector2<f64>) -> Node {
         Node {
@@ -278,42 +276,18 @@ impl Spatial for Edge {
 // Utility functions
 
 
-// TODO: Simplify w/ Rect member methods.
 /// Finds the bounding box for a Line.
 ///
 /// # Arguments
-/// * `a` - First point of ObstacleLine.
-/// * `b` - Second point of ObstacleLine.
+/// * `a` - First point of line.
+/// * `b` - Second point of line.
 ///
 /// # Return
 /// Bounding box Rect.
 fn find_line_bounds(a: Vector2<f64>, b: Vector2<f64>) -> Rect {
-    macro_rules! min {
-        ($a:expr, $b:expr) => {{
-            let (a, b) = ($a, $b);
-            if a < b { a } else { b }
-        }};
-    };
-    macro_rules! max {
-        ($a:expr, $b:expr) => {{
-            let (a, b) = ($a, $b);
-            if a < b { b } else { a }
-        }};
-    };
-
-    let min_x = min!(a.x, b.x);
-    let max_x = max!(a.x, b.x);
-    let min_y = min!(a.y, b.y);
-    let max_y = max!(a.y, b.y);
-
-    // Create Rect. Note that the top-left field contains the
-    // minimums, due to the quad-tree library being intended for
-    // 2d graphics applications.
-    Rect {
-        top_left: Point { x: min_x as f32, y: min_y as f32 },
-        bottom_right: Point { x: max_x as f32, y: max_y as f32 }
-    }
+    Rect::from_points(&vec_to_point(a), &vec_to_point(b))
 }
+
 
 fn vec_to_point(v: Vector2<f64>) -> Point {
     Point { x: v.x as f32, y: v.y as f32 }
