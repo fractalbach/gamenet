@@ -157,7 +157,7 @@ impl TangentPlane {
 
 #[cfg(test)]
 mod tests {
-    use cgmath::{Vector3, Vector2};
+    use cgmath::{Vector3, Vector2, vec2, vec3};
     use util::*;
 
     #[test]
