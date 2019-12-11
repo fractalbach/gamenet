@@ -121,10 +121,38 @@ macro_rules! assert_in_range {
         assert!(
             a <= b && b < c,
             "assertion failed: `(left <= mid < right)` \
-             (left: `{:?}`, mid: `{:?}`, right: `{:?}`",
+             (left: `{:?}`, mid: `{:?}`, right: `{:?})`",
             a,
             b,
             c,
+        );
+    }};
+}
+
+#[macro_export]
+macro_rules! assert_is {
+    ($a:expr, $b:expr) => {{
+        let (a, b) = (&$a, &$b);
+        assert!(
+            a as *const _ == b as *const _,
+            "assertion failed: `left is not right` \
+             (left: `{:?}`, right: `{:?}`)",
+            a,
+            b
+        );
+    }};
+}
+
+#[macro_export]
+macro_rules! assert_is_not {
+    ($a:expr, $b:expr) => {{
+        let (a, b) = (&$a, &$b);
+        assert!(
+            a as *const _ != b as *const _,
+            "assertion failed: `left is right` \
+             (left: `{:?}`, right: `{:?}`)",
+            a,
+            b
         );
     }};
 }
