@@ -15,6 +15,8 @@
 //! Initial goal is only to produce a street map.
 //! Additional features will be implemented only after that.
 
+use std::usize;
+
 use aabb_quadtree::{QuadTree, ItemId};
 use aabb_quadtree::geom::{Rect, Point};
 use aabb_quadtree::Spatial;
@@ -24,13 +26,13 @@ use cgmath::MetricSpace;
 
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
-pub struct ObstacleId(ItemId);
+pub struct ObstacleId(usize);
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
-pub struct NodeId(ItemId);
+pub struct NodeId(usize);
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
-pub struct EdgeId(ItemId);
+pub struct EdgeId(usize);
 
 
 /// Map containing town map information.
@@ -40,9 +42,14 @@ pub struct EdgeId(ItemId);
 ///  * Nodes.
 ///  * Settings.
 pub struct StreetMap {
-    obstacles: QuadTree<ObstacleLine>,
-    nodes: QuadTree<Node>,
-    edges: QuadTree<Edge>,
+    node_map: QuadTree<usize>,
+    edge_map: QuadTree<usize>,
+    obstacle_map: QuadTree<usize>,
+
+    nodes: Vec<Node>,
+    edges: Vec<Edge>,
+    obstacles: Vec<ObstacleLine>,
+
     settings: StreetSettings,
 }
 
@@ -50,15 +57,9 @@ pub struct StreetMap {
 #[derive(Clone, Debug)]
 struct Node {
     uv: Vector2<f64>,
-    edges: Vec<(NodeId, EdgeId)>
-}
-
-
-#[derive(Clone, Debug)]
-struct EdgeInfo {
-    cost_mod: f64,  // Travel cost of edge. Lower is better.
-    a: NodeId,
-    b: NodeId,
+    edges: Vec<(NodeId, EdgeId)>,
+    i: Option<usize>,
+    map_id: Option<ItemId>,
 }
 
 
@@ -67,9 +68,11 @@ struct Edge {
     cost: f64,  // Travel cost of edge. Lower is better.
     a: NodeId,
     b: NodeId,
-    a_uv: Vector2<f64>,
-    b_uv: Vector2<f64>,
+    uv_a: Vector2<f64>,
+    uv_b: Vector2<f64>,
     bounds: Rect,
+    i: Option<usize>,
+    map_id: Option<ItemId>,
 }
 
 
@@ -78,6 +81,8 @@ struct ObstacleLine {
     a: Vector2<f64>,
     b: Vector2<f64>,
     bounds: Rect,
+    i: Option<usize>,
+    map_id: Option<ItemId>,
 }
 
 
@@ -151,14 +156,17 @@ impl StreetMap {
     /// # Arguments
     /// * `settings` - StreetSettings with immutable settings which
     ///             will be kept for the lifetime of the StreetMap.
-    /// 
+    ///
     /// # Return
     /// StreetMap
     pub fn new(settings: StreetSettings) -> StreetMap {
         StreetMap {
-            obstacles: QuadTree::default(Self::DEFAULT_SHAPE),
-            nodes: QuadTree::default(Self::DEFAULT_SHAPE),
-            edges: QuadTree::default(Self::DEFAULT_SHAPE),
+            node_map: QuadTree::default(Self::DEFAULT_SHAPE),
+            edge_map: QuadTree::default(Self::DEFAULT_SHAPE),
+            obstacle_map: QuadTree::default(Self::DEFAULT_SHAPE),
+            nodes: Vec::new(),
+            edges: Vec::new(),
+            obstacles: Vec::new(),
             settings,
         }
     }
@@ -188,15 +196,65 @@ impl StreetMap {
     /// # Return
     /// NodeId pointing to added node, or existing nearby node which
     /// should be used instead.
-    pub fn add_node(&mut self, node: &Node) -> NodeId {
-        let existing = self.find_nearest_node(
-            node.uv, self.settings.node_merge_dist
-        );
-        if existing.is_some() {
-            return existing.2;
+    pub fn add_node(&mut self, mut node: Node) -> NodeId {
+        {
+            let existing = self.find_nearest_node(
+                node.uv, self.settings.node_merge_dist
+            );
+            if existing.is_some() {
+                return existing.unwrap().0.id();
+            }
         }
 
-        NodeId(self.nodes.insert(node.clone()))
+        let i = self.nodes.len();
+        node.i = Some(i);
+        node.map_id = Some(self.node_map.insert_with_box(i, node.aabb()));
+        self.nodes.push(node);
+
+        NodeId(i)
+    }
+
+    /// Adds an edge to the street map.
+    ///
+    /// Both a and b node id's are expected to be valid.
+    ///
+    /// # Arguments:
+    /// * `a` - NodeId of Node at one side of Edge.
+    /// * `b` - NodeId of Node at other side of Edge.
+    ///
+    /// # Return
+    /// EdgeId of added Edge.
+    pub fn add_edge_between(&mut self, a: NodeId, b: NodeId, cost: f64) -> &Edge {
+        let mut edge;
+        {
+            let a_node = self.node(a);
+            let b_node = self.node(b);
+
+            // Add connection to nodes.
+            debug_assert!(!a_node.has_node_connection(b_node.id()));
+            debug_assert!(!b_node.has_node_connection(a_node.id()));
+
+            edge = Edge::new(a_node, b_node, cost);
+        }
+
+        self.nodes[a.0].add_edge(&edge);
+        self.nodes[b.0].add_edge(&edge);
+
+        let i = self.edges.len();
+        edge.map_id = Some(self.edge_map.insert_with_box(i, edge.aabb()));
+        edge.i = Some(i);
+
+        &self.edges[i]
+    }
+
+    /// Adds obstacle line to the street map.
+    pub fn add_obstacle(&mut self, mut obstacle: ObstacleLine) -> &ObstacleLine {
+        let i = self.obstacles.len();
+        obstacle.i = Some(i);
+        obstacle.map_id = Some(
+            self.obstacle_map.insert_with_box(i, obstacle.aabb())
+        );
+        &self.obstacles[i]
     }
 
     // Accessors
@@ -208,8 +266,8 @@ impl StreetMap {
     ///
     /// # Return
     /// Node
-    fn get_node(&self, id: NodeId) -> Option<&Node> {
-        self.nodes.get(id.0)
+    fn node(&self, id: NodeId) -> &Node {
+        &self.nodes[id.0]
     }
 
     /// Gets node nearest to a set of UV coordinates within a radius.
@@ -226,12 +284,12 @@ impl StreetMap {
     /// * NodeId of the nearest node.
     fn find_nearest_node(
         &self, uv: Vector2<f64>, r: f64
-    ) -> Option<(&Node, f64, NodeId)> {
+    ) -> Option<(&Node, f64)> {
         let uv_p = vec_to_point(uv);
         let rect = Rect::centered_with_radius(&uv_p, r as f32);
 
         // Query Nodes within rect.
-        let query_res = self.nodes.query(rect);
+        let query_res = self.node_map.query(rect);
         if query_res.is_empty() {
             return Option::None;
         }
@@ -259,8 +317,8 @@ impl StreetMap {
             return Option::None;
         }
 
-        let nearest_res = query_res[nearest_i];
-        Option::Some((nearest_res.0, d, NodeId(nearest_res.2)))
+        let (&nearest_i, _, _) = query_res[nearest_i];
+        Option::Some((&self.nodes[nearest_i], d))
     }
 
     fn get_obstacle_line(&self, id: ObstacleId) -> Option<&ObstacleLine> {
@@ -273,11 +331,49 @@ impl StreetMap {
 }
 
 impl Node {
-    fn new(uv: Vector2<f64>) -> Node {
+    pub fn new(uv: Vector2<f64>) -> Node {
         Node {
             uv,
             edges: Vec::with_capacity(4),
+            i: None,
+            map_id: None
         }
+    }
+
+    pub fn has_node_connection(&self, id: NodeId) -> bool {
+        for (node_id, edge_id) in &self.edges {
+            if *node_id == id {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn has_edge(&self, id: EdgeId) -> bool {
+        for (node_id, edge_id) in &self.edges {
+            if *edge_id == id {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn add_edge(&mut self, edge: &Edge) {
+        debug_assert!(self.has_id());
+        debug_assert!(edge.has_id());
+        debug_assert!(edge.a == self.id() || edge.b == self.id());
+
+        let other_id = if edge.a == self.id() { edge.b } else { edge.a };
+
+        self.edges.push((other_id, edge.id()));
+    }
+
+    pub fn id(&self) -> NodeId {
+        NodeId(self.i.unwrap())
+    }
+
+    pub fn has_id(&self) -> bool {
+        self.i.is_some()
     }
 }
 
@@ -294,6 +390,8 @@ impl ObstacleLine {
             a,
             b,
             bounds: find_line_bounds(a, b),
+            i: None,
+            map_id: None,
         }
     }
 }
@@ -302,6 +400,33 @@ impl ObstacleLine {
 impl Spatial for ObstacleLine {
     fn aabb(&self) -> Rect {
         self.bounds
+    }
+}
+
+
+impl Edge {
+    pub fn new(a: &Node, b: &Node, cost: f64) -> Edge {
+        debug_assert!(a.has_id());
+        debug_assert!(b.has_id());
+
+        Edge {
+            cost,
+            a: a.id(),
+            b: a.id(),
+            uv_a: a.uv,
+            uv_b: b.uv,
+            bounds: find_line_bounds(a.uv, b.uv),
+            i: None,
+            map_id: None
+        }
+    }
+
+    pub fn id(&self) -> EdgeId {
+        EdgeId(self.i.unwrap())
+    }
+
+    pub fn has_id(&self) -> bool {
+        self.i.is_some()
     }
 }
 
@@ -348,6 +473,15 @@ impl StreetSegmentBuilder {
     }
 }
 
+impl Builder for StreetSegmentBuilder {
+    fn build(&mut self, map: &mut StreetMap) {
+        let a = map.add_node(Node::new(self.a));
+        let b = map.add_node(Node::new(self.b));
+        map.add_edge_between(a, b, self.cost);
+        map.add_obstacle(ObstacleLine::new(map.node(a).uv, map.node(b).uv));
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -387,14 +521,14 @@ mod tests {
         let settings = get_default_test_settings();
         let mut map = StreetMap::new(settings);
 
-        map.add_node(&Node::new(vec2(0.0, 1000.0)));
-        map.add_node(&Node::new(vec2(0.0, 0.0)));  // Should be nearest.
-        map.add_node(&Node::new(vec2(1000.0, 0.0)));
-        map.add_node(&Node::new(vec2(-500.0, -500.0)));
-        map.add_node(&Node::new(vec2(100.0, -200.0)));
-        map.add_node(&Node::new(vec2(-200.0, 100.0)));
+        map.add_node(Node::new(vec2(0.0, 1000.0)));
+        map.add_node(Node::new(vec2(0.0, 0.0)));  // Should be nearest.
+        map.add_node(Node::new(vec2(1000.0, 0.0)));
+        map.add_node(Node::new(vec2(-500.0, -500.0)));
+        map.add_node(Node::new(vec2(100.0, -200.0)));
+        map.add_node(Node::new(vec2(-200.0, 100.0)));
 
-        let (node, d, id) =
+        let (node, d) =
             map.find_nearest_node(vec2(200.0, 200.0), 300.0).unwrap();
 
         assert_vec2_near!(node.uv, vec2(0.0, 0.0));
@@ -407,11 +541,26 @@ mod tests {
         let settings = get_default_test_settings();
         let mut map = StreetMap::new(settings);
 
-        map.add_node(&Node::new(vec2(0.0, 1000.0)));
-        map.add_node(&Node::new(vec2(0.0, 0.0)));  // Nearest.
-        map.add_node(&Node::new(vec2(1000.0, 0.0)));
+        map.add_node(Node::new(vec2(0.0, 1000.0)));
+        map.add_node(Node::new(vec2(0.0, 0.0)));  // Nearest.
+        map.add_node(Node::new(vec2(1000.0, 0.0)));
 
         assert!(map.find_nearest_node(vec2(200.0, 200.0), 220.0).is_none());
+    }
+
+    /// Test node is not added if an existing node is at the
+    /// same location.
+    #[test]
+    fn test_add_node() {
+        let settings = get_default_test_settings();
+        let mut map = StreetMap::new(settings);
+
+        let a = map.add_node(Node::new(vec2(0.0, 1000.0)));
+        let b = map.add_node(Node::new(vec2(0.0, 0.0)));
+        let c = map.add_node(Node::new(vec2(0.01, 0.05)));
+
+        assert_ne!(a, b);
+        assert_eq!(b, c);
     }
 
     // ----------------------------
