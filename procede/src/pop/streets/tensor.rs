@@ -32,6 +32,13 @@ pub enum InfluenceForm { Point, Line }
 impl TensorField {
     const INFLUENCE_R: f32 = 1000.0;
 
+    /// Create new TensorField
+    ///
+    /// # Arguments
+    /// * `bounds` - Bounding box which contains all influences to
+    ///             be added.
+    /// # Return
+    /// Created TensorField
     pub fn new(bounds: Rect) -> TensorField {
         TensorField {
             map: QuadTree::default(bounds),
@@ -39,14 +46,45 @@ impl TensorField {
         }
     }
 
+    /// Adds an InfluenceSource to the TensorField
+    ///
+    /// The added influence source will affect all samples taken within
+    /// the field's influence radius (const).
+    ///
+    /// To make an influence global, add it using the
+    /// add_global() method.
+    ///
+    /// # Arguments
+    /// * `influence` - InfluenceSource to add
     pub fn add(&mut self, influence: InfluenceSource) {
         self.map.insert(influence);
     }
 
+    /// Adds a global InfluenceSource to the TensorField
+    /// 
+    /// The added influence source will affect all samples taken from
+    /// the field. This is suitable for large influences such as city
+    /// centers or other landmarks.
+    ///
+    /// To avoid needless computation, add objects with small influence
+    /// effects using the add() method.
+    ///
+    /// # Arguments
+    /// * `influence` - InfluenceSource to add
     pub fn add_global(&mut self, influence: InfluenceSource) {
         self.globals.push(influence);
     }
 
+    /// Gets influence direction at passed position.
+    ///
+    /// The returned influence vector points away from sources
+    /// of influence.
+    ///
+    /// # Arguments
+    /// * `uv` - Position at which to sample the TensorField.
+    ///
+    /// # Return
+    /// Influence vector pointing away from sources of influence.
     pub fn sample(&self, uv: Vector2<f64>) -> Vector2<f64> {
         let mut sum = vec2(0.0, 0.0);
         for global in &self.globals {
@@ -59,6 +97,19 @@ impl TensorField {
         }
 
         sum
+    }
+
+    /// Convenience static function which returns the perpendicular
+    /// Vector of the passed Vector.
+    ///
+    /// # Arguments
+    /// * `v` - Vector to rotate.
+    ///
+    /// # Return
+    /// Rotated perpendicular vector. Always points directly to the right of the
+    /// Vector passed.
+    pub fn right(v: Vector2<f64>) -> Vector2<f64> {
+
     }
 }
 
