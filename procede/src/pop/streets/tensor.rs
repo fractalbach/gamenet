@@ -6,7 +6,7 @@ use aabb_quadtree::geom::{Rect, Point, Vector};
 use aabb_quadtree::Spatial;
 use cgmath::{Vector2, vec2};
 
-use pop::streets::util::{vec_to_point};
+use pop::streets::util::{find_line_bounds, vec_to_point};
 
 
 /// TensorField specialized for determining road direction
@@ -61,7 +61,7 @@ impl TensorField {
     }
 
     /// Adds a global InfluenceSource to the TensorField
-    /// 
+    ///
     /// The added influence source will affect all samples taken from
     /// the field. This is suitable for large influences such as city
     /// centers or other landmarks.
@@ -109,7 +109,7 @@ impl TensorField {
     /// Rotated perpendicular vector. Always points directly to the right of the
     /// Vector passed.
     pub fn right(v: Vector2<f64>) -> Vector2<f64> {
-
+        vec2(-v.y, v.x)
     }
 }
 
@@ -117,6 +117,24 @@ impl TensorField {
 impl InfluenceSource {
     pub fn new(form: InfluenceForm, bounds: Rect, v: f64) -> InfluenceSource {
         InfluenceSource { form, bounds, v }
+    }
+
+    pub fn from_point(p: Vector2<f64>, v: f64) -> InfluenceSource {
+        InfluenceSource::new(
+            InfluenceForm::Point,
+            Rect::null_at(&vec_to_point(p)),
+            v,
+        )
+    }
+
+    pub fn from_line(
+        a: Vector2<f64>, b: Vector2<f64>, v: f64
+    ) -> InfluenceSource {
+        InfluenceSource::new(
+            InfluenceForm::Line,
+            find_line_bounds(a, b),
+            v,
+        )
     }
 
     /// Retrieves influence at passed uv coordinate.
