@@ -24,6 +24,7 @@ use cgmath::InnerSpace;
 use cgmath::MetricSpace;
 
 use pop::streets::builder::Builder;
+use pop::streets::tensor::TensorField;
 use pop::streets::util::{find_line_bounds, vec_to_point};
 
 
@@ -47,6 +48,7 @@ pub struct TownMap {
     node_map: QuadTree<usize>,
     edge_map: QuadTree<usize>,
     obstacle_map: QuadTree<usize>,
+    value_map: TensorField,
 
     nodes: Vec<Node>,
     edges: Vec<Edge>,
@@ -124,6 +126,7 @@ impl TownMap {
             node_map: QuadTree::default(Self::DEFAULT_SHAPE),
             edge_map: QuadTree::default(Self::DEFAULT_SHAPE),
             obstacle_map: QuadTree::default(Self::DEFAULT_SHAPE),
+            value_map: TensorField::new(Self::DEFAULT_SHAPE),
             nodes: Vec::new(),
             edges: Vec::new(),
             obstacles: Vec::new(),

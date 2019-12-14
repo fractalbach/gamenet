@@ -9,18 +9,27 @@ use cgmath::{Vector2, vec2};
 use pop::streets::util::{vec_to_point};
 
 
-struct Field {
+pub struct TensorField {
     map: QuadTree<InfluenceSource>
 }
 
 #[derive(Debug, Clone, Copy)]
-struct InfluenceSource {
+pub struct InfluenceSource {
     form: InfluenceForm,
     bounds: Rect,
 }
 
 #[derive(Debug, Clone, Copy)]
-enum InfluenceForm { Point, Line }
+pub enum InfluenceForm { Point, Line }
+
+
+impl TensorField {
+    pub fn new(bounds: Rect) -> TensorField {
+        TensorField {
+            map: QuadTree::default(bounds),
+        }
+    }
+}
 
 
 impl InfluenceSource {
