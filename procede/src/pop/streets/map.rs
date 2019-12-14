@@ -1,4 +1,3 @@
-
 //! Todo:
 //!
 //! ! Add Navigable trait.
@@ -24,6 +23,9 @@ use cgmath::{Vector2, vec2};
 use cgmath::InnerSpace;
 use cgmath::MetricSpace;
 
+use pop::streets::builder::Builder;
+use pop::streets::util::{find_line_bounds, vec_to_point};
+
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
 pub struct ObstacleId(usize);
@@ -41,7 +43,7 @@ pub struct EdgeId(usize);
 ///  * Obstacles.
 ///  * Nodes.
 ///  * Settings.
-pub struct StreetMap {
+pub struct TownMap {
     node_map: QuadTree<usize>,
     edge_map: QuadTree<usize>,
     obstacle_map: QuadTree<usize>,
@@ -50,12 +52,12 @@ pub struct StreetMap {
     edges: Vec<Edge>,
     obstacles: Vec<ObstacleLine>,
 
-    settings: StreetSettings,
+    settings: TownMapSettings,
 }
 
 
 #[derive(Clone, Debug)]
-struct Node {
+pub struct Node {
     uv: Vector2<f64>,
     edges: Vec<(NodeId, EdgeId)>,
     i: Option<usize>,
@@ -64,7 +66,7 @@ struct Node {
 
 
 #[derive(Clone, Debug)]
-struct Edge {
+pub struct Edge {
     cost: f64,  // Travel cost of edge. Lower is better.
     a: NodeId,
     b: NodeId,
@@ -77,7 +79,7 @@ struct Edge {
 
 
 #[derive(Clone, Debug)]
-struct ObstacleLine {
+pub struct ObstacleLine {
     a: Vector2<f64>,
     b: Vector2<f64>,
     bounds: Rect,
@@ -87,65 +89,23 @@ struct ObstacleLine {
 
 
 #[derive(Clone, Debug)]
-pub struct StreetSettings {
-    base_edge_len: f64,
-    max_edge_len_ratio: f64,
-    min_edge_len_ratio: f64,
-    node_merge_dist: f64,
+pub struct TownMapSettings {
+    pub node_merge_dist: f64,
     // As const settings are required, they should be added here.
-}
-
-
-/// Trait for objects which will be added to the city map.
-///
-/// Allows convenient, logical additions of objects to the city map.
-trait Builder {
-    /// Gets nodes which will be added to the city map
-    ///
-    /// These simply specify points which roads may pass through.
-    ///
-    /// The passed node positions may may be modified by the StreetMap
-    /// to combine passed positions with existing nodes on the map.
-    fn build(&mut self, map: &mut StreetMap) {
-        // TODO
-    }
-}
-
-
-/// Struct handling logic for a single street segment.
-struct StreetSegmentBuilder {
-    a: Vector2<f64>,
-    b: Vector2<f64>,
-    cost: f64,  // Travel cost for this segment. Lower == better.
-}
-
-
-/// Struct handling creation of river segments within a city map.
-///
-/// This does not add an actual river, only allows one to be integrated
-/// into the city map - allowing roads to follow the banks, bridges to
-/// cross it, and preventing roads from being built through it.
-struct CityRiverSegmentBuilder {
-    a: Vector2<f64>,
-    b: Vector2<f64>,
-    width: f64,
 }
 
 
 // Implementation
 
 
-impl StreetMap {
+impl TownMap {
 
     const DEFAULT_SHAPE: Rect = Rect {
         top_left: Point { x: -3000.0f32, y: -3000.0f32 },
         bottom_right: Point { x: 3000.0f32, y: 3000.0f32 }
     };
 
-    const DEFAULT_SETTINGS: StreetSettings = StreetSettings {
-        base_edge_len: 100.0,
-        max_edge_len_ratio: 1.5,
-        min_edge_len_ratio: 0.5,
+    const DEFAULT_SETTINGS: TownMapSettings = TownMapSettings {
         node_merge_dist: 0.1,
     };
 
@@ -154,13 +114,13 @@ impl StreetMap {
     /// Produce new StreetMap.
     ///
     /// # Arguments
-    /// * `settings` - StreetSettings with immutable settings which
+    /// * `settings` - TownMapSettings with immutable settings which
     ///             will be kept for the lifetime of the StreetMap.
     ///
     /// # Return
     /// StreetMap
-    pub fn new(settings: StreetSettings) -> StreetMap {
-        StreetMap {
+    pub fn new(settings: TownMapSettings) -> TownMap {
+        TownMap {
             node_map: QuadTree::default(Self::DEFAULT_SHAPE),
             edge_map: QuadTree::default(Self::DEFAULT_SHAPE),
             obstacle_map: QuadTree::default(Self::DEFAULT_SHAPE),
@@ -171,11 +131,15 @@ impl StreetMap {
         }
     }
 
+    pub fn default() -> TownMap {
+        Self::new(Self::DEFAULT_SETTINGS)
+    }
+
     // Addition methods.
 
     /// Adds passed street map object to the map.
     pub fn add<I>(&mut self, obj: &mut I)
-    where I: Builder {
+        where I: Builder {
         // This function exists only for convenience, and invokes the
         // Builder. It may be removed.
         obj.build(self);
@@ -266,7 +230,7 @@ impl StreetMap {
     ///
     /// # Return
     /// Node
-    fn node(&self, id: NodeId) -> &Node {
+    pub fn node(&self, id: NodeId) -> &Node {
         &self.nodes[id.0]
     }
 
@@ -282,7 +246,7 @@ impl StreetMap {
     /// * Reference to the nearest node.
     /// * Distance to the nearest node.
     /// * NodeId of the nearest node.
-    fn find_nearest_node(
+    pub fn find_nearest_node(
         &self, uv: Vector2<f64>, r: f64
     ) -> Option<(&Node, f64)> {
         let uv_p = vec_to_point(uv);
@@ -321,11 +285,11 @@ impl StreetMap {
         Option::Some((&self.nodes[nearest_i], d))
     }
 
-    fn get_obstacle_line(&self, id: ObstacleId) -> Option<&ObstacleLine> {
+    pub fn obstacle_at(&self, id: ObstacleId) -> Option<&ObstacleLine> {
         self.obstacles.get(id.0)
     }
 
-    fn get_edge(&self, id: EdgeId) -> Option<&Edge> {
+    pub fn edge_at(&self, id: EdgeId) -> Option<&Edge> {
         self.edges.get(id.0)
     }
 }
@@ -375,6 +339,10 @@ impl Node {
     pub fn has_id(&self) -> bool {
         self.i.is_some()
     }
+
+    pub fn uv(&self) -> Vector2<f64> {
+        self.uv
+    }
 }
 
 impl Spatial for Node {
@@ -385,7 +353,7 @@ impl Spatial for Node {
 
 
 impl ObstacleLine {
-    fn new(a: Vector2<f64>, b: Vector2<f64>) -> ObstacleLine {
+    pub fn new(a: Vector2<f64>, b: Vector2<f64>) -> ObstacleLine {
         ObstacleLine {
             a,
             b,
@@ -438,88 +406,20 @@ impl Spatial for Edge {
 }
 
 
-// Utility functions
-
-
-/// Finds the bounding box for a Line.
-///
-/// # Arguments
-/// * `a` - First point of line.
-/// * `b` - Second point of line.
-///
-/// # Return
-/// Bounding box Rect.
-fn find_line_bounds(a: Vector2<f64>, b: Vector2<f64>) -> Rect {
-    Rect::from_points(&vec_to_point(a), &vec_to_point(b))
-}
-
-
-fn vec_to_point(v: Vector2<f64>) -> Point {
-    Point { x: v.x as f32, y: v.y as f32 }
-}
-
-
-// Street Map Objects
-
-
-impl StreetSegmentBuilder {
-    pub fn new(
-        a: Vector2<f64>,
-        b: Vector2<f64>,
-        cost_mod: f64
-    ) -> StreetSegmentBuilder {
-        let cost = a.distance(b) * cost_mod;
-        StreetSegmentBuilder { a, b, cost }
-    }
-}
-
-impl Builder for StreetSegmentBuilder {
-    fn build(&mut self, map: &mut StreetMap) {
-        let a = map.add_node(Node::new(self.a));
-        let b = map.add_node(Node::new(self.b));
-        map.add_edge_between(a, b, self.cost);
-        map.add_obstacle(ObstacleLine::new(map.node(a).uv, map.node(b).uv));
-    }
-}
-
-
 #[cfg(test)]
 mod tests {
     use cgmath::vec2;
 
-    use pop::streets::{StreetSegmentBuilder, StreetMap, StreetSettings, Node};
-
-    fn get_default_test_settings() -> StreetSettings {
-        StreetSettings {
-            base_edge_len: 100.0,
-            max_edge_len_ratio: 1.5,
-            min_edge_len_ratio: 0.5,
-            node_merge_dist: 0.1,
-        }
-    }
+    use pop::streets::builder::StreetSegmentBuilder;
+    use pop::streets::map::{TownMap, TownMapSettings, Node};
 
     // ----------------------------
     // StreetMap
 
-    #[test]
-    fn test_simple_initialization() {
-        let step = 100.0;
-        for i in 0..100 {
-            let u0 = i as f64 * step;
-            let u1 = u0 - step;
-            let v = 0.0;
-
-            let street_segment =
-                StreetSegmentBuilder::new(vec2(u0, v), vec2(u1, v), 1.0);
-        }
-        assert!(true);  // Placeholder
-    }
-
     /// Test that the nearest node to a passed position can be found.
     #[test]
     fn test_find_nearest_node() {
-        let settings = get_default_test_settings();
-        let mut map = StreetMap::new(settings);
+        let mut map = TownMap::default();
 
         map.add_node(Node::new(vec2(0.0, 1000.0)));
         map.add_node(Node::new(vec2(0.0, 0.0)));  // Should be nearest.
@@ -538,8 +438,7 @@ mod tests {
     /// if the radius is too small.
     #[test]
     fn test_find_nearest_node_returns_none_if_radius_too_small() {
-        let settings = get_default_test_settings();
-        let mut map = StreetMap::new(settings);
+        let mut map = TownMap::default();
 
         map.add_node(Node::new(vec2(0.0, 1000.0)));
         map.add_node(Node::new(vec2(0.0, 0.0)));  // Nearest.
@@ -552,8 +451,7 @@ mod tests {
     /// same location.
     #[test]
     fn test_add_node() {
-        let settings = get_default_test_settings();
-        let mut map = StreetMap::new(settings);
+        let mut map = TownMap::default();
 
         let a = map.add_node(Node::new(vec2(0.0, 1000.0)));
         let b = map.add_node(Node::new(vec2(0.0, 0.0)));
@@ -562,8 +460,4 @@ mod tests {
         assert_ne!(a, b);
         assert_eq!(b, c);
     }
-
-    // ----------------------------
-    // StreetSegment
-
 }
