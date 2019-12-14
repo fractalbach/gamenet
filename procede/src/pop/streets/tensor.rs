@@ -109,7 +109,7 @@ impl TensorField {
     /// Rotated perpendicular vector. Always points directly to the right of the
     /// Vector passed.
     pub fn right(v: Vector2<f64>) -> Vector2<f64> {
-        vec2(-v.y, v.x)
+        vec2(v.y, -v.x)
     }
 }
 
@@ -173,5 +173,39 @@ impl InfluenceSource {
 impl Spatial for InfluenceSource {
     fn aabb(&self) -> Rect {
         self.bounds
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use aabb_quadtree::geom::Rect;
+    use cgmath::{Vector2, vec2};
+    use cgmath::InnerSpace;
+
+    use pop::streets::tensor::{TensorField, InfluenceSource};
+    use pop::streets::util::find_line_bounds;
+
+    #[test]
+    fn test_tensor_field_right() {
+        let v = vec2(-2.0, 1.0);
+        let right = TensorField::right(v);
+
+        assert_vec2_near!(vec2(1.0, 2.0), right);
+    }
+
+    #[test]
+    fn test_field_influences() {
+        let a = InfluenceSource::from_point(vec2(0.0, 0.0), 1.0);
+        let b = InfluenceSource::from_point(vec2(1.0, 1.0), 1.0);
+        let mut field = TensorField::new(
+            find_line_bounds(vec2(-10.0, -10.0), vec2(10.0, 10.0))
+        );
+        field.add(a);
+        field.add(b);
+
+        let sample = field.sample(vec2(0.0, 1.0));
+
+        assert_vec2_near!(vec2(-1.0, 1.0).normalize(), sample.normalize());
     }
 }
