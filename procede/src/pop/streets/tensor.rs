@@ -9,14 +9,20 @@ use cgmath::{Vector2, vec2};
 use pop::streets::util::{vec_to_point};
 
 
+/// TensorField specialized for determining road direction
+///
+/// Uses InfluenceSource instances to determine points or lines of
+/// interest around which road networks form.
 pub struct TensorField {
-    map: QuadTree<InfluenceSource>
+    map: QuadTree<InfluenceSource>,
+    globals: Vec<InfluenceSource>,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct InfluenceSource {
     form: InfluenceForm,
     bounds: Rect,
+    v: f64
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -24,17 +30,42 @@ pub enum InfluenceForm { Point, Line }
 
 
 impl TensorField {
+    const INFLUENCE_R: f32 = 1000.0;
+
     pub fn new(bounds: Rect) -> TensorField {
         TensorField {
             map: QuadTree::default(bounds),
+            globals: Vec::with_capacity(1)
         }
+    }
+
+    pub fn add(&mut self, influence: InfluenceSource) {
+        self.map.insert(influence);
+    }
+
+    pub fn add_global(&mut self, influence: InfluenceSource) {
+        self.globals.push(influence);
+    }
+
+    pub fn sample(&self, uv: Vector2<f64>) -> Vector2<f64> {
+        let mut sum = vec2(0.0, 0.0);
+        for global in &self.globals {
+            sum += global.influence(uv);
+        }
+        let p = vec_to_point(uv);
+        let query_rect = Rect::centered_with_radius(&p, Self::INFLUENCE_R);
+        for (influence, _, _) in self.map.query(query_rect) {
+            sum += influence.influence(uv);
+        }
+
+        sum
     }
 }
 
 
 impl InfluenceSource {
-    pub fn new(form: InfluenceForm, bounds: Rect) -> InfluenceSource {
-        InfluenceSource { form, bounds }
+    pub fn new(form: InfluenceForm, bounds: Rect, v: f64) -> InfluenceSource {
+        InfluenceSource { form, bounds, v }
     }
 
     /// Retrieves influence at passed uv coordinate.
@@ -67,5 +98,11 @@ impl InfluenceSource {
     /// Returns weight from passed distance.
     fn falloff(&self, d: f32) -> f32 {
         1.0f32 / d  // May need to be replaced.
+    }
+}
+
+impl Spatial for InfluenceSource {
+    fn aabb(&self) -> Rect {
+        self.bounds
     }
 }
