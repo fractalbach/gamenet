@@ -237,39 +237,8 @@ impl TownMap {
     pub fn find_nearest_node(
         &self, uv: Vector2<f64>, r: f64
     ) -> Option<(&Node, f64)> {
-        let rect = Rect::centered_with_radius(uv, r);
-
-        // Query Nodes within rect.
-        let query_res = self.nodes.query(rect);
-        if query_res.is_empty() {
-            return None;
-        }
-
-        // Find which result is closest.
-        let first_res = query_res[0].1;
-        debug_assert!(first_res.minimums() == first_res.maximums());
-        let mut nearest_d2 = query_res[0].1.top_left().distance2(uv);
-        let mut nearest_i = 0usize;
-        for i in 1..query_res.len() {
-            let res = query_res[i];
-            let node_rect: &Rect = res.1;
-            debug_assert!(node_rect.minimums() == node_rect.minimums());
-            let d2 = node_rect.minimums().distance2(uv);
-            if d2 < nearest_d2 {
-                nearest_d2 = d2;
-                nearest_i = i;
-            }
-        }
-
-        // Check that distance to nearest node is less than r.
-        // Otherwise, return None.
-        let d = nearest_d2.sqrt() as f64;
-        if d > r {
-            return None;
-        }
-
-        let (nearest, _, _) = query_res[nearest_i];
-        Option::Some((nearest, d))
+        let (node, rect, id, d) = self.nodes.nearest(uv, r)?;
+        Some((node, d))
     }
 
     pub fn obstacle_at(&self, id: ObstacleId) -> Option<&ObstacleLine> {
