@@ -1,5 +1,4 @@
-use aabb_quadtree::geom::{Rect, Point};
-use aabb_quadtree::Spatial;
+use quad::{Rect, Spatial};
 use cgmath::{Basis2, Vector2, Rad, Rotation, Rotation2, vec2};
 use cgmath::InnerSpace;
 
@@ -166,16 +165,16 @@ impl Segment {
         // Create Rect. Note that the top-left field contains the
         // minimums, due to the quad-tree library being intended for
         // 2d graphics applications.
-        Rect {
-            top_left: Point {
-                x: (min_x - margin) as f32,
-                y: (min_y + margin) as f32
-            },
-            bottom_right: Point {
-                x: (max_x - margin) as f32,
-                y: (max_y + margin) as f32
-            }
-        }
+        Rect::from_points(
+            vec2(
+                (min_x - margin),
+                (min_y + margin)
+            ),
+            vec2(
+                (max_x - margin),
+                (max_y + margin)
+            )
+        )
     }
 
     /// Finds slope of river segment.

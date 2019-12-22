@@ -5,19 +5,18 @@ use std::num::Wrapping;
 use std::usize;
 use std::u32;
 
-use aabb_quadtree::QuadTree;
-use aabb_quadtree::geom::{Rect, Point};
+use quad::{QuadMap, Rect};
 use cgmath::{Vector2, vec2};
 use cgmath::InnerSpace;
 use serde::{Deserialize, Serialize};
 use serde::Serializer;
 
 use util::{idx_hash, rand1};
-use river::common::{get_base_width, vec2pt, MAX_STRAHLER};
+use river::common::{get_base_width, MAX_STRAHLER};
 use river::segment::{Segment, NearSegmentInfo, RiverSide};
 
 pub struct RiverGraph {
-    pub segment_tree: QuadTree<Segment>,
+    pub segment_tree: QuadMap<Segment>,
     pub nodes: Vec<Node>,
     settings: RiverSettings,
 }
@@ -72,10 +71,7 @@ impl RiverGraph {
         Self::find_direction_info(&mut nodes);
 
         // Create bounding shape
-        let shape = Rect{
-            top_left: vec2pt(info.low_corner),
-            bottom_right: vec2pt(info.high_corner),
-        };
+        let shape = Rect::from_points(info.low_corner, info.high_corner);
 
         // Create river segments
         let segment_tree = Self::create_segments(&nodes, mouths, shape);
@@ -526,8 +522,8 @@ impl RiverGraph {
         nodes: &Vec<Node>,
         mouths: &Vec<Mouth>,
         shape: Rect,
-    ) -> QuadTree<Segment> {
-        let mut tree: QuadTree<Segment> = QuadTree::default(shape);
+    ) -> QuadMap<Segment> {
+        let mut tree: QuadMap<Segment> = QuadMap::default(shape);
         let mut frontier: VecDeque<usize> = VecDeque::with_capacity(100);
 
         // Add mouths to `frontier` to-do list.
@@ -572,10 +568,10 @@ impl RiverGraph {
     /// * Segment nearest the passed point.
     pub fn info(&self, uv: Vector2<f64>) -> NearRiverInfo {
         let r = self.settings.max_influence_r;
-        let segment_box = Rect {
-            top_left: Point { x: (uv.x - r) as f32, y: (uv.y - r) as f32 },
-            bottom_right: Point { x: (uv.x + r) as f32, y: (uv.y + r) as f32 },
-        };
+        let segment_box = Rect::from_points(
+            vec2((uv.x - r), (uv.y - r)),
+            vec2((uv.x + r), (uv.y + r)),
+        );
 
         // Get and sort NearSegmentInfo from each segment in search radius.
         let query_res = self.segment_tree.query(segment_box);
@@ -745,7 +741,7 @@ impl Node {
 
 #[cfg(test)]
 mod tests {
-    use cgmath::Vector2;
+    use cgmath::{Vector2, vec2};
 
     use river::river_graph::*;
 

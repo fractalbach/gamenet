@@ -1,4 +1,3 @@
-use aabb_quadtree::geom::Point;
 use cgmath::Vector2;
 
 /// Struct used to return height and related information about
@@ -39,25 +38,9 @@ pub const fn get_base_width(strahler: i8) -> f64 {
 
     LOOKUP[strahler as usize]
 }
+
+
 // --------------------------------------------------------------------
-
-
-/// Converts Vector2 to Point for use in QuadTree.
-///
-/// As the precision is lowered from f64 to f32, some information
-/// will be lost in the conversion.
-///
-/// # Arguments
-/// * `v` - Vector2 to be converted to a Point.
-///
-/// # Return
-/// Point
-pub fn vec2pt(v: Vector2<f64>) -> Point {
-    Point {
-        x: v.x as f32,
-        y: v.y as f32,
-    }
-}
 
 
 #[cfg(test)]

@@ -49,9 +49,9 @@
 //!             potentially affected by towns or roads.
 //!
 
-extern crate aabb_quadtree;
 extern crate assert_approx_eq;
 extern crate cgmath;
+extern crate fnv;
 #[macro_use] extern crate itertools;
 extern crate lru_cache;
 extern crate lyon_geom;
@@ -65,6 +65,7 @@ extern crate wasm_bindgen;
 mod test_util;
 
 mod pop;
+mod quad;
 mod river;
 mod surface;
 mod tectonic;

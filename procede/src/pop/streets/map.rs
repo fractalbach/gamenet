@@ -16,16 +16,13 @@
 
 use std::usize;
 
-use aabb_quadtree::{QuadTree, ItemId};
-use aabb_quadtree::geom::{Rect, Point};
-use aabb_quadtree::Spatial;
+use quad::{QuadMap, Rect, Spatial, ItemId};
 use cgmath::{Vector2, vec2};
 use cgmath::InnerSpace;
 use cgmath::MetricSpace;
 
 use pop::streets::builder::Builder;
 use pop::streets::tensor::TensorField;
-use pop::streets::util::{find_line_bounds, vec_to_point};
 
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
@@ -45,9 +42,9 @@ pub struct EdgeId(usize);
 ///  * Nodes.
 ///  * Settings.
 pub struct TownMap {
-    node_map: QuadTree<usize>,
-    edge_map: QuadTree<usize>,
-    obstacle_map: QuadTree<usize>,
+    node_map: QuadMap<usize>,
+    edge_map: QuadMap<usize>,
+    obstacle_map: QuadMap<usize>,
     value_map: TensorField,
 
     nodes: Vec<Node>,
@@ -102,10 +99,10 @@ pub struct TownMapSettings {
 
 impl TownMap {
 
-    const DEFAULT_SHAPE: Rect = Rect {
-        top_left: Point { x: -3000.0f32, y: -3000.0f32 },
-        bottom_right: Point { x: 3000.0f32, y: 3000.0f32 }
-    };
+    const DEFAULT_SHAPE: Rect = Rect::from_min_max(
+        vec2(-3000.0, -3000.0),
+        vec2(3000.0, 3000.0)
+    );
 
     const DEFAULT_SETTINGS: TownMapSettings = TownMapSettings {
         node_merge_dist: 0.1,
@@ -123,9 +120,9 @@ impl TownMap {
     /// StreetMap
     pub fn new(settings: TownMapSettings) -> TownMap {
         TownMap {
-            node_map: QuadTree::default(Self::DEFAULT_SHAPE),
-            edge_map: QuadTree::default(Self::DEFAULT_SHAPE),
-            obstacle_map: QuadTree::default(Self::DEFAULT_SHAPE),
+            node_map: QuadMap::default(Self::DEFAULT_SHAPE),
+            edge_map: QuadMap::default(Self::DEFAULT_SHAPE),
+            obstacle_map: QuadMap::default(Self::DEFAULT_SHAPE),
             value_map: TensorField::new(Self::DEFAULT_SHAPE),
             nodes: Vec::new(),
             edges: Vec::new(),
@@ -256,8 +253,7 @@ impl TownMap {
     pub fn find_nearest_node(
         &self, uv: Vector2<f64>, r: f64
     ) -> Option<(&Node, f64)> {
-        let uv_p = vec_to_point(uv);
-        let rect = Rect::centered_with_radius(&uv_p, r as f32);
+        let rect = Rect::centered_with_radius(uv, r);
 
         // Query Nodes within rect.
         let query_res = self.node_map.query(rect);
@@ -267,14 +263,14 @@ impl TownMap {
 
         // Find which result is closest.
         let first_res = query_res[0].1;
-        debug_assert!(first_res.top_left() == first_res.bottom_right());
-        let mut nearest_d2 = query_res[0].1.top_left().distance_2(&uv_p);
+        debug_assert!(first_res.minimums() == first_res.maximums());
+        let mut nearest_d2 = query_res[0].1.top_left().distance2(uv);
         let mut nearest_i = 0usize;
         for i in 1..query_res.len() {
             let res = query_res[i];
             let node_rect: &Rect = res.1;
-            debug_assert!(node_rect.top_left() == node_rect.bottom_right());
-            let d2 = node_rect.top_left().distance_2(&uv_p);
+            debug_assert!(node_rect.minimums() == node_rect.minimums());
+            let d2 = node_rect.minimums().distance2(uv);
             if d2 < nearest_d2 {
                 nearest_d2 = d2;
                 nearest_i = i;
@@ -358,7 +354,7 @@ impl Node {
 
 impl Spatial for Node {
     fn aabb(&self) -> Rect {
-        Rect::null_at(&Point { x: self.uv.x as f32, y: self.uv.y as f32 })
+        Rect::null_at(self.uv)
     }
 }
 
@@ -368,7 +364,7 @@ impl ObstacleLine {
         ObstacleLine {
             a,
             b,
-            bounds: find_line_bounds(a, b),
+            bounds: Rect::from_points(a, b),
             i: None,
             map_id: None,
         }
@@ -394,7 +390,7 @@ impl Edge {
             b: a.id(),
             uv_a: a.uv,
             uv_b: b.uv,
-            bounds: find_line_bounds(a.uv, b.uv),
+            bounds: Rect::from_points(a.uv, b.uv),
             i: None,
             map_id: None
         }

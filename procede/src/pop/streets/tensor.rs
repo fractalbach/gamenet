@@ -1,12 +1,9 @@
 //! Map used to generate a tensor field which determines
 //! street direction.
 
-use aabb_quadtree::{QuadTree, ItemId};
-use aabb_quadtree::geom::{Rect, Point, Vector};
-use aabb_quadtree::Spatial;
+use quad::{QuadMap, Rect, Spatial, ItemId};
 use cgmath::{Vector2, vec2};
-
-use pop::streets::util::{find_line_bounds, vec_to_point};
+use cgmath::InnerSpace;
 
 
 /// TensorField specialized for determining road direction
@@ -14,7 +11,7 @@ use pop::streets::util::{find_line_bounds, vec_to_point};
 /// Uses InfluenceSource instances to determine points or lines of
 /// interest around which road networks form.
 pub struct TensorField {
-    map: QuadTree<InfluenceSource>,
+    map: QuadMap<InfluenceSource>,
     globals: Vec<InfluenceSource>,
 }
 
@@ -30,7 +27,7 @@ pub enum InfluenceForm { Point, Line }
 
 
 impl TensorField {
-    const INFLUENCE_R: f32 = 1000.0;
+    const INFLUENCE_R: f64 = 1000.0;
 
     /// Create new TensorField
     ///
@@ -41,7 +38,7 @@ impl TensorField {
     /// Created TensorField
     pub fn new(bounds: Rect) -> TensorField {
         TensorField {
-            map: QuadTree::default(bounds),
+            map: QuadMap::default(bounds),
             globals: Vec::with_capacity(1)
         }
     }
@@ -90,8 +87,7 @@ impl TensorField {
         for global in &self.globals {
             sum += global.influence(uv);
         }
-        let p = vec_to_point(uv);
-        let query_rect = Rect::centered_with_radius(&p, Self::INFLUENCE_R);
+        let query_rect = Rect::centered_with_radius(uv, Self::INFLUENCE_R);
         for (influence, _, _) in self.map.query(query_rect) {
             sum += influence.influence(uv);
         }
@@ -122,7 +118,7 @@ impl InfluenceSource {
     pub fn from_point(p: Vector2<f64>, v: f64) -> InfluenceSource {
         InfluenceSource::new(
             InfluenceForm::Point,
-            Rect::null_at(&vec_to_point(p)),
+            Rect::null_at(p),
             v,
         )
     }
@@ -132,7 +128,7 @@ impl InfluenceSource {
     ) -> InfluenceSource {
         InfluenceSource::new(
             InfluenceForm::Line,
-            find_line_bounds(a, b),
+            Rect::from_points(a, b),
             v,
         )
     }
@@ -154,19 +150,21 @@ impl InfluenceSource {
             InfluenceForm::Line => self.point_direction(uv),  // TODO
         };
         let scale = self.falloff(dir.magnitude());
-        let result = dir.normalized().scale_e(scale, scale);
+        let result = dir.normalize() * scale;
         vec2(result.x as f64, result.y as f64)
     }
 
     /// Gets direction from InfluenceSource to a point.
-    fn point_direction(&self, uv: Vector2<f64>) -> Vector {
-        debug_assert!(self.bounds.top_left() == self.bounds.bottom_right());
-        vec_to_point(uv) - self.bounds.top_left()
+    ///
+    /// The resulting vector is not normalized.
+    fn point_direction(&self, uv: Vector2<f64>) -> Vector2<f64> {
+        debug_assert!(self.bounds.minimums() == self.bounds.maximums());
+        uv - self.bounds.minimums()
     }
 
     /// Returns weight from passed distance.
-    fn falloff(&self, d: f32) -> f32 {
-        1.0f32 / d  // May need to be replaced.
+    fn falloff(&self, d: f64) -> f64 {
+        1.0 / d  // May need to be replaced.
     }
 }
 
@@ -179,12 +177,11 @@ impl Spatial for InfluenceSource {
 
 #[cfg(test)]
 mod tests {
-    use aabb_quadtree::geom::Rect;
+    use quad::Rect;
     use cgmath::{Vector2, vec2};
     use cgmath::InnerSpace;
 
     use pop::streets::tensor::{TensorField, InfluenceSource};
-    use pop::streets::util::find_line_bounds;
 
     #[test]
     fn test_tensor_field_right() {
@@ -195,11 +192,19 @@ mod tests {
     }
 
     #[test]
+    fn test_scalar_multiplication() {
+        let a = vec2(1.0, 2.0);
+        let b: Vector2<f64> = a * 2.0;
+
+        assert_vec2_near!(b, vec2(2.0, 4.0));
+    }
+
+    #[test]
     fn test_field_influences() {
         let a = InfluenceSource::from_point(vec2(0.0, 0.0), 1.0);
         let b = InfluenceSource::from_point(vec2(1.0, 1.0), 1.0);
         let mut field = TensorField::new(
-            find_line_bounds(vec2(-10.0, -10.0), vec2(10.0, 10.0))
+            Rect::from_points(vec2(-10.0, -10.0), vec2(10.0, 10.0))
         );
         field.add(a);
         field.add(b);
