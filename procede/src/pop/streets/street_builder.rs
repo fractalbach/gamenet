@@ -4,13 +4,13 @@
 //! * Quarter
 //! * Block
 //!
+use std::collections::VecDeque;
 
 use cgmath::{Vector2, vec2};
 use cgmath::InnerSpace;
 
 use pop::streets::builder::{Builder, StreetSegmentBuilder};
 use pop::streets::map::{TownMap, NodeId, Node};
-use wasm_bindgen::__rt::std::collections::VecDeque;
 
 
 #[derive(Clone, Debug)]
