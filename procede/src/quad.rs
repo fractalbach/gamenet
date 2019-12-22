@@ -232,6 +232,55 @@ impl<T> QuadMap<T> {
             .collect()
     }
 
+    /// Gets element nearest to a set of UV coordinates within a radius.
+    ///
+    /// # Arguments
+    /// * `uv` - Vector2<f64> specifying the center of the search area.
+    /// * `r` - Radius around the position specified by `uv` within
+    ///             which to search for the nearest Node.
+    ///
+    /// # Returns
+    /// Tuple of:
+    /// * Reference to the nearest node.
+    /// * Item's bounding Rect.
+    /// * ItemId.
+    /// * Distance to the nearest node.
+    pub fn nearest(
+        &self, uv: Vector2<f64>, r: f64
+    ) -> Option<(&T, Rect, ItemId, f64)> where T: ::std::fmt::Debug {
+        let rect = Rect::centered_with_radius(uv, r);
+
+        // Query Nodes within rect.
+        let query_res = self.query(rect);
+        if query_res.is_empty() {
+            return None;
+        }
+
+        // Find which result is closest.
+        let first_rect = query_res[0].1;
+        let mut nearest_d2 = first_rect.midpoint().distance2(uv);
+        let mut nearest_i = 0usize;
+        for i in 1..query_res.len() {
+            let res = query_res[i];
+            let node_rect: &Rect = res.1;
+            let d2 = node_rect.midpoint().distance2(uv);
+            if d2 < nearest_d2 {
+                nearest_d2 = d2;
+                nearest_i = i;
+            }
+        }
+
+        // Check that distance to nearest node is less than r.
+        // Otherwise, return None.
+        let d = nearest_d2.sqrt() as f64;
+        if d > r {
+            return None;
+        }
+
+        let (nearest, &rect, id) = query_res[nearest_i];
+        Option::Some((nearest, rect, id, d))
+    }
+
     /// Attempts to remove the item with id `item_id` from the tree.  If that
     /// item was present, it returns a tuple of (element, bounding-box)
     pub fn remove(&mut self, item_id: ItemId) -> Option<(T, Rect)> {
@@ -803,14 +852,55 @@ impl Close for Vector2<f64> {
 }
 
 
-#[test]
-fn similar_points() {
-    let mut quad_tree: QuadMap<Vector2<f64>> = QuadMap::new(
-        Rect::centered_with_radius(vec2(0.0, 0.0), 10.0), false, 1, 5, 2
-    );
+#[cfg(test)]
+mod tests {
+    use cgmath::{Vector2, vec2};
 
-    let p = vec2(0.0, 0.0);
-    quad_tree.insert(p);
-    quad_tree.insert(p);
-    assert_eq!(quad_tree.elements.len(), 1);
+    use quad::{QuadMap, Rect};
+
+    #[test]
+    fn similar_points() {
+        let mut quad_tree: QuadMap<Vector2<f64>> = QuadMap::new(
+            Rect::centered_with_radius(vec2(0.0, 0.0), 10.0), false, 1, 5, 2
+        );
+
+        let p = vec2(0.0, 0.0);
+        quad_tree.insert(p);
+        quad_tree.insert(p);
+        assert_eq!(quad_tree.elements.len(), 1);
+    }
+
+    /// Test that the nearest node to a passed position can be found.
+    #[test]
+    fn test_find_nearest_node() {
+        let mut map = QuadMap::default(
+            Rect::centered_with_radius(vec2(0.0, 0.0), 2000.0)
+        );
+
+        map.insert(vec2(0.0, 1000.0));
+        map.insert(vec2(0.0, 0.0));  // Should be nearest.
+        map.insert(vec2(1000.0, 0.0));
+        map.insert(vec2(-500.0, -500.0));
+        map.insert(vec2(100.0, -200.0));
+        map.insert(vec2(-200.0, 100.0));
+
+        let v = map.nearest(vec2(200.0, 200.0), 300.0).unwrap().0;
+
+        assert_vec2_near!(v, vec2(0.0, 0.0));
+    }
+
+    /// Test that the nearest node to a passed position is not returned
+    /// if the radius is too small.
+    #[test]
+    fn test_find_nearest_node_returns_none_if_radius_too_small() {
+        let mut map = QuadMap::default(
+            Rect::centered_with_radius(vec2(0.0, 0.0), 2000.0)
+        );
+
+        map.insert(vec2(0.0, 1000.0));
+        map.insert(vec2(0.0, 0.0));  // Nearest.
+        map.insert(vec2(1000.0, 0.0));
+
+        assert!(map.nearest(vec2(200.0, 200.0), 220.0).is_none());
+    }
 }
