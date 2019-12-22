@@ -80,27 +80,28 @@ impl QuarterBuilder {
     ) -> Vec<NodeId> {
         let mut nodes = vec!();
         let mut frontier = VecDeque::with_capacity(20);
-        frontier.push_back(Self::find_highest_value_node(map));
 
-        for node in map.nodes() {
-        }
+        match Self::find_highest_value_node(map) {
+            Some(id) => frontier.push_back(id),
+            None    => return nodes
+        };
 
         nodes
     }
 
     /// Find node with highest influence value.
-    fn find_highest_value_node(map: &TownMap) -> NodeId {
-        let first = &map.nodes()[0];
+    fn find_highest_value_node(map: &TownMap) -> Option<NodeId> {
+        let (_, (first, _)) = &map.nodes().iter().nth(0)?;
         let mut highest_v = map.value_map().sample(first.uv()).magnitude();
         let mut highest_id = first.id();
-        for node in map.nodes() {
+        for (_, (node, _)) in map.nodes().iter().skip(1) {
             let v = map.value_map().sample(node.uv()).magnitude();
             if v > highest_v {
                 highest_id = node.id();
                 highest_v = v;
             }
         }
-        highest_id
+        Some(highest_id)
     }
 
     fn create_minor_vector_streets(

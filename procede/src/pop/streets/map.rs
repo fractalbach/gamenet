@@ -26,13 +26,13 @@ use pop::streets::tensor::TensorField;
 
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
-pub struct ObstacleId(usize);
+pub struct ObstacleId(ItemId);
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
-pub struct NodeId(usize);
+pub struct NodeId(ItemId);
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
-pub struct EdgeId(usize);
+pub struct EdgeId(ItemId);
 
 
 /// Map containing town map information.
@@ -42,14 +42,10 @@ pub struct EdgeId(usize);
 ///  * Nodes.
 ///  * Settings.
 pub struct TownMap {
-    node_map: QuadMap<usize>,
-    edge_map: QuadMap<usize>,
-    obstacle_map: QuadMap<usize>,
+    nodes: QuadMap<Node>,
+    edges: QuadMap<Edge>,
+    obstacles: QuadMap<ObstacleLine>,
     value_map: TensorField,
-
-    nodes: Vec<Node>,
-    edges: Vec<Edge>,
-    obstacles: Vec<ObstacleLine>,
 
     settings: TownMapSettings,
 }
@@ -59,8 +55,7 @@ pub struct TownMap {
 pub struct Node {
     uv: Vector2<f64>,
     edges: Vec<(NodeId, EdgeId)>,
-    i: Option<usize>,
-    map_id: Option<ItemId>,
+    i: Option<NodeId>,
 }
 
 
@@ -72,8 +67,7 @@ pub struct Edge {
     uv_a: Vector2<f64>,
     uv_b: Vector2<f64>,
     bounds: Rect,
-    i: Option<usize>,
-    map_id: Option<ItemId>,
+    i: Option<EdgeId>,
 }
 
 
@@ -82,8 +76,7 @@ pub struct ObstacleLine {
     a: Vector2<f64>,
     b: Vector2<f64>,
     bounds: Rect,
-    i: Option<usize>,
-    map_id: Option<ItemId>,
+    i: Option<ObstacleId>,
 }
 
 
@@ -120,13 +113,10 @@ impl TownMap {
     /// StreetMap
     pub fn new(settings: TownMapSettings) -> TownMap {
         TownMap {
-            node_map: QuadMap::default(Self::DEFAULT_SHAPE),
-            edge_map: QuadMap::default(Self::DEFAULT_SHAPE),
-            obstacle_map: QuadMap::default(Self::DEFAULT_SHAPE),
+            nodes: QuadMap::default(Self::DEFAULT_SHAPE),
+            edges: QuadMap::default(Self::DEFAULT_SHAPE),
+            obstacles: QuadMap::default(Self::DEFAULT_SHAPE),
             value_map: TensorField::new(Self::DEFAULT_SHAPE),
-            nodes: Vec::new(),
-            edges: Vec::new(),
-            obstacles: Vec::new(),
             settings,
         }
     }
@@ -170,10 +160,8 @@ impl TownMap {
             }
         }
 
-        let i = self.nodes.len();
-        node.i = Some(i);
-        node.map_id = Some(self.node_map.insert_with_box(i, node.aabb()));
-        self.nodes.push(node);
+        let i = self.nodes.insert(node);
+        self.nodes[i].i = Some(NodeId(i));
 
         NodeId(i)
     }
@@ -204,20 +192,16 @@ impl TownMap {
         self.nodes[a.0].add_edge(&edge);
         self.nodes[b.0].add_edge(&edge);
 
-        let i = self.edges.len();
-        edge.map_id = Some(self.edge_map.insert_with_box(i, edge.aabb()));
-        edge.i = Some(i);
+        let i = self.edges.insert(edge);
+        self.edges[i].i = Some(EdgeId(i));
 
         &self.edges[i]
     }
 
     /// Adds obstacle line to the street map.
     pub fn add_obstacle(&mut self, mut obstacle: ObstacleLine) -> &ObstacleLine {
-        let i = self.obstacles.len();
-        obstacle.i = Some(i);
-        obstacle.map_id = Some(
-            self.obstacle_map.insert_with_box(i, obstacle.aabb())
-        );
+        let i = self.obstacles.insert(obstacle);
+        self.obstacles[i].i = Some(ObstacleId(i));
         &self.obstacles[i]
     }
 
@@ -234,7 +218,7 @@ impl TownMap {
         &self.nodes[id.0]
     }
 
-    pub fn nodes(&self) -> &Vec<Node> {
+    pub fn nodes(&self) -> &QuadMap<Node> {
         &self.nodes
     }
 
@@ -256,9 +240,9 @@ impl TownMap {
         let rect = Rect::centered_with_radius(uv, r);
 
         // Query Nodes within rect.
-        let query_res = self.node_map.query(rect);
+        let query_res = self.nodes.query(rect);
         if query_res.is_empty() {
-            return Option::None;
+            return None;
         }
 
         // Find which result is closest.
@@ -281,11 +265,11 @@ impl TownMap {
         // Otherwise, return None.
         let d = nearest_d2.sqrt() as f64;
         if d > r {
-            return Option::None;
+            return None;
         }
 
-        let (&nearest_i, _, _) = query_res[nearest_i];
-        Option::Some((&self.nodes[nearest_i], d))
+        let (nearest, _, _) = query_res[nearest_i];
+        Option::Some((nearest, d))
     }
 
     pub fn obstacle_at(&self, id: ObstacleId) -> Option<&ObstacleLine> {
@@ -307,7 +291,6 @@ impl Node {
             uv,
             edges: Vec::with_capacity(4),
             i: None,
-            map_id: None
         }
     }
 
@@ -340,7 +323,7 @@ impl Node {
     }
 
     pub fn id(&self) -> NodeId {
-        NodeId(self.i.unwrap())
+        self.i.unwrap()
     }
 
     pub fn has_id(&self) -> bool {
@@ -366,7 +349,6 @@ impl ObstacleLine {
             b,
             bounds: Rect::from_points(a, b),
             i: None,
-            map_id: None,
         }
     }
 }
@@ -392,12 +374,11 @@ impl Edge {
             uv_b: b.uv,
             bounds: Rect::from_points(a.uv, b.uv),
             i: None,
-            map_id: None
         }
     }
 
     pub fn id(&self) -> EdgeId {
-        EdgeId(self.i.unwrap())
+        self.i.unwrap()
     }
 
     pub fn has_id(&self) -> bool {

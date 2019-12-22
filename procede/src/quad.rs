@@ -8,7 +8,7 @@
 use std::cmp::{Ord, Ordering};
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
-use std::ops::{Add, Neg, Sub};
+use std::ops::{Add, Neg, Sub, Index, IndexMut};
 
 use cgmath::{Vector2, vec2};
 use cgmath::MetricSpace;
@@ -53,7 +53,7 @@ pub struct Rect {
 }
 
 /// The main QuadTree structure.  Mainly supports inserting, removing,
-/// and querying objects in 3d space.
+/// and querying objects in 2d space.
 #[derive(Debug, Clone)]
 pub struct QuadMap<T> {
     root: QuadNode,
@@ -203,6 +203,10 @@ impl<T> QuadMap<T> {
     /// Retrieves an element by looking it up from the ItemId.
     pub fn get(&self, id: ItemId) -> Option<&T> {
         self.elements.get(&id).map(|&(ref a, _)| a)
+    }
+
+    pub fn get_mut(&mut self, id: ItemId) -> Option<&mut T> {
+        self.elements.get_mut(&id).map(|&mut (ref mut a, _)| a)
     }
 
     /// Returns an iterator of (element, bounding-box, id) for each element
@@ -497,6 +501,21 @@ impl QuadNode {
 }
 
 
+impl<T> Index<ItemId> for QuadMap<T> {
+    type Output = T;
+
+    fn index(&self, id: ItemId) -> &Self::Output {
+        &self.elements[&id].0
+    }
+}
+
+impl<T> IndexMut<ItemId> for QuadMap<T> {
+    fn index_mut(&mut self, id: ItemId) -> &mut Self::Output {
+        self.get_mut(id).unwrap()
+    }
+}
+
+
 impl Rect {
     pub const fn from_min_max(min: Vector2<f64>, max: Vector2<f64>) -> Rect {
         Rect { minimums: min, maximums: max }
@@ -597,7 +616,6 @@ impl Rect {
             self.top() + self.height() / 2.0,
         )
     }
-
 
     pub fn expanded_by(&self, point: Vector2<f64>) -> Rect {
         let mut r = self.clone();
