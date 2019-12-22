@@ -167,12 +167,12 @@ impl Segment {
         // 2d graphics applications.
         Rect::from_points(
             vec2(
-                (min_x - margin),
-                (min_y + margin)
+                min_x - margin,
+                min_y + margin
             ),
             vec2(
-                (max_x - margin),
-                (max_y + margin)
+                max_x - margin,
+                max_y + margin
             )
         )
     }

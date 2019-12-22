@@ -569,8 +569,8 @@ impl RiverGraph {
     pub fn info(&self, uv: Vector2<f64>) -> NearRiverInfo {
         let r = self.settings.max_influence_r;
         let segment_box = Rect::from_points(
-            vec2((uv.x - r), (uv.y - r)),
-            vec2((uv.x + r), (uv.y + r)),
+            vec2(uv.x - r, uv.y - r),
+            vec2(uv.x + r, uv.y + r),
         );
 
         // Get and sort NearSegmentInfo from each segment in search radius.
