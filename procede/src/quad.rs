@@ -241,10 +241,10 @@ impl<T> QuadMap<T> {
     ///
     /// # Returns
     /// Tuple of:
-    /// * Reference to the nearest node.
+    /// * Reference to the nearest item.
     /// * Item's bounding Rect.
     /// * ItemId.
-    /// * Distance to the nearest node.
+    /// * Distance to the nearest item.
     pub fn nearest(
         &self, uv: Vector2<f64>, r: f64
     ) -> Option<(&T, Rect, ItemId, f64)> where T: ::std::fmt::Debug {
@@ -262,15 +262,15 @@ impl<T> QuadMap<T> {
         let mut nearest_i = 0usize;
         for i in 1..query_res.len() {
             let res = query_res[i];
-            let node_rect: &Rect = res.1;
-            let d2 = node_rect.midpoint().distance2(uv);
+            let item_rect: &Rect = res.1;
+            let d2 = item_rect.midpoint().distance2(uv);
             if d2 < nearest_d2 {
                 nearest_d2 = d2;
                 nearest_i = i;
             }
         }
 
-        // Check that distance to nearest node is less than r.
+        // Check that distance to nearest item is less than r.
         // Otherwise, return None.
         let d = nearest_d2.sqrt() as f64;
         if d > r {
@@ -870,7 +870,7 @@ mod tests {
         assert_eq!(quad_tree.elements.len(), 1);
     }
 
-    /// Test that the nearest node to a passed position can be found.
+    /// Test that the nearest item to a passed position can be found.
     #[test]
     fn test_find_nearest_node() {
         let mut map = QuadMap::default(
@@ -889,7 +889,7 @@ mod tests {
         assert_vec2_near!(v, vec2(0.0, 0.0));
     }
 
-    /// Test that the nearest node to a passed position is not returned
+    /// Test that the nearest item to a passed position is not returned
     /// if the radius is too small.
     #[test]
     fn test_find_nearest_node_returns_none_if_radius_too_small() {
