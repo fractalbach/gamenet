@@ -17,9 +17,7 @@ pub trait Builder {
     ///
     /// The passed node positions may may be modified by the StreetMap
     /// to combine passed positions with existing nodes on the map.
-    fn build(&mut self, map: &mut TownMap) {
-        // TODO
-    }
+    fn build(&mut self, map: &mut TownMap);
 }
 
 
