@@ -237,6 +237,10 @@ impl TownMap {
         &self.nodes[id.0]
     }
 
+    pub fn nodes(&self) -> &Vec<Node> {
+        &self.nodes
+    }
+
     /// Gets node nearest to a set of UV coordinates within a radius.
     ///
     /// # Arguments
@@ -294,6 +298,10 @@ impl TownMap {
 
     pub fn edge_at(&self, id: EdgeId) -> Option<&Edge> {
         self.edges.get(id.0)
+    }
+
+    pub fn value_map(&self) -> &TensorField {
+        &self.value_map
     }
 }
 
