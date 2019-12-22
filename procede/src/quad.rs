@@ -20,7 +20,7 @@ type FnvHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FnvHasher>>;
 ///
 /// Implementing this trait is not required, but can make insertions easier.
 pub trait Spatial {
-    /// Returns the boudning box for the object.
+    /// Returns the bounding box for the object.
     fn aabb(&self) -> Rect;
 }
 
