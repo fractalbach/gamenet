@@ -32,7 +32,6 @@ impl Curve {
         ctrl_b: Vector2<f64>,
         b: Vector2<f64>
     ) -> Curve {
-        use lyon_geom::euclid::Point2D;
         Curve {
             segment: CubicBezierSegment {
                 from: Point2D::new(a.x, a.y),
