@@ -13,8 +13,37 @@ pub struct TownPlanSettings {
 }
 
 
+/// Struct containing town layout information.
+///
+/// TownPlan is higher level than TownMap, which contains the raw data
+/// (nodes, edges, obstacles, etc) produced by the TownPlan.
 pub struct TownPlan {
     map: TownMap
+}
+
+impl TownPlan {
+    const DEFAULT_SETTINGS: TownPlanSettings = TownPlanSettings {
+        map_settings: TownMapSettings {
+            node_merge_dist: 0.1,
+        },
+        street_settings: StreetBuilderSettings {
+            base_edge_len: 100.0,
+            max_edge_len_ratio: 1.5,
+            min_edge_len_ratio: 0.5,
+        }
+    };
+
+    pub fn new(settings: TownPlanSettings) -> TownPlan {
+        let mut map = TownMap::default();
+
+        StreetBuilder::new(settings.street_settings).build(&mut map);
+
+        TownPlan { map }
+    }
+
+    pub fn default() -> TownPlan {
+        Self::new(Self::DEFAULT_SETTINGS)
+    }
 }
 
 
