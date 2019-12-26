@@ -20,18 +20,31 @@ use quad::{QuadMap, Rect, Spatial, ItemId};
 use cgmath::{Vector2, vec2};
 use cgmath::InnerSpace;
 use cgmath::MetricSpace;
+use serde::{Deserialize, Serialize};
 
 use pop::streets::builder::Builder;
 use pop::streets::tensor::TensorField;
 
 
-#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
+#[derive(
+    Eq, PartialEq, Ord, PartialOrd,
+    Hash, Clone, Copy, Debug,
+    Serialize, Deserialize
+)]
 pub struct ObstacleId(ItemId);
 
-#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
+#[derive(
+    Eq, PartialEq, Ord, PartialOrd,
+    Hash, Clone, Copy, Debug,
+    Serialize, Deserialize
+)]
 pub struct NodeId(ItemId);
 
-#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
+#[derive(
+    Eq, PartialEq, Ord, PartialOrd,
+    Hash, Clone, Copy, Debug,
+    Serialize, Deserialize
+)]
 pub struct EdgeId(ItemId);
 
 
@@ -41,6 +54,7 @@ pub struct EdgeId(ItemId);
 ///  * Obstacles.
 ///  * Nodes.
 ///  * Settings.
+#[derive(Serialize)]
 pub struct TownMap {
     nodes: QuadMap<Node>,
     edges: QuadMap<Edge>,
@@ -51,7 +65,7 @@ pub struct TownMap {
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Node {
     uv: Vector2<f64>,
     edges: Vec<(NodeId, EdgeId)>,
@@ -59,7 +73,7 @@ pub struct Node {
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Edge {
     cost: f64,  // Travel cost of edge. Lower is better.
     a: NodeId,
@@ -71,7 +85,7 @@ pub struct Edge {
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ObstacleLine {
     a: Vector2<f64>,
     b: Vector2<f64>,
@@ -80,7 +94,7 @@ pub struct ObstacleLine {
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TownMapSettings {
     pub node_merge_dist: f64,
     // As const settings are required, they should be added here.
@@ -127,7 +141,14 @@ impl TownMap {
 
     // Addition methods.
 
-    /// Adds passed street map object to the map.
+    /// Applies a builder to the map.
+    ///
+    /// This allows a builder instance to modify the map, usually to
+    /// add a form of construct to the map - with nodes, edges,
+    /// obstacle lines, and other features.
+    ///
+    /// # Arguments
+    /// * `obj` - Object to add to the map.
     pub fn add<I>(&mut self, obj: &mut I)
         where I: Builder {
         // This function exists only for convenience, and invokes the
@@ -199,6 +220,12 @@ impl TownMap {
     }
 
     /// Adds obstacle line to the street map.
+    ///
+    /// # Arguments
+    /// * `obstacle` - ObstacleLine to add to TownMap
+    ///
+    /// # Return
+    /// Reference to ObstacleLine instance added to the map.
     pub fn add_obstacle(&mut self, mut obstacle: ObstacleLine) -> &ObstacleLine {
         let i = self.obstacles.insert(obstacle);
         self.obstacles[i].i = Some(ObstacleId(i));

@@ -13,6 +13,8 @@ use std::ops::{Add, Neg, Sub, Index, IndexMut};
 use cgmath::{Vector2, vec2};
 use cgmath::MetricSpace;
 use fnv::FnvHasher;
+use serde::{Deserialize, Serialize};
+use serde::ser::SerializeStruct;
 
 type FnvHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FnvHasher>>;
 
@@ -33,10 +35,14 @@ trait Close<Rhs: ?Sized = Self> {
 /// in the quad tree.
 ///
 /// DO NOT use an ItemId on a quadtree unless the ItemId came from that tree.
-#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
+#[derive(
+    Eq, PartialEq, Ord, PartialOrd,
+    Hash, Clone, Copy, Debug,
+    Serialize, Deserialize
+)]
 pub struct ItemId(u32);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct QuadTreeConfig {
     allow_duplicates: bool,
     max_children: usize,
@@ -46,7 +52,7 @@ struct QuadTreeConfig {
 }
 
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Rect {
     minimums: Vector2<f64>,
     maximums: Vector2<f64>,
@@ -62,7 +68,7 @@ pub struct QuadMap<T> {
     elements: FnvHashMap<ItemId, (T, Rect)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 enum QuadNode {
     Branch {
         aabb: Rect,
@@ -233,6 +239,8 @@ impl<T> QuadMap<T> {
     }
 
     /// Gets element nearest to a set of UV coordinates within a radius.
+    ///
+    /// Distance is measured from the center of the element's rectangle.
     ///
     /// # Arguments
     /// * `uv` - Vector2<f64> specifying the center of the search area.
@@ -564,6 +572,16 @@ impl<T> IndexMut<ItemId> for QuadMap<T> {
     }
 }
 
+impl<T> Serialize for QuadMap<T> where T: serde::Serialize{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: serde::Serializer
+    {
+        let mut state = serializer.serialize_struct("QuadMap", 2)?;
+        state.serialize_field("config", &self.config)?;
+        state.serialize_field("elements", &self.elements)?;
+        state.end()
+    }
+}
 
 impl Rect {
     pub const fn from_min_max(min: Vector2<f64>, max: Vector2<f64>) -> Rect {

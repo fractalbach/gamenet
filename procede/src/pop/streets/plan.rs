@@ -62,7 +62,7 @@ mod tests {
                 node_merge_dist: 0.1,
             },
             street_settings: StreetBuilderSettings {
-                base_edge_len: 100.0,
+                base_edge_len: 25.0,
                 max_edge_len_ratio: 1.5,
                 min_edge_len_ratio: 0.5,
             }
@@ -71,8 +71,8 @@ mod tests {
 
     #[test]
     fn test_simple_initialization() {
-        let step = 100.0;
-        for i in 0..100 {
+        let step = 50.0;
+        for i in -50..50 {
             let u0 = i as f64 * step;
             let u1 = u0 - step;
             let v = 0.0;

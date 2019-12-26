@@ -4,25 +4,26 @@
 use quad::{QuadMap, Rect, Spatial, ItemId};
 use cgmath::{Vector2, vec2};
 use cgmath::InnerSpace;
-
+use serde::{Deserialize, Serialize};
 
 /// TensorField specialized for determining road direction
 ///
 /// Uses InfluenceSource instances to determine points or lines of
 /// interest around which road networks form.
+#[derive(Serialize)]
 pub struct TensorField {
     map: QuadMap<InfluenceSource>,
     globals: Vec<InfluenceSource>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct InfluenceSource {
     form: InfluenceForm,
     bounds: Rect,
     v: f64
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum InfluenceForm { Point, Line }
 
 

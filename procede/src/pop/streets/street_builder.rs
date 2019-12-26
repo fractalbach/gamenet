@@ -28,6 +28,11 @@ pub struct StreetBuilder {
     block_builder: BlockBuilder,
 }
 
+/// Struct responsible for building quarters in a town/city.
+///
+/// Produces Major-order streets radiating outwards, then minor-order
+/// streets to connect them. The areas enclosed by the produced streets
+/// become quarters and are then assigned characteristics.
 #[derive(Debug)]
 struct QuarterBuilder {}
 
