@@ -53,13 +53,16 @@ pub struct EdgeId(ItemId);
 /// Map is composed of three basic components:
 ///  * Obstacles.
 ///  * Nodes.
-///  * Settings.
+///  * Edges.
+///
+/// More complex components are managed by the TownPlan struct.
 #[derive(Serialize)]
 pub struct TownMap {
     nodes: QuadMap<Node>,
     edges: QuadMap<Edge>,
     obstacles: QuadMap<ObstacleLine>,
     value_map: TensorField,
+    // 3do?
 
     settings: TownMapSettings,
 }
@@ -210,13 +213,13 @@ impl TownMap {
             edge = Edge::new(a_node, b_node, cost);
         }
 
-        self.nodes[a.0].add_edge(&edge);
-        self.nodes[b.0].add_edge(&edge);
+        let i = EdgeId(self.edges.insert(edge));
+        self.edges[i.0].i = Some(i);
+        let edge = &self.edges[i.0];
+        self.nodes[a.0].add_edge(edge);
+        self.nodes[b.0].add_edge(edge);
 
-        let i = self.edges.insert(edge);
-        self.edges[i].i = Some(EdgeId(i));
-
-        &self.edges[i]
+        edge
     }
 
     /// Adds obstacle line to the street map.
@@ -312,6 +315,7 @@ impl Node {
         debug_assert!(self.has_id());
         debug_assert!(edge.has_id());
         debug_assert!(edge.a == self.id() || edge.b == self.id());
+        debug_assert_ne!(edge.a, edge.b);
 
         let other_id = if edge.a == self.id() { edge.b } else { edge.a };
 
