@@ -365,7 +365,7 @@ impl Edge {
         Edge {
             cost,
             a: a.id(),
-            b: a.id(),
+            b: b.id(),
             uv_a: a.uv,
             uv_b: b.uv,
             bounds: Rect::from_points(a.uv, b.uv),
