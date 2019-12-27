@@ -13,7 +13,7 @@
 //!
 //! Initial goal is only to produce a street map.
 //! Additional features will be implemented only after that.
-
+use std::f64;
 use std::usize;
 
 use quad::{QuadMap, Rect, Spatial, ItemId};
@@ -279,6 +279,10 @@ impl TownMap {
         self.edges.get(id.0)
     }
 
+    pub fn edge(&self, id: EdgeId) -> &Edge {
+        &self.edges[id.0]
+    }
+
     pub fn value_map(&self) -> &TensorField {
         &self.value_map
     }
@@ -321,6 +325,30 @@ impl Node {
 
         self.edges.push((other_id, edge.id()));
     }
+
+    // Info
+
+    /// Checks whether node has > 3  edges.
+    pub fn is_intersection(&self) -> bool {
+        self.edges.len() >= 3
+    }
+
+    /// Checks whether node has two edges.
+    pub fn is_pass_through(&self) -> bool {
+        self.edges.len() == 2
+    }
+
+    /// Checks if node has only a single edge leading to it.
+    pub fn is_end_node(&self) -> bool {
+        self.edges.len() == 1
+    }
+
+    /// Checks if node has no edges connected to it.
+    pub fn is_unconnected(&self) -> bool {
+        self.edges.len() == 0
+    }
+
+    // Accessors
 
     pub fn id(&self) -> NodeId {
         self.i.unwrap()
@@ -377,12 +405,53 @@ impl Edge {
         }
     }
 
+    // Info
+
+    /// Produces angle in radians between one Edge and another.
+    ///
+    /// The returned value will always be between 0.0 and pi/2, since
+    /// edges are all considered bidirectional.
+    ///
+    /// # Arguments
+    /// * `other` - Edge to compare with.
+    ///
+    /// # Return
+    /// Angle between first Edge and another, between 0.0 and pi/2.0.
+    pub fn angle(&self, other: &Self) -> f64 {
+        self.cos(other).acos()
+    }
+
+    /// Produces cosign of angle between one Edge and another.
+    ///
+    /// The returned value will always be between 0.0 and 1.0, since
+    /// edges are all considered bidirectional.
+    ///
+    /// # Arguments
+    /// * `other` - Edge to compare with.
+    ///
+    /// # Return
+    /// Cosign of angle between first Edge and another, between 0.0
+    /// and 1.0.
+    pub fn cos(&self, other: &Self) -> f64 {
+        self.dir().dot(other.dir()).abs()
+    }
+
+    // Accessors
+
     pub fn id(&self) -> EdgeId {
         self.i.unwrap()
     }
 
     pub fn has_id(&self) -> bool {
         self.i.is_some()
+    }
+
+    /// Gets direction vector of an Edge.
+    ///
+    /// Although the direction vector of a given Edge will be
+    /// consistent, edges should be considered to be bidirectional.
+    pub fn dir(&self) -> Vector2<f64> {
+        (self.uv_b - self.uv_a).normalize()
     }
 }
 
@@ -396,13 +465,16 @@ impl Spatial for Edge {
 
 #[cfg(test)]
 mod tests {
+    use std::f64;
+
     use cgmath::vec2;
+    use assert_approx_eq::assert_approx_eq;
 
     use pop::streets::builder::StreetSegmentBuilder;
-    use pop::streets::map::{TownMap, TownMapSettings, Node};
+    use pop::streets::map::{TownMap, TownMapSettings, Node, Edge};
 
     // ----------------------------
-    // StreetMap
+    // TownMap
 
     /// Test that the nearest node to a passed position can be found.
     #[test]
@@ -447,5 +519,64 @@ mod tests {
 
         assert_ne!(a, b);
         assert_eq!(b, c);
+    }
+
+    // ----------------------------
+    // Edge
+
+    #[test]
+    fn test_edge_angle_straight() {
+        let mut map = TownMap::default();
+        let a = map.add_node(Node::new(vec2(0.0, 0.0))).id();
+        let b = map.add_node(Node::new(vec2(1.0, 0.0))).id();
+        let c = map.add_node(Node::new(vec2(3.0, 0.0))).id();
+        let ab = map.add_edge_between(a, b, 1.0).id();
+        let ac = map.add_edge_between(a, c, 1.0).id();
+
+        let ab = map.edge(ab);
+        let ac = map.edge(ac);
+        assert_approx_eq!(ab.angle(&ac), 0.0)
+    }
+
+    #[test]
+    fn test_edge_angle_45() {
+        let mut map = TownMap::default();
+        let a = map.add_node(Node::new(vec2(0.0, 0.0))).id();
+        let b = map.add_node(Node::new(vec2(1.0, 0.0))).id();
+        let c = map.add_node(Node::new(vec2(1.0, 1.0))).id();
+        let ab = map.add_edge_between(a, b, 1.0).id();
+        let ac = map.add_edge_between(a, c, 1.0).id();
+
+        let ab = map.edge(ab);
+        let ac = map.edge(ac);
+        assert_approx_eq!(ab.angle(&ac),  f64::consts::PI / 4.0);
+    }
+
+    #[test]
+    fn test_edge_angle_right() {
+        let mut map = TownMap::default();
+        let a = map.add_node(Node::new(vec2(0.0, 0.0))).id();
+        let b = map.add_node(Node::new(vec2(1.0, 0.0))).id();
+        let c = map.add_node(Node::new(vec2(0.0, 1.0))).id();
+        let ab = map.add_edge_between(a, b, 1.0).id();
+        let ac = map.add_edge_between(a, c, 1.0).id();
+
+        let ab = map.edge(ab);
+        let ac = map.edge(ac);
+        assert_approx_eq!(ab.angle(ac),  f64::consts::PI / 2.0);
+    }
+
+    #[test]
+    fn test_edge_angle_135() {
+        let mut map = TownMap::default();
+        let a = map.add_node(Node::new(vec2(0.0, 0.0))).id();
+        let b = map.add_node(Node::new(vec2(1.0, 0.0))).id();
+        let c = map.add_node(Node::new(vec2(-1.0, 1.0))).id();
+        let ab = map.add_edge_between(a, b, 1.0).id();
+        let ac = map.add_edge_between(a, c, 1.0).id();
+
+        let ab = map.edge(ab);
+        let ac = map.edge(ac);
+        assert_approx_eq!(ab.angle(&ac),  f64::consts::PI / 4.0);
     }
 }
