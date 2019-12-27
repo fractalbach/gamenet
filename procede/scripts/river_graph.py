@@ -57,6 +57,7 @@ def graph(args: ty.Sequence[str]) -> None:
 
     nodes = [Node(**d) for d in data['graph']]
 
+    print('Adding nodes.')
     for i, node in enumerate(nodes):
         inlets = node.inlets
         if node.h < 0 and not inlets:
@@ -64,17 +65,13 @@ def graph(args: ty.Sequence[str]) -> None:
 
         graph.add_node(node.i, pos=(node.uv.x, node.uv.y))
 
-        print(f'Adding nodes... {i / len(data["graph"]) * 100:.2f}%\r', end='')
-    print(f'Adding nodes... 100.00%!')
-
+    print('Adding edges.')
     for i, node in enumerate(nodes):
         for inlet in node.inlets:
             if inlet != USIZE_MAX:
                 graph.add_edge(
                     node.i, inlet, color='b', width=nodes[inlet].strahler
                 )
-        print(f'Adding edges... {i / len(data["graph"]) * 100:.2f}%\r', end='')
-    print(f'Adding edges... 100.00%!')
 
     edges = graph.edges()
     nx.draw(
