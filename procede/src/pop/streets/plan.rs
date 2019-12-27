@@ -99,7 +99,6 @@ mod tests {
                 StreetSegmentBuilder::new(vec2(u0, v), vec2(u1, v), 1.0);
             map.add(&mut road_segment);
         }
-        assert!(true);  // Placeholder
 
         // Serialize map.
         let s = serde_json::to_string_pretty(&map).unwrap();
