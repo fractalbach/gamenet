@@ -54,9 +54,12 @@ impl StreetSegmentBuilder {
 
 impl Builder for StreetSegmentBuilder {
     fn build(&mut self, map: &mut TownMap) {
-        let a = map.add_node(Node::new(self.a));
-        let b = map.add_node(Node::new(self.b));
+        let a = map.add_node(Node::new(self.a)).id();
+        let b = map.add_node(Node::new(self.b)).id();
         map.add_edge_between(a, b, self.cost);
-        map.add_obstacle(ObstacleLine::new(map.node(a).uv(), map.node(b).uv()));
+        map.add_obstacle(ObstacleLine::new(
+            map.node(a).uv(),
+            map.node(b).uv()
+        ));
     }
 }

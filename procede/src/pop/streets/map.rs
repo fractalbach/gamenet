@@ -174,20 +174,20 @@ impl TownMap {
     /// # Return
     /// NodeId pointing to added node, or existing nearby node which
     /// should be used instead.
-    pub fn add_node(&mut self, mut node: Node) -> NodeId {
+    pub fn add_node(&mut self, node: Node) -> &Node {
         {
             let existing = self.find_nearest_node(
                 node.uv, self.settings.node_merge_dist
             );
             if existing.is_some() {
-                return existing.unwrap().0.id();
+                return &self.nodes[existing.unwrap().0.id().0];
             }
         }
 
         let i = self.nodes.insert(node);
         self.nodes[i].i = Some(NodeId(i));
 
-        NodeId(i)
+        &self.nodes[i]
     }
 
     /// Adds an edge to the street map.
@@ -229,7 +229,7 @@ impl TownMap {
     ///
     /// # Return
     /// Reference to ObstacleLine instance added to the map.
-    pub fn add_obstacle(&mut self, mut obstacle: ObstacleLine) -> &ObstacleLine {
+    pub fn add_obstacle(&mut self, obstacle: ObstacleLine) -> &ObstacleLine {
         let i = self.obstacles.insert(obstacle);
         self.obstacles[i].i = Some(ObstacleId(i));
         &self.obstacles[i]
@@ -441,9 +441,9 @@ mod tests {
     fn test_add_node() {
         let mut map = TownMap::default();
 
-        let a = map.add_node(Node::new(vec2(0.0, 1000.0)));
-        let b = map.add_node(Node::new(vec2(0.0, 0.0)));
-        let c = map.add_node(Node::new(vec2(0.01, 0.05)));
+        let a = map.add_node(Node::new(vec2(0.0, 1000.0))).id();
+        let b = map.add_node(Node::new(vec2(0.0, 0.0))).id();
+        let c = map.add_node(Node::new(vec2(0.01, 0.05))).id();
 
         assert_ne!(a, b);
         assert_eq!(b, c);
