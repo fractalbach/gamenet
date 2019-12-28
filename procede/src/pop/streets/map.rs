@@ -71,7 +71,7 @@ pub struct TownMap {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Node {
     uv: Vector2<f64>,
-    edges: Vec<(NodeId, EdgeId)>,
+    edges: Vec<(EdgeId, NodeId, Vector2<f64>)>,
     i: Option<NodeId>,
 }
 
@@ -298,7 +298,7 @@ impl Node {
     }
 
     pub fn has_node_connection(&self, id: NodeId) -> bool {
-        for (node_id, edge_id) in &self.edges {
+        for (_, node_id, _) in &self.edges {
             if *node_id == id {
                 return true;
             }
@@ -307,7 +307,7 @@ impl Node {
     }
 
     pub fn has_edge(&self, id: EdgeId) -> bool {
-        for (node_id, edge_id) in &self.edges {
+        for (edge_id, node_id, uv) in &self.edges {
             if *edge_id == id {
                 return true;
             }
@@ -322,8 +322,9 @@ impl Node {
         debug_assert_ne!(edge.a, edge.b);
 
         let other_id = if edge.a == self.id() { edge.b } else { edge.a };
+        let other_uv = if edge.a == self.id() { edge.uv_b } else { edge.uv_a };
 
-        self.edges.push((other_id, edge.id()));
+        self.edges.push((edge.id(), other_id, other_uv));
     }
 
     // Info
@@ -339,13 +340,29 @@ impl Node {
     }
 
     /// Checks if node has only a single edge leading to it.
-    pub fn is_end_node(&self) -> bool {
+    pub fn is_end(&self) -> bool {
         self.edges.len() == 1
     }
 
     /// Checks if node has no edges connected to it.
     pub fn is_unconnected(&self) -> bool {
         self.edges.len() == 0
+    }
+
+    /// Checks if node is a pass-through node with angle < 45 deg.
+    pub fn is_straight(&self) -> bool {
+        if !self.is_pass_through() {
+            return false;
+        }
+        let a_vec = (self.uv - self.edges[0].2).normalize();
+        let b_vec = (self.edges[1].2 - self.uv).normalize();
+        let cos = a_vec.dot(b_vec);
+        cos > f64::consts::FRAC_1_SQRT_2
+    }
+
+    /// Checks if node is a passF-through node with angle > 45 deg.
+    pub fn is_corner(&self) -> bool {
+        self.is_pass_through() && !self.is_straight()
     }
 
     // Accessors
@@ -519,6 +536,75 @@ mod tests {
 
         assert_ne!(a, b);
         assert_eq!(b, c);
+    }
+
+    // ----------------------------
+    // Node
+
+    #[test]
+    fn test_node_is_straight() {
+        let mut map = TownMap::default();
+        let a = map.add_node(Node::new(vec2(0.0, 0.0))).id();
+        let b = map.add_node(Node::new(vec2(1.0, 0.0))).id();
+        let c = map.add_node(Node::new(vec2(3.0, 1.0))).id();
+        let ab = map.add_edge_between(a, b, 1.0);
+        let bc = map.add_edge_between(b, c, 1.0);
+        assert!(map.node(b).is_straight());
+    }
+
+    #[test]
+    fn test_node_is_straight_is_false_when_reversal() {
+        let mut map = TownMap::default();
+        let a = map.add_node(Node::new(vec2(0.0, 0.0))).id();
+        let b = map.add_node(Node::new(vec2(1.0, 0.0))).id();
+        let c = map.add_node(Node::new(vec2(-3.0, 1.0))).id();
+        let ba = map.add_edge_between(a, b, 1.0);
+        let bc = map.add_edge_between(b, c, 1.0);
+        assert!(!map.node(b).is_straight());
+    }
+
+    #[test]
+    fn test_node_is_straight_is_false_when_right_angle() {
+        let mut map = TownMap::default();
+        let a = map.add_node(Node::new(vec2(0.0, 0.0))).id();
+        let b = map.add_node(Node::new(vec2(1.0, 0.0))).id();
+        let c = map.add_node(Node::new(vec2(1.0, -1.1))).id();
+        let ab = map.add_edge_between(a, b, 1.0);
+        let bc = map.add_edge_between(b, c, 1.0);
+        assert!(!map.node(b).is_straight());
+    }
+
+    #[test]
+    fn test_node_is_corner_when_right_angle() {
+        let mut map = TownMap::default();
+        let a = map.add_node(Node::new(vec2(0.0, 0.0))).id();
+        let b = map.add_node(Node::new(vec2(1.0, 0.0))).id();
+        let c = map.add_node(Node::new(vec2(1.0, -1.1))).id();
+        let ab = map.add_edge_between(a, b, 1.0);
+        let bc = map.add_edge_between(b, c, 1.0);
+        assert!(map.node(b).is_corner());
+    }
+
+    #[test]
+    fn test_node_is_corner_false_when_intersection() {
+        let mut map = TownMap::default();
+        let a = map.add_node(Node::new(vec2(0.0, 0.0))).id();
+        let b = map.add_node(Node::new(vec2(1.0, 0.0))).id();
+        let c = map.add_node(Node::new(vec2(1.0, -1.1))).id();
+        let d = map.add_node(Node::new(vec2(1.0, 1.0))).id();
+        let ab = map.add_edge_between(a, b, 1.0);
+        let bc = map.add_edge_between(b, c, 1.0);
+        let bd = map.add_edge_between(b, d, 1.0);
+        assert!(!map.node(b).is_corner());
+    }
+
+    #[test]
+    fn test_node_is_straight_false_when_end() {
+        let mut map = TownMap::default();
+        let a = map.add_node(Node::new(vec2(0.0, 0.0))).id();
+        let b = map.add_node(Node::new(vec2(1.0, 0.0))).id();
+        let ab = map.add_edge_between(a, b, 1.0);
+        assert!(!map.node(b).is_straight());
     }
 
     // ----------------------------
