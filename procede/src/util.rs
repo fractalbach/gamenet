@@ -1,4 +1,5 @@
 
+use std::cmp::Ordering;
 use std::num::Wrapping;
 
 use cgmath::{Vector2, Vector3, vec2, vec3};
@@ -131,6 +132,41 @@ pub fn vec2arr(v: Vector3<f64>) -> [f64; 3] {
 }
 
 
+pub fn clockwise_cmp(a: Vector2<f64>, b: Vector2<f64>) -> Ordering {
+    use self::Ordering::{Less, Greater, Equal};
+
+    let a = a.normalize();
+    let b = b.normalize();
+
+    if a.x >= 0.0 && b.x < 0.0 {
+        return Ordering::Less;
+    }
+    if a.x < 0.0 && b.x >= 0.0 {
+        return Ordering::Greater;
+    }
+    if a.x == 0.0 && b.x == 0.0 {
+        if a.y >= 0.0 && b.y < 0.0 {
+            return Ordering::Less
+        } else if a.y < 0.0 && b.y > 0.0 {
+            return Ordering::Greater
+        } else {
+            return Ordering::Equal
+        }
+    }
+
+    // Compare cross-product.
+    let det = a.x * b.y - b.x * a.y;
+    if det < 0.0 {
+        return Ordering::Less;
+    }
+    if det > 0.0 {
+        return Ordering::Greater;
+    }
+
+    Ordering::Equal
+}
+
+
 impl TangentPlane {
     pub fn new(origin: Vector3<f64>) -> TangentPlane {
         TangentPlane { origin }
@@ -157,6 +193,8 @@ impl TangentPlane {
 
 #[cfg(test)]
 mod tests {
+    use std::cmp::Ordering::{Less, Greater, Equal};
+
     use cgmath::{Vector3, Vector2, vec2, vec3};
     use util::*;
 
@@ -334,5 +372,50 @@ mod tests {
         assert!(!is_clockwise(
             vec2(-1.0, 2.0), vec2(-1.0, -1.0))
         );
+    }
+
+    #[test]
+    fn test_clockwise_cmp_basic_cw_right() {
+        assert_eq!(clockwise_cmp(vec2(0.1, 1.0), vec2(1.0, 1.0)), Less);
+    }
+
+    #[test]
+    fn test_clockwise_cmp_basic_ccw_right() {
+        assert_eq!(clockwise_cmp(vec2(1.1, 1.0), vec2(1.0, 1.0)), Greater);
+    }
+
+    #[test]
+    fn test_clockwise_cmp_basic_cw_left() {
+        assert_eq!(clockwise_cmp(vec2(-0.1, 1.0), vec2(-1.0, 1.0)), Greater);
+    }
+
+    #[test]
+    fn test_clockwise_cmp_basic_ccw_left() {
+        assert_eq!(clockwise_cmp(vec2(-1.1, 1.0), vec2(-1.0, 1.0)), Less);
+    }
+
+    #[test]
+    fn test_clockwise_cmp_basic_equal() {
+        assert_eq!(clockwise_cmp(vec2(1.1, 0.5), vec2(2.2, 1.0)), Equal);
+    }
+
+    #[test]
+    fn test_clockwise_cmp_opposite_x_axis_cw() {
+        assert_eq!(clockwise_cmp(vec2(0.7, 0.7), vec2(-0.7, 0.7)), Less);
+    }
+
+    #[test]
+    fn test_clockwise_cmp_opposite_x_axis_ccw() {
+        assert_eq!(clockwise_cmp(vec2(-0.7, 0.7), vec2(0.7, 0.7)), Greater);
+    }
+
+    #[test]
+    fn test_clockwise_cmp_on_x_axis_cw() {
+        assert_eq!(clockwise_cmp(vec2(0.0, 0.7), vec2(0.0, -1.0)), Less);
+    }
+
+    #[test]
+    fn test_clockwise_cmp_on_x_axis_ccw() {
+        assert_eq!(clockwise_cmp(vec2(0.0, -1.0), vec2(0.0, 1.0)), Greater);
     }
 }
