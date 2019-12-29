@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use pop::streets::builder::Builder;
 use pop::streets::tensor::TensorField;
+use util::cw_cmp;
 
 
 #[derive(
@@ -325,6 +326,14 @@ impl Node {
         let other_uv = if edge.a == self.id() { edge.uv_b } else { edge.uv_a };
 
         self.edges.push((edge.id(), other_id, other_uv));
+
+        // Sort edges so that they are ordered clockwise.
+        let center = self.uv;
+        self.edges.sort_unstable_by(|(_, _, a_uv), (_, _, b_uv)| {
+            let a = (a_uv - center).normalize();
+            let b = (b_uv - center).normalize();
+            cw_cmp(a, b)
+        });
     }
 
     // Info
@@ -664,5 +673,22 @@ mod tests {
         let ab = map.edge(ab);
         let ac = map.edge(ac);
         assert_approx_eq!(ab.angle(&ac),  f64::consts::PI / 4.0);
+    }
+
+    #[test]
+    fn test_added_edges_are_sorted() {
+        let mut map = TownMap::default();
+        let a = map.add_node(Node::new(vec2(0.0, 0.0))).id();
+        let b = map.add_node(Node::new(vec2(1.0, 0.0))).id();
+        let c = map.add_node(Node::new(vec2(1.0, -1.1))).id();
+        let d = map.add_node(Node::new(vec2(1.0, 1.0))).id();
+        let ab = map.add_edge_between(a, b, 1.0);
+        let bc = map.add_edge_between(b, c, 1.0);
+        let bd = map.add_edge_between(b, d, 1.0);
+
+        let center = map.node(b);
+        assert_vec2_near!(center.edges[0].2, vec2(1.0, 1.0));
+        assert_vec2_near!(center.edges[1].2, vec2(1.0, -1.1));
+        assert_vec2_near!(center.edges[2].2, vec2(0.0, 0.0));
     }
 }
