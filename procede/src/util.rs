@@ -132,7 +132,7 @@ pub fn vec2arr(v: Vector3<f64>) -> [f64; 3] {
 }
 
 
-pub fn clockwise_cmp(a: Vector2<f64>, b: Vector2<f64>) -> Ordering {
+pub fn cw_cmp(a: Vector2<f64>, b: Vector2<f64>) -> Ordering {
     use self::Ordering::{Less, Greater, Equal};
 
     let a = a.normalize();
@@ -376,46 +376,46 @@ mod tests {
 
     #[test]
     fn test_clockwise_cmp_basic_cw_right() {
-        assert_eq!(clockwise_cmp(vec2(0.1, 1.0), vec2(1.0, 1.0)), Less);
+        assert_eq!(cw_cmp(vec2(0.1, 1.0), vec2(1.0, 1.0)), Less);
     }
 
     #[test]
     fn test_clockwise_cmp_basic_ccw_right() {
-        assert_eq!(clockwise_cmp(vec2(1.1, 1.0), vec2(1.0, 1.0)), Greater);
+        assert_eq!(cw_cmp(vec2(1.1, 1.0), vec2(1.0, 1.0)), Greater);
     }
 
     #[test]
     fn test_clockwise_cmp_basic_cw_left() {
-        assert_eq!(clockwise_cmp(vec2(-0.1, 1.0), vec2(-1.0, 1.0)), Greater);
+        assert_eq!(cw_cmp(vec2(-0.1, 1.0), vec2(-1.0, 1.0)), Greater);
     }
 
     #[test]
     fn test_clockwise_cmp_basic_ccw_left() {
-        assert_eq!(clockwise_cmp(vec2(-1.1, 1.0), vec2(-1.0, 1.0)), Less);
+        assert_eq!(cw_cmp(vec2(-1.1, 1.0), vec2(-1.0, 1.0)), Less);
     }
 
     #[test]
     fn test_clockwise_cmp_basic_equal() {
-        assert_eq!(clockwise_cmp(vec2(1.1, 0.5), vec2(2.2, 1.0)), Equal);
+        assert_eq!(cw_cmp(vec2(1.1, 0.5), vec2(2.2, 1.0)), Equal);
     }
 
     #[test]
     fn test_clockwise_cmp_opposite_x_axis_cw() {
-        assert_eq!(clockwise_cmp(vec2(0.7, 0.7), vec2(-0.7, 0.7)), Less);
+        assert_eq!(cw_cmp(vec2(0.7, 0.7), vec2(-0.7, 0.7)), Less);
     }
 
     #[test]
     fn test_clockwise_cmp_opposite_x_axis_ccw() {
-        assert_eq!(clockwise_cmp(vec2(-0.7, 0.7), vec2(0.7, 0.7)), Greater);
+        assert_eq!(cw_cmp(vec2(-0.7, 0.7), vec2(0.7, 0.7)), Greater);
     }
 
     #[test]
     fn test_clockwise_cmp_on_x_axis_cw() {
-        assert_eq!(clockwise_cmp(vec2(0.0, 0.7), vec2(0.0, -1.0)), Less);
+        assert_eq!(cw_cmp(vec2(0.0, 0.7), vec2(0.0, -1.0)), Less);
     }
 
     #[test]
     fn test_clockwise_cmp_on_x_axis_ccw() {
-        assert_eq!(clockwise_cmp(vec2(0.0, -1.0), vec2(0.0, 1.0)), Greater);
+        assert_eq!(cw_cmp(vec2(0.0, -1.0), vec2(0.0, 1.0)), Greater);
     }
 }
