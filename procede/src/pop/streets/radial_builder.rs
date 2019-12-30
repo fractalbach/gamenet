@@ -29,7 +29,7 @@ pub struct StreetBuilderSettings<'a> {
 /// streets to connect them. The areas enclosed by the produced streets
 /// become quarters.
 ///
-/// When built on a TownMap, produces a collection of bounds which may
+/// When built on a TownMap, returns a collection of bounds which may
 /// be used to generate a town subdivision.
 #[derive(Debug)]
 pub struct RadialBuilder<'a> {
@@ -42,6 +42,13 @@ pub struct RadialBuilder<'a> {
 
 
 impl<'a> RadialBuilder<'a> {
+    /// Create new RadialBuilder.
+    ///
+    /// # Arguments
+    /// * `settings` - Generic StreetBuilderSettings.
+    ///
+    /// # Return
+    /// RadialBuilder
     pub fn new(settings: StreetBuilderSettings) -> RadialBuilder {
         RadialBuilder {
             settings,
@@ -62,7 +69,7 @@ impl<'a> RadialBuilder<'a> {
     fn find_start_nodes(&self, map: &TownMap) -> Vec<NodeId> {
         let mut nodes = vec!();
         let mut frontier = VecDeque::with_capacity(20);
-        let mut visited = HashSet::with_capacity(map.nodes().len());
+        let mut visited = HashSet::with_capacity(map.n_nodes());
         let base_edge_len = self.settings.base_edge_len;
 
         // Start search at node with highest influence.
@@ -79,6 +86,8 @@ impl<'a> RadialBuilder<'a> {
                 continue;
             }
             visited.insert(id);
+
+            // TODO: Check influence value at node exceeds threshold.
 
             // Add node to start node vec if appropriate.
             if d >= base_edge_len {
@@ -128,6 +137,14 @@ impl<'a> RadialBuilder<'a> {
         Some(highest_id)
     }
 
+    /// Produce major-order streets
+    ///
+    /// # Arguments
+    /// * `map` - TownMap to which streets will be added.
+    /// * `start_nodes` - Id's of nodes where streets will branch from.
+    ///
+    /// # Return
+    /// Vec of NodeId's added to the map.
     fn build_major_streets(
         &self, map: &mut TownMap, start_nodes: &Vec<NodeId>
     ) -> Vec<NodeId> {
@@ -140,6 +157,14 @@ impl<'a> RadialBuilder<'a> {
         nodes
     }
 
+    /// Produce major-order street
+    ///
+    /// # Arguments
+    /// * `map` - TownMap to which streets will be added.
+    /// * `start` - Id of node where street will branch from.
+    ///
+    /// # Return
+    /// Vec of NodeId's added to the map.
     fn build_street(&self, map: &mut TownMap, start: NodeId) -> Vec<NodeId> {
         let nodes = vec!();
 
