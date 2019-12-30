@@ -389,7 +389,7 @@ impl Node {
     /// # Return
     /// Tuple of
     /// * node edge index.
-    /// * angle in radians.
+    /// * cosign of nearest angle.
     pub fn nearest_edge(&self, v: Vector2<f64>) -> (usize, f64) {
         if self.edges.len() == 0 {
             return (usize::MAX, 0.0)
@@ -415,17 +415,36 @@ impl Node {
     /// * Index of edge on left (counter-clockwise) side of largest gap.
     /// * Direction vector indicating center of gap.
     pub fn largest_edge_gap(&self) -> (usize, Vector2<f64>) {
-        let n_edges = self.edges.len();
-        let (max_i, max_gap) = util::partial_max(0..n_edges, |&i| {
-            let left = self.edge_dir(i);
-            let right_i = if i == n_edges - 1 { 0 } else { i + 1 };
-            let right = self.edge_dir(right_i);
-            util::cw_angle_pos(left, right)
-        }).unwrap();
+        let (max_i, max_gap) = util::partial_max(
+            0..self.edges.len(), |&i| self.gap_angle(i)
+        ).unwrap();
         let rot = Basis2::from_angle(-Rad((max_gap) / 2.0));
         let mid = rot.rotate_vector(self.edge_dir(max_i));
 
         (max_i, mid)
+    }
+
+    /// Find angle between one edge and the next, clockwise.
+    ///
+    /// Expects that passed index is valid.
+    ///
+    /// Special case: If there is only a single edge connected to the
+    /// node, then the gap angle will be 2PI.
+    ///
+    /// # Arguments
+    /// * `i` - usize index of edge on left (counter-clockwise) side
+    ///             of gap.
+    ///
+    /// # Return
+    /// Angle in radians.
+    pub fn gap_angle(&self, i: usize) -> f64 {
+        let left = self.edge_dir(i);
+        let right_i = if i == self.edges.len() - 1 { 0 } else { i + 1 };
+        if right_i == i {
+            return f64::consts::PI * 2.0;
+        }
+        let right = self.edge_dir(right_i);
+        util::cw_angle_pos(left, right)
     }
 
     // Accessors
