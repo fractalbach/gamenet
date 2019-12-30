@@ -174,8 +174,8 @@ pub fn ccw_angle(a: Vector2<f64>, b: Vector2<f64>) -> f64 {
     let a = a.normalize();
     let b = b.normalize();
 
-    let dot = a.x * b.x + a.y * b.x;  // dot product between [a.x, a.y] and [b.x, b.x]
-    let det = a.x * b.x - a.y * b.x;  // determinant
+    let dot = a.x * b.x + a.y * b.y;  // dot product between [a.x, a.y] and [b.x, b.x]
+    let det = a.x * b.y - a.y * b.x;  // determinant
     let angle = det.atan2(dot);  // atan2(y, x) or atan2(sin, cos)
     angle
 }
@@ -495,6 +495,14 @@ mod tests {
         assert_approx_eq!(
             cw_angle(vec2(0.0, 1.0), vec2(1.0, 1.0)),
             f64::consts::PI / 4.0
+        );
+    }
+
+    #[test]
+    fn test_cw_angle_pos_180() {
+        assert_approx_eq!(
+            cw_angle_pos(vec2(1.0, 0.0), vec2(-1.0, 0.0)),
+            f64::consts::PI
         );
     }
 
