@@ -245,6 +245,11 @@ impl TownMap {
         &self.nodes
     }
 
+    /// Get number of nodes in map.
+    pub fn n_nodes(&self) -> usize {
+        self.nodes.len()
+    }
+
     /// Gets node nearest to a set of UV coordinates within a radius.
     ///
     /// # Arguments

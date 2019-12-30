@@ -100,7 +100,21 @@ impl<'a> RadialBuilder<'a> {
     }
 
     /// Find node with highest influence value.
+    ///
+    /// If multiple nodes have equal influence value, the first NodeId
+    /// will be returned.
+    ///
+    /// # Arguments
+    /// * `map` - TownMap with existing road nodes and influence field.
+    ///
+    /// # Return
+    /// Option<NodeId>
+    /// * `None` if no nodes exist in map.
+    /// * `NodeId` if any node was found.
     fn find_highest_value_node(map: &TownMap) -> Option<NodeId> {
+        if map.n_nodes() == 0 {
+            return None;
+        }
         let (_, (first, _)) = &map.nodes().iter().nth(0)?;
         let mut highest_v = map.value_map().sample(first.uv()).magnitude();
         let mut highest_id = first.id();
