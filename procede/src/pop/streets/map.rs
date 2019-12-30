@@ -1,13 +1,5 @@
 //! Todo:
 //!
-//! ! Add Navigable trait.
-//! Implement Navigable types:
-//!     StreetSegment
-//!     CityRiverSegment
-//!     BuildingSegment
-//! Develop trait-based parameters & callback.
-//! Implement TownMap.add(o: Builder)
-//! Ensure serializable.
 //! Implement village test.
 //! Implement graph visualization.
 //!
