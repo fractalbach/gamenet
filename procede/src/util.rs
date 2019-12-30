@@ -1,5 +1,6 @@
 
 use std::cmp::Ordering;
+use std::f64;
 use std::num::Wrapping;
 
 use cgmath::{Vector2, Vector3, vec2, vec3};
@@ -166,6 +167,47 @@ pub fn cw_cmp(a: Vector2<f64>, b: Vector2<f64>) -> Ordering {
     Ordering::Equal
 }
 
+/// Gets counter-clockwise angle from a to b.
+///
+/// The resulting angle will be in the range -180 to +180.
+pub fn ccw_angle(a: Vector2<f64>, b: Vector2<f64>) -> f64 {
+    let a = a.normalize();
+    let b = b.normalize();
+
+    let dot = a.x * b.x + a.y * b.x;  // dot product between [a.x, a.y] and [b.x, b.x]
+    let det = a.x * b.x - a.y * b.x;  // determinant
+    let angle = det.atan2(dot);  // atan2(y, x) or atan2(sin, cos)
+    angle
+}
+
+/// Gets counter-clockwise angle from a to b.
+///
+/// The resulting angle will be in the range 0 to 360.
+pub fn ccw_angle_pos(a: Vector2<f64>, b: Vector2<f64>) -> f64 {
+    let mut angle = ccw_angle(a, b);
+    if angle < 0.0 {
+        angle += f64::consts::PI * 2.0;
+    }
+    angle
+}
+
+/// Gets clockwise angle from a to b.
+///
+/// The resulting angle will be in the range -180 to +180.
+pub fn cw_angle(a: Vector2<f64>, b: Vector2<f64>) -> f64 {
+    -ccw_angle(a, b)
+}
+
+/// Gets clockwise angle from a to b.
+///
+/// The resulting angle will be in the range 0 to 360.
+pub fn cw_angle_pos(a: Vector2<f64>, b: Vector2<f64>) -> f64 {
+    let mut angle = cw_angle(a, b);
+    if angle < 0.0 {
+        angle += f64::consts::PI * 2.0;
+    }
+    angle
+}
 
 impl TangentPlane {
     pub fn new(origin: Vector3<f64>) -> TangentPlane {
@@ -194,8 +236,11 @@ impl TangentPlane {
 #[cfg(test)]
 mod tests {
     use std::cmp::Ordering::{Less, Greater, Equal};
+    use std::f64;
 
+    use assert_approx_eq::assert_approx_eq;
     use cgmath::{Vector3, Vector2, vec2, vec3};
+
     use util::*;
 
     #[test]
@@ -417,5 +462,29 @@ mod tests {
     #[test]
     fn test_clockwise_cmp_on_x_axis_ccw() {
         assert_eq!(cw_cmp(vec2(0.0, -1.0), vec2(0.0, 1.0)), Greater);
+    }
+
+    #[test]
+    fn test_cw_angle_45() {
+        assert_approx_eq!(
+            cw_angle(vec2(0.0, 1.0), vec2(1.0, 1.0)),
+            f64::consts::PI / 4.0
+        );
+    }
+
+    #[test]
+    fn test_ccw_angle_315() {
+        assert_approx_eq!(
+            ccw_angle_pos(vec2(0.0, 1.0), vec2(1.0, 1.0)),
+            f64::consts::PI * 1.75
+        );
+    }
+
+    #[test]
+    fn test_ccw_angle_n45() {
+        assert_approx_eq!(
+            ccw_angle(vec2(0.0, 1.0), vec2(1.0, 1.0)),
+            -f64::consts::PI / 4.0
+        );
     }
 }
