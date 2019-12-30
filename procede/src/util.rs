@@ -209,6 +209,32 @@ pub fn cw_angle_pos(a: Vector2<f64>, b: Vector2<f64>) -> f64 {
     angle
 }
 
+pub fn partial_max<I, F, K>(
+    mut iter: I, mut f: F
+) -> Option<(I::Item, K)>
+    where I: Iterator, F: FnMut(&I::Item) -> K, K: PartialOrd {
+    let mut max = iter.next().map(|item| {
+        let k = f(&item);
+        (item, k)
+    });
+    loop {
+        let item = iter.next();
+        if item.is_none() {
+            return max;  // If None, iteration is complete.
+        }
+        let item = item.unwrap();
+        let k = f(&item);
+        if max.is_none() {
+            max = Some((item, k));
+            continue;
+        }
+        if k.partial_cmp(&max.as_ref().unwrap().1).unwrap_or(Ordering::Equal)
+                == Ordering::Greater {
+            max = Some((item, k));
+        }
+    }
+}
+
 impl TangentPlane {
     pub fn new(origin: Vector3<f64>) -> TangentPlane {
         TangentPlane { origin }
@@ -485,6 +511,32 @@ mod tests {
         assert_approx_eq!(
             ccw_angle(vec2(0.0, 1.0), vec2(1.0, 1.0)),
             -f64::consts::PI / 4.0
+        );
+    }
+
+    #[test]
+    fn test_partial_max() {
+        let numbers = vec!(1.0, 5.0, 2.0, 4.0, 3.0);
+        assert_approx_eq!(
+            partial_max(numbers.iter(), |&&v| Some(v)).unwrap().0,
+            5.0f64
+        );
+    }
+
+    #[test]
+    fn test_partial_max_handles_empty_iterator() {
+        let numbers: Vec<f64> = vec!();
+        assert!(partial_max(numbers.iter(), |&&v| Some(v)).is_none());
+    }
+
+    #[test]
+    fn test_partial_max_handles_none_ordering() {
+        let numbers = vec!(1.0, 5.0, 2.0, 4.0, 3.0);
+        assert_approx_eq!(
+            partial_max(numbers.iter(), |&&v| {
+                if v != 5.0 && v != 2.0 { Some(v) } else { None }
+            }).unwrap().0,
+            4.0f64
         );
     }
 }
