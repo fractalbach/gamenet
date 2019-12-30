@@ -17,14 +17,14 @@ use std::f64;
 use std::usize;
 
 use quad::{QuadMap, Rect, Spatial, ItemId};
-use cgmath::{Vector2, vec2};
+use cgmath::{Vector2, vec2, Rotation, Rotation2, Basis2, Rad};
 use cgmath::InnerSpace;
 use cgmath::MetricSpace;
 use serde::{Deserialize, Serialize};
 
 use pop::streets::builder::Builder;
 use pop::streets::tensor::TensorField;
-use util::cw_cmp;
+use util;
 
 
 #[derive(
@@ -332,7 +332,7 @@ impl Node {
         self.edges.sort_unstable_by(|(_, _, a_uv), (_, _, b_uv)| {
             let a = (a_uv - center).normalize();
             let b = (b_uv - center).normalize();
-            cw_cmp(a, b)
+            util::cw_cmp(a, b)
         });
     }
 
@@ -363,15 +363,69 @@ impl Node {
         if !self.is_pass_through() {
             return false;
         }
-        let a_vec = (self.uv - self.edges[0].2).normalize();
-        let b_vec = (self.edges[1].2 - self.uv).normalize();
-        let cos = a_vec.dot(b_vec);
-        cos > f64::consts::FRAC_1_SQRT_2
+        let cos = self.edge_dir(0).dot(self.edge_dir(1));
+        cos < -f64::consts::FRAC_1_SQRT_2
     }
 
-    /// Checks if node is a passF-through node with angle > 45 deg.
+    /// Checks if node is a pass-through node with angle > 45 deg.
     pub fn is_corner(&self) -> bool {
         self.is_pass_through() && !self.is_straight()
+    }
+
+    /// Gets direction of an edge from a Node.
+    ///
+    /// Passed index is expected to be valid.
+    pub fn edge_dir(&self, i: usize) -> Vector2<f64> {
+        (self.edges[i].2 - self.uv).normalize()
+    }
+
+    /// Gets edge with direction closest to that passed.
+    ///
+    /// Expects that at least one edge exists.
+    ///
+    /// # Arguments
+    /// * `v` - Direction Vector2
+    ///
+    /// # Return
+    /// Tuple of
+    /// * node edge index.
+    /// * angle in radians.
+    pub fn nearest_edge(&self, v: Vector2<f64>) -> (usize, f64) {
+        if self.edges.len() == 0 {
+            return (usize::MAX, 0.0)
+        }
+        let mut nearest_i = 0;
+        let mut nearest_cos =  self.edge_dir(0).dot(v);
+        for i in 0..self.edges.len() {
+            let cos = self.edge_dir(i).dot(v);
+            if cos > nearest_cos {
+                nearest_cos = cos;
+                nearest_i = i;
+            }
+        }
+        (nearest_i, nearest_cos)
+    }
+
+    /// Finds largest gap between edges connected to Node.
+    ///
+    /// Expects that at least one edge exists.
+    ///
+    /// # Return
+    /// Tuple of
+    /// * Index of edge on left (counter-clockwise) side of largest gap.
+    /// * Direction vector indicating center of gap.
+    pub fn largest_edge_gap(&self) -> (usize, Vector2<f64>) {
+        let n_edges = self.edges.len();
+        let (max_i, max_gap) = util::partial_max(0..n_edges, |&i| {
+            let left = self.edge_dir(i);
+            let right_i = if i == n_edges - 1 { 0 } else { i + 1 };
+            let right = self.edge_dir(right_i);
+            util::cw_angle_pos(left, right)
+        }).unwrap();
+        let rot = Basis2::from_angle(-Rad((max_gap) / 2.0));
+        let mid = rot.rotate_vector(self.edge_dir(max_i));
+
+        (max_i, mid)
     }
 
     // Accessors
@@ -386,6 +440,10 @@ impl Node {
 
     pub fn uv(&self) -> Vector2<f64> {
         self.uv
+    }
+
+    pub fn edges(&self) -> &Vec<(EdgeId, NodeId, Vector2<f64>)> {
+        &self.edges
     }
 }
 
@@ -690,5 +748,22 @@ mod tests {
         assert_vec2_near!(center.edges[0].2, vec2(1.0, 1.0));
         assert_vec2_near!(center.edges[1].2, vec2(1.0, -1.1));
         assert_vec2_near!(center.edges[2].2, vec2(0.0, 0.0));
+    }
+
+    #[test]
+    fn test_largest_gap_is_found() {
+        let mut map = TownMap::default();
+        let a = map.add_node(Node::new(vec2(0.0, 0.0))).id();
+        let b = map.add_node(Node::new(vec2(1.0, 0.0))).id();
+        let c = map.add_node(Node::new(vec2(1.0, 1.0))).id();
+        let d = map.add_node(Node::new(vec2(2.0, 0.0))).id();
+        let ab = map.add_edge_between(a, b, 1.0);
+        let bc = map.add_edge_between(b, c, 1.0);
+        let bd = map.add_edge_between(b, d, 1.0);
+
+        let center = map.node(b);
+        let (i, gap_center) = center.largest_edge_gap();
+        assert_eq!(i, 1);
+        assert_vec2_near!(gap_center, vec2(0.0, -1.0));
     }
 }
