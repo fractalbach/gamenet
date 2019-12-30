@@ -5,11 +5,13 @@ use std::collections::VecDeque;
 use std::fmt;
 
 use cgmath::{Vector2, vec2};
+use cgmath::MetricSpace;
 use cgmath::InnerSpace;
 
 use pop::streets::builder::{Builder, StreetSegmentBuilder};
 use pop::streets::map::{TownMap, NodeId, Node};
 use pop::streets::poly::Poly;
+use wasm_bindgen::__rt::std::collections::HashSet;
 
 
 #[derive(Clone)]
@@ -47,14 +49,52 @@ impl<'a> RadialBuilder<'a> {
         }
     }
 
+    /// Find nodes on existing roads where streets may branch.
+    ///
+    /// The returned candidate nodes are possible start points for roads
+    /// to branch from.
+    ///
+    /// # Arguments
+    /// * `map` - TownMap with existing road nodes and influence field.
+    ///
+    /// # Return
+    /// Vector of NodeId's which are candidates to branch streets from.
     fn find_start_nodes(&self, map: &TownMap) -> Vec<NodeId> {
         let mut nodes = vec!();
         let mut frontier = VecDeque::with_capacity(20);
+        let mut visited = HashSet::with_capacity(map.nodes().len());
+        let base_edge_len = self.settings.base_edge_len;
 
+        // Start search at node with highest influence.
         match Self::find_highest_value_node(map) {
-            Some(id) => frontier.push_back(id),
+            Some(id) => frontier.push_back((id, base_edge_len)),
             None    => return nodes
         };
+
+        // Explore existing road nodes finding start nodes.
+        while !frontier.is_empty() {
+            // Get next unvisited road node.
+            let (id, d) = frontier.pop_front().unwrap();
+            if visited.contains(&id) {
+                continue;
+            }
+            visited.insert(id);
+
+            // Add node to start node vec if appropriate.
+            if d >= base_edge_len {
+                nodes.push(id);
+            }
+
+            // Add node's connections to frontier.
+            let node = map.node(id);
+            for &(_edge_id, other_id, other_uv) in node.edges() {
+                if visited.contains(&other_id) {
+                    continue;
+                }
+                let d_to_other = node.uv().distance(other_uv);
+                frontier.push_back((other_id, d + d_to_other));
+            }
+        }
 
         nodes
     }
