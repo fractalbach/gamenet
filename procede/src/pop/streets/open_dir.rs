@@ -6,6 +6,11 @@ use super::map::Node;
 use cgmath::{Vector2, Rotation, Rotation2, Basis2, Rad};
 
 
+/// Utility iterator that yields directions from the node that are
+/// candidates for street development.
+///
+/// Not all returned vectors will be valid. Returned values should be
+/// filtered by the user.
 pub struct OpenDir<'a> {
     node: &'a Node,
     i: usize,
