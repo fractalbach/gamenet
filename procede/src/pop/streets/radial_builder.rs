@@ -1,7 +1,7 @@
 //! Module containing Radial which produces the major-order roads
 //! radiating outwards from the city center (generally) and/or away from
 //! traversing roadways.
-use std::collections::VecDeque;
+use std::collections::{VecDeque, HashSet};
 use std::fmt;
 
 use cgmath::{Vector2, vec2};
@@ -10,8 +10,9 @@ use cgmath::InnerSpace;
 
 use pop::streets::builder::{Builder, StreetSegmentBuilder};
 use pop::streets::map::{TownMap, NodeId, Node};
+use pop::streets::open_dir::OpenDir;
 use pop::streets::poly::Poly;
-use wasm_bindgen::__rt::std::collections::HashSet;
+use util;
 
 
 #[derive(Clone)]
@@ -19,6 +20,8 @@ pub struct StreetBuilderSettings<'a> {
     pub base_edge_len: f64,
     pub max_edge_len_ratio: f64,
     pub min_edge_len_ratio: f64,
+    pub base_min_influence: f64,
+    pub min_fork_angle: f64,
     pub cost_mod_fn: &'a Fn(Vector2<f64>, Vector2<f64>) -> f64,
     // As const settings are required, they should be added here.
 }
@@ -33,7 +36,7 @@ pub struct StreetBuilderSettings<'a> {
 /// be used to generate a town subdivision.
 #[derive(Debug)]
 pub struct RadialBuilder<'a> {
-    settings: StreetBuilderSettings<'a>,
+    settings: &'a StreetBuilderSettings<'a>,
     sections: Vec<Poly>,
 }
 
@@ -49,7 +52,7 @@ impl<'a> RadialBuilder<'a> {
     ///
     /// # Return
     /// RadialBuilder
-    pub fn new(settings: StreetBuilderSettings) -> RadialBuilder {
+    pub fn new(settings: &'a StreetBuilderSettings) -> RadialBuilder<'a> {
         RadialBuilder {
             settings,
             sections: vec!(),
@@ -121,20 +124,9 @@ impl<'a> RadialBuilder<'a> {
     /// * `None` if no nodes exist in map.
     /// * `NodeId` if any node was found.
     fn find_highest_value_node(map: &TownMap) -> Option<NodeId> {
-        if map.n_nodes() == 0 {
-            return None;
-        }
-        let (_, (first, _)) = &map.nodes().iter().nth(0)?;
-        let mut highest_v = map.value_map().sample(first.uv()).magnitude();
-        let mut highest_id = first.id();
-        for (_, (node, _)) in map.nodes().iter().skip(1) {
-            let v = map.value_map().sample(node.uv()).magnitude();
-            if v > highest_v {
-                highest_id = node.id();
-                highest_v = v;
-            }
-        }
-        Some(highest_id)
+        util::partial_max(map.nodes().iter(), |(_, (node, _))| {
+            map.value_map().sample(node.uv()).magnitude()
+        }).map(|((_, (node, _)), _)| node.id())
     }
 
     /// Produce major-order streets
@@ -168,7 +160,62 @@ impl<'a> RadialBuilder<'a> {
     fn build_street(&self, map: &mut TownMap, start: NodeId) -> Vec<NodeId> {
         let nodes = vec!();
 
+        let initial_dir;
+        match self.find_branch_dir(map, start) {
+            Some(dir) => initial_dir = dir,
+            None => return nodes
+        }
+
+        // TODO: Build road.
+
         nodes
+    }
+
+    /// Find best direction to build a new street from a passed node.
+    ///
+    /// # Arguments
+    /// * `map` - TownMap with existing road nodes and influence field.
+    /// * `node_id` - Id of node from which branch will occur.
+    ///
+    /// # Return
+    /// Option<Vector2<f64>>
+    /// * Vector2<f64> if a good direction candidate exists.
+    /// * None if no open direction exists, or is a good candidate.
+    fn find_branch_dir(
+        &self, map: &TownMap, node_id: NodeId
+    ) -> Option<Vector2<f64>> {
+        const N_SAMPLES: usize = 16;
+
+        // Set up direction iterator.
+        let node = map.node(node_id);
+        let min_cos = self.settings.min_fork_angle.cos();
+        let iter = OpenDir::new(node, 0.1).take(N_SAMPLES).filter(
+            |&v| node.nearest_edge(v).1 < min_cos
+        );
+
+        // Find direction that has best combination of;
+        // 1: Separation from existing streets,
+        // 2: Alignment with influence tensor field.
+        // 3: Street cost mod from callback in settings.
+        let max_result = util::partial_max(iter, |&v| {
+            let nearest_angle = node.nearest_edge(v).1.acos();
+            let angle_sin = nearest_angle.sin();
+
+            // Sample alignment
+            // The sample position is offset from the node.
+            let sample_pos = node.uv() + v * self.settings.base_edge_len;
+            let influence_vec = map.value_map().sample(sample_pos);
+            let influence = influence_vec.dot(v) * influence_vec.magnitude();
+
+            // Get cost mod.
+            let cost_mod = (self.settings.cost_mod_fn)(node.uv(), sample_pos);
+
+            // Combine
+            let combined = angle_sin * influence * cost_mod;
+            combined
+        });
+
+        max_result.map(|(dir, _)| dir)
     }
 }
 

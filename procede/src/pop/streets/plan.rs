@@ -2,6 +2,8 @@
 //!
 //! Produces Town/City street and building layout.
 //!
+use std::f64;
+
 use cgmath::{Vector2};
 
 use pop::streets::builder::Builder;
@@ -32,6 +34,8 @@ impl TownPlan {
             base_edge_len: 100.0,
             max_edge_len_ratio: 1.5,
             min_edge_len_ratio: 0.5,
+            base_min_influence: 0.01,
+            min_fork_angle: f64::consts::PI / 4.0,
             cost_mod_fn: &Self::default_cost_fn,
         }
     };
@@ -39,7 +43,7 @@ impl TownPlan {
     pub fn new(settings: TownPlanSettings) -> TownPlan {
         let mut map = TownMap::new(settings.map_settings);
 
-        RadialBuilder::new(settings.street_settings.clone()).build(&mut map);
+        RadialBuilder::new(&settings.street_settings).build(&mut map);
 
         TownPlan { map }
     }
@@ -60,6 +64,7 @@ impl TownPlan {
 
 #[cfg(test)]
 mod tests {
+    use std::f64;
     use std::fs;
 
     use cgmath::{vec2, Vector2};
@@ -80,6 +85,8 @@ mod tests {
                 base_edge_len: 25.0,
                 max_edge_len_ratio: 1.5,
                 min_edge_len_ratio: 0.5,
+                base_min_influence: 0.01,
+                min_fork_angle: f64::consts::PI / 4.0,
                 cost_mod_fn: &default_cost_fn,
             }
         }
