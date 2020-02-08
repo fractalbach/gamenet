@@ -4,7 +4,7 @@
 use cgmath::{Vector3, vec3};
 use cgmath::InnerSpace;
 
-use voronoi::{VoronoiSpace, NearResult};
+use voronoi3::{VoronoiSpace, NearResult};
 
 /// Struct handling retrieval of cells and clusters
 pub struct Surface {
@@ -53,7 +53,7 @@ mod tests {
     use cgmath::{Vector3, vec3};
 
     use surface::*;
-    use voronoi::VoronoiSpace;
+    use voronoi3::VoronoiSpace;
 
     #[test]
     fn test_different_indices_are_produced_from_different_vectors() {

@@ -70,7 +70,7 @@ mod river;
 mod surface;
 mod tectonic;
 mod util;
-mod voronoi;
+mod voronoi3;
 mod world;
 
 type Vec3 = cgmath::Vector3<f64>;

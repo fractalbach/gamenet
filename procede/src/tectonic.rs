@@ -5,7 +5,7 @@ use cgmath::{Basis3, Rotation, Vector2, Vector3, vec2, vec3};
 use cgmath::InnerSpace;
 use lru_cache::LruCache;
 
-use voronoi::*;
+use voronoi3::*;
 use surface::Surface;
 use util::{hash_indices, vec2arr};
 use noise::{Perlin, Fbm, NoiseFn, Seedable};
@@ -388,7 +388,7 @@ mod tests {
     use cgmath::{Vector3, vec3};
 
     use surface::Surface;
-    use voronoi::NearResult;
+    use voronoi3::NearResult;
 
     use tectonic::*;
 

@@ -161,7 +161,7 @@ mod tests {
 
     use cgmath::Vector3;
 
-    use voronoi::*;
+    use voronoi3::*;
 
     #[test]
     fn test_get_region() {
