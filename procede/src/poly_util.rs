@@ -1,8 +1,11 @@
+use num_traits::{Float, FromPrimitive};
+use std::f64;
 use std::mem::swap;
 use std::usize;
 
 use geo_types::{Polygon, Point, LineString, CoordinateType};
 use geo::algorithm::euclidean_length::EuclideanLength;
+use geo::algorithm::area::Area;
 
 //
 ///// Splits polygon in half, using existing vertices, preferring output
@@ -37,8 +40,9 @@ trait PolyOps<T: CoordinateType> {
 
 impl<T> PolyOps<T> for Polygon<T>
 where
-    T: CoordinateType,
-    geo::LineString<T>: geo::prelude::EuclideanLength<T>
+    T: CoordinateType + Float + FromPrimitive,
+    geo::LineString<T>: geo::prelude::EuclideanLength<T>,
+    geo::Polygon<T>: geo::prelude::Area<T>,
 {
     fn split(&self, mut i0: usize, mut i1: usize) -> (Polygon<T>, Polygon<T>) {
         debug_assert_ne!(i0, i1);
@@ -75,16 +79,25 @@ where
     }
 
     fn halve(&self) -> (Polygon<T>, Polygon<T>) {
-        let mut min_result: f64 = -1.;
+        let mut min_result: T = T::from_f64(f64::INFINITY).unwrap();
         let mut min_i0: usize = usize::MAX;
         let mut min_i1: usize = usize::MAX;
         // Iterate over all unique pairings of points, finding the
         // pairing that has the smallest perimeter to area ratio squared
         // for both resulting polygons.
         for i0 in 0..self.exterior().num_coords() {
-            for i1 in i0..self.exterior().num_coords() {
+            for i1 in (i0 + 1)..self.exterior().num_coords() {
                 let (poly_a, poly_b) = self.split(i0, i1);
-                // TODO
+                let ratio_a: T = poly_a.perimeter() / poly_a.area();
+                let ratio_b: T = poly_b.perimeter() / poly_b.area();
+                let ratio_a_sq = ratio_a * ratio_a;
+                let ratio_b_sq = ratio_b * ratio_b;
+                let result = ratio_a_sq + ratio_b_sq;
+                if result < min_result {
+                    min_result = result;
+                    min_i0 = i0;
+                    min_i1 = i1;
+                }
             }
         }
 
@@ -110,6 +123,12 @@ mod tests {
         ($x:expr, $y:expr) => {{ Coordinate::<f64>::from(($x, $y)) }}
     }
 
+    /// Test shape resembles:
+    ///
+    ///    o     o
+    ///
+    ///    o     o
+    ///
     #[test]
     fn test_simple_split1() {
         let original = Polygon::new(
@@ -130,6 +149,12 @@ mod tests {
         assert_vec2_near!(b.exterior()[2], coord!(1., 1.));
     }
 
+    /// Test shape resembles:
+    ///
+    ///    o     o
+    ///
+    ///    o     o
+    ///
     #[test]
     fn test_simple_split2() {
         let original = Polygon::new(
@@ -150,6 +175,12 @@ mod tests {
         assert_vec2_near!(b.exterior()[2], coord!(1., 0.));
     }
 
+    /// Test shape resembles:
+    ///
+    ///    o     o
+    /// o           o
+    ///    o     o
+    ///
     #[test]
     fn test_hex_split() {
         let original = Polygon::new(
@@ -174,6 +205,12 @@ mod tests {
         assert_vec2_near!(b.exterior()[3], coord!(1.5, 0.5));
     }
 
+    /// Test shape resembles:
+    ///
+    ///    o     o
+    ///
+    ///    o     o
+    ///
     #[test]
     fn test_perimeter() {
         let poly: Polygon<f64> = Polygon::new(
@@ -181,5 +218,42 @@ mod tests {
             vec![],
         );
         assert_approx_eq!(poly.perimeter(), 4.);
+    }
+
+    /// Tests that poly is broken in halves predictably.
+    ///
+    /// Test shape resembles:
+    ///
+    ///    o  o  o
+    /// o           o
+    ///    o  o  o
+    #[test]
+    fn test_halve() {
+        let original = Polygon::new(
+            LineString::from(
+                vec![
+                    (0., 0.), (-0.5, 0.5), (0., 1.), (0.5, 1.),
+                    (1., 1.), (1.5, 0.5), (1., 0.), (0.5, 0.),
+                ]
+            ),
+            vec![],
+        );
+
+        let (a, b) = original.halve();
+
+        // Check A.
+        assert_vec2_near!(a.exterior()[0], coord!(0., 0.));
+        assert_vec2_near!(a.exterior()[1], coord!(-0.5, 0.5));
+        assert_vec2_near!(a.exterior()[2], coord!(0., 1.));
+        assert_vec2_near!(a.exterior()[3], coord!(0.5, 1.));
+        assert_vec2_near!(a.exterior()[4], coord!(0.5, 0.));
+
+        // Check B.
+        assert_vec2_near!(b.exterior()[0], coord!(0.5, 1.));
+        assert_vec2_near!(b.exterior()[1], coord!(1., 1.));
+        assert_vec2_near!(b.exterior()[2], coord!(1.5, 0.5));
+        assert_vec2_near!(b.exterior()[3], coord!(1., 0.));
+        assert_vec2_near!(b.exterior()[4], coord!(0.5, 0.));
+
     }
 }
