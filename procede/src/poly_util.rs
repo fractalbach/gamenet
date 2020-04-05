@@ -1,6 +1,8 @@
 use std::mem::swap;
+use std::usize;
 
 use geo_types::{Polygon, Point, LineString, CoordinateType};
+use geo::algorithm::euclidean_length::EuclideanLength;
 
 //
 ///// Splits polygon in half, using existing vertices, preferring output
@@ -18,15 +20,30 @@ trait PolyOps<T: CoordinateType> {
 
     /// Split polygon into two between two vertices.
     ///
-    /// Does not support polygons that have enclaves (openings) inside.
+    /// Does not support polygons that have interior edges (gaps).
     fn split(&self, i0: usize, i1: usize) -> (Polygon<T>, Polygon<T>);
+
+
+    /// Split polygon into two, preferring pieces that are rounder
+    /// rather than thinner.
+    ///
+    /// Does not support polygons that have interior edges (gaps).
+    fn halve(&self) -> (Polygon<T>, Polygon<T>);
+
+    /// Gets exterior perimeter length.
+    fn perimeter(&self) -> T;
 }
 
 
-impl<T> PolyOps<T> for Polygon<T> where T: CoordinateType {
+impl<T> PolyOps<T> for Polygon<T>
+where
+    T: CoordinateType,
+    geo::LineString<T>: geo::prelude::EuclideanLength<T>
+{
     fn split(&self, mut i0: usize, mut i1: usize) -> (Polygon<T>, Polygon<T>) {
         debug_assert_ne!(i0, i1);
         debug_assert!(i1 < self.exterior().num_coords());
+        debug_assert_eq!(self.interiors().len(), 0);
 
         if i1 < i0 {
             swap(&mut i0, &mut i1);
@@ -56,6 +73,29 @@ impl<T> PolyOps<T> for Polygon<T> where T: CoordinateType {
 
         return (a, b);
     }
+
+    fn halve(&self) -> (Polygon<T>, Polygon<T>) {
+        let mut min_result: f64 = -1.;
+        let mut min_i0: usize = usize::MAX;
+        let mut min_i1: usize = usize::MAX;
+        // Iterate over all unique pairings of points, finding the
+        // pairing that has the smallest perimeter to area ratio squared
+        // for both resulting polygons.
+        for i0 in 0..self.exterior().num_coords() {
+            for i1 in i0..self.exterior().num_coords() {
+                let (poly_a, poly_b) = self.split(i0, i1);
+                // TODO
+            }
+        }
+
+        debug_assert!(min_i0 != usize::MAX);
+        debug_assert!(min_i1 != usize::MAX);
+        return self.split(min_i0, min_i1);
+    }
+
+    fn perimeter(&self) -> T {
+        return self.exterior().euclidean_length();
+    }
 }
 
 
@@ -63,6 +103,8 @@ impl<T> PolyOps<T> for Polygon<T> where T: CoordinateType {
 mod tests {
     use geo_types::{Polygon, Point, Coordinate};
     use poly_util::*;
+
+    use assert_approx_eq::assert_approx_eq;
 
     macro_rules! coord {
         ($x:expr, $y:expr) => {{ Coordinate::<f64>::from(($x, $y)) }}
@@ -130,5 +172,14 @@ mod tests {
         assert_vec2_near!(b.exterior()[1], coord!(0., 1.));
         assert_vec2_near!(b.exterior()[2], coord!(1., 1.));
         assert_vec2_near!(b.exterior()[3], coord!(1.5, 0.5));
+    }
+
+    #[test]
+    fn test_perimeter() {
+        let poly: Polygon<f64> = Polygon::new(
+            LineString::from(vec![(0., 0.), (0., 1.), (1., 1.), (1., 0.)]),
+            vec![],
+        );
+        assert_approx_eq!(poly.perimeter(), 4.);
     }
 }
