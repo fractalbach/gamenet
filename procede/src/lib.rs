@@ -54,6 +54,7 @@ extern crate cgmath;
 extern crate fnv;
 extern crate geo;
 extern crate geo_booleanop;
+#[macro_use] extern crate geo_types;
 #[macro_use] extern crate itertools;
 extern crate lru_cache;
 extern crate lyon_geom;
@@ -68,6 +69,7 @@ extern crate wasm_bindgen;
 mod test_util;
 
 mod pop;
+mod poly_util;
 mod quad;
 mod river;
 mod surface;

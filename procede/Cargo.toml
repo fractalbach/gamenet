@@ -10,8 +10,9 @@ crate-type = ["cdylib"]
 assert_approx_eq = "1.1.0"
 cgmath = { version = "0.17.0", features = ["serde"] }
 fnv = "1.0.6"
+geo = { version = "0.12.2", features = ["serde"] }
 geo-booleanop = "0.1.4"
-geo = "0.12.2"
+geo-types = { version = "0.4.3", features = ["serde"] }
 itertools = "0.8.0"
 lru-cache = "0.1.2"
 lyon_geom = "0.14.1"
