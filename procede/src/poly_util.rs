@@ -69,7 +69,7 @@ mod tests {
     }
 
     #[test]
-    fn test_simple_split() {
+    fn test_simple_split1() {
         let original = Polygon::new(
             LineString::from(vec![(0., 0.), (0., 1.), (1., 1.), (1., 0.)]),
             vec![],
@@ -86,5 +86,49 @@ mod tests {
         assert_vec2_near!(b.exterior()[0], coord!(0., 0.));
         assert_vec2_near!(b.exterior()[1], coord!(0., 1.));
         assert_vec2_near!(b.exterior()[2], coord!(1., 1.));
+    }
+
+    #[test]
+    fn test_simple_split2() {
+        let original = Polygon::new(
+            LineString::from(vec![(0., 0.), (0., 1.), (1., 1.), (1., 0.)]),
+            vec![],
+        );
+
+        let (a, b) = original.split(1, 3);
+
+        // Check A.
+        assert_vec2_near!(a.exterior()[0], coord!(0., 0.));
+        assert_vec2_near!(a.exterior()[1], coord!(0., 1.));
+        assert_vec2_near!(a.exterior()[2], coord!(1., 0.));
+
+        // Check B.
+        assert_vec2_near!(b.exterior()[0], coord!(0., 1.));
+        assert_vec2_near!(b.exterior()[1], coord!(1., 1.));
+        assert_vec2_near!(b.exterior()[2], coord!(1., 0.));
+    }
+
+    #[test]
+    fn test_hex_split() {
+        let original = Polygon::new(
+            LineString::from(
+                vec![(0., 0.), (-0.5, 0.5), (0., 1.), (1., 1.), (1.5, 0.5), (1., 0.)]
+            ),
+            vec![],
+        );
+
+        let (a, b) = original.split(1, 4);
+
+        // Check A.
+        assert_vec2_near!(a.exterior()[0], coord!(0., 0.));
+        assert_vec2_near!(a.exterior()[1], coord!(-0.5, 0.5));
+        assert_vec2_near!(a.exterior()[2], coord!(1.5, 0.5));
+        assert_vec2_near!(a.exterior()[3], coord!(1., 0.));
+
+        // Check B.
+        assert_vec2_near!(b.exterior()[0], coord!(-0.5, 1.));
+        assert_vec2_near!(b.exterior()[1], coord!(0., 1.));
+        assert_vec2_near!(b.exterior()[2], coord!(1., 1.));
+        assert_vec2_near!(b.exterior()[3], coord!(1.5, 0.5));
     }
 }
