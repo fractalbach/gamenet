@@ -375,9 +375,10 @@ mod tests {
     use cgmath::{Vector2, Vector3, vec2, vec3};
     use serde_json;
 
+    use tectonic::{TectonicLayer, TectonicInfo};
+    use test_util::test_out;
     use river::major::*;
     use river::river_graph::Node;
-    use tectonic::{TectonicLayer, TectonicInfo};
 
     // ----------------------------------------------------------------
     // Region
@@ -462,7 +463,8 @@ mod tests {
 
         // Serialize graph.
         let s = serde_json::to_string_pretty(&region).unwrap();
-        fs::write("test_region_graph.json", &s).expect("Unable to write");
+        fs::write(test_out("test_region_graph.json"), &s)
+            .expect("Unable to write");
     }
 
     #[test]

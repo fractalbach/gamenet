@@ -69,6 +69,7 @@ mod tests {
 
     use cgmath::{vec2, Vector2};
 
+    use test_util::test_out;
     use pop::streets::builder::StreetSegmentBuilder;
     use pop::streets::map::{TownMap, TownMapSettings, Node};
     use pop::streets::plan::{TownPlan, TownPlanSettings};
@@ -109,6 +110,6 @@ mod tests {
 
         // Serialize map.
         let s = serde_json::to_string_pretty(&map).unwrap();
-        fs::write("test_simple_town_graph.json", &s).expect("Unable to write");
+        fs::write(test_out("test_simple_town_graph.json"), &s).expect("Unable to write");
     }
 }
