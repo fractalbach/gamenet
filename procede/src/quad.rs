@@ -8,7 +8,7 @@
 use std::cmp::{Ord, Ordering};
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
-use std::ops::{Add, Neg, Sub, Index, IndexMut};
+use std::ops::{Index, IndexMut};
 
 use cgmath::{Vector2, vec2};
 use cgmath::MetricSpace;
