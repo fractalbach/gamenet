@@ -22,7 +22,7 @@ pub struct StreetBuilderSettings<'a> {
     pub min_edge_len_ratio: f64,
     pub base_min_influence: f64,
     pub min_fork_angle: f64,
-    pub cost_mod_fn: &'a Fn(Vector2<f64>, Vector2<f64>) -> f64,
+    pub cost_mod_fn: &'a dyn Fn(Vector2<f64>, Vector2<f64>) -> f64,
     // As const settings are required, they should be added here.
 }
 
