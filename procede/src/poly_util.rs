@@ -28,6 +28,17 @@ trait PolyOps<T: CoordinateType> {
     /// rather than thinner.
     ///
     /// Does not support polygons that have interior edges (gaps).
+    ///
+    /// Python function for calculating number of iterations that will be
+    /// performed for a given number of samples:
+    /// ```
+    /// def n_iter(n: int) -> int:
+    ///     i = 0
+    ///     for j in range(n):
+    ///         for k in range(j + 1, n):
+    ///             i += 1
+    ///     return i
+    /// ```
     fn halve_with_samples(&self, samples: usize) -> (Polygon<T>, Polygon<T>);
 
     /// Gets exterior perimeter length.
