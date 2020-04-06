@@ -777,7 +777,7 @@ impl Rect {
         let half_offset = vec2(self.width() / 2.0, 0.0);
         (
             Rect::from_point_and_size(self.minimums, half_size),
-            Rect::from_point_and_size((self.minimums + half_offset), half_size),
+            Rect::from_point_and_size(self.minimums + half_offset, half_size),
         )
     }
 
