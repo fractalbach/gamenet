@@ -7,18 +7,7 @@ use geo_types::{Polygon, Point, LineString, CoordinateType};
 use geo::algorithm::euclidean_length::EuclideanLength;
 use geo::algorithm::area::Area;
 
-//
-///// Splits polygon in half, using existing vertices, preferring output
-///// shapes that minimize surface area (Are rounder rather than thinner)
-//pub fn split_even(poly: &Polygon<f64>) -> (Polygon<f64>, Polygon<f64>) {
-//    // Iterate over all combinations of polygons.
-//    for (i, a) in poly.exterior().points_iter().enumerate() {
-//        for b in poly.exterior().points_iter().skip(i) {
-//
-//        }
-//    }
-//}
-
+/// Additional utility operations for Polygon.
 trait PolyOps<T: CoordinateType> {
 
     /// Split polygon into two between two vertices.
@@ -31,7 +20,15 @@ trait PolyOps<T: CoordinateType> {
     /// rather than thinner.
     ///
     /// Does not support polygons that have interior edges (gaps).
+    ///
+    /// By default, limits sample points to 32.
     fn halve(&self) -> (Polygon<T>, Polygon<T>);
+
+    /// Split polygon into two, preferring pieces that are rounder
+    /// rather than thinner.
+    ///
+    /// Does not support polygons that have interior edges (gaps).
+    fn halve_with_samples(&self, samples: usize) -> (Polygon<T>, Polygon<T>);
 
     /// Gets exterior perimeter length.
     fn perimeter(&self) -> T;
@@ -79,15 +76,19 @@ where
     }
 
     fn halve(&self) -> (Polygon<T>, Polygon<T>) {
+        // A maximum of 32 points are sampled. (496 iterations).
+        return self.halve_with_samples(32);
+    }
+
+    fn halve_with_samples(&self, max_samples: usize) -> (Polygon<T>, Polygon<T>) {
         let mut min_result: T = T::from_f64(f64::INFINITY).unwrap();
         let mut min_i0: usize = usize::MAX;
         let mut min_i1: usize = usize::MAX;
         // Iterate over all unique pairings of points, finding the
         // pairing that has the smallest perimeter to area ratio squared
         // for both resulting polygons.
-        // A maximum of 32 points are sampled. (496 iterations)
         let n_points = self.exterior().num_coords();
-        let decimation = 1 + n_points / 32;
+        let decimation = 1 + n_points / max_samples;
         for i0 in (0..n_points).step_by(decimation) {
             for i1 in ((i0 + 1)..n_points).step_by(decimation) {
                 let (poly_a, poly_b) = self.split(i0, i1);
