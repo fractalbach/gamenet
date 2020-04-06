@@ -85,8 +85,11 @@ where
         // Iterate over all unique pairings of points, finding the
         // pairing that has the smallest perimeter to area ratio squared
         // for both resulting polygons.
-        for i0 in 0..self.exterior().num_coords() {
-            for i1 in (i0 + 1)..self.exterior().num_coords() {
+        // A maximum of 32 points are sampled. (496 iterations)
+        let n_points = self.exterior().num_coords();
+        let decimation = 1 + n_points / 32;
+        for i0 in (0..n_points).step_by(decimation) {
+            for i1 in ((i0 + 1)..n_points).step_by(decimation) {
                 let (poly_a, poly_b) = self.split(i0, i1);
                 let ratio_a: T = poly_a.perimeter() / poly_a.area();
                 let ratio_b: T = poly_b.perimeter() / poly_b.area();
@@ -254,6 +257,5 @@ mod tests {
         assert_vec2_near!(b.exterior()[2], coord!(1.5, 0.5));
         assert_vec2_near!(b.exterior()[3], coord!(1., 0.));
         assert_vec2_near!(b.exterior()[4], coord!(0.5, 0.));
-
     }
 }
