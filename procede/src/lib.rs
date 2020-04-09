@@ -69,7 +69,6 @@ extern crate wasm_bindgen;
 mod test_util;
 
 mod pop;
-mod poly_util;
 mod quad;
 mod river;
 mod surface;

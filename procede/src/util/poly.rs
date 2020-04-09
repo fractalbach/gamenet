@@ -8,7 +8,7 @@ use geo::algorithm::euclidean_length::EuclideanLength;
 use geo::algorithm::area::Area;
 
 /// Additional utility operations for Polygon.
-trait PolyOps<T: CoordinateType> {
+pub trait PolyOps<T: CoordinateType> {
 
     /// Split polygon into two between two vertices.
     ///
@@ -130,7 +130,7 @@ where
 #[cfg(test)]
 mod tests {
     use geo_types::{Polygon, Point, Coordinate};
-    use poly_util::*;
+    use util::poly::*;
 
     use assert_approx_eq::assert_approx_eq;
 
