@@ -161,6 +161,6 @@ macro_rules! assert_is_not {
 }
 
 pub fn test_out(f_name: &str) -> String {
-    fs::create_dir_all(TEST_OUT_DIR);
+    fs::create_dir_all(TEST_OUT_DIR).ok();
     TEST_OUT_DIR.to_owned() + f_name
 }
