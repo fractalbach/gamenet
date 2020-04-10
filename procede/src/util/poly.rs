@@ -7,6 +7,10 @@ use geo_types::{Polygon, Point, LineString, CoordinateType};
 use geo::algorithm::euclidean_length::EuclideanLength;
 use geo::algorithm::area::Area;
 
+use quad::{Rect, Spatial};
+use util::point::PointOps;
+
+
 /// Additional utility operations for Polygon.
 pub trait PolyOps<T: CoordinateType> {
 
@@ -123,6 +127,21 @@ where
 
     fn perimeter(&self) -> T {
         return self.exterior().euclidean_length();
+    }
+}
+
+
+impl Spatial for Polygon<f64> {
+    fn aabb(&self) -> Rect {
+        let to_vec = |p: Point<f64>| p.to_vec();
+        let mut rect = Rect::null_at(
+            self.exterior().points_iter().map(to_vec).nth(0).unwrap()
+        );
+        let points = self.exterior().points_iter().map(to_vec);
+        for p in points.skip(1) {
+            rect.expand_to_include(p);
+        }
+        rect
     }
 }
 
