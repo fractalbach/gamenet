@@ -10,6 +10,7 @@
 ///
 /// Space used by paths are subtracted from cells, yielding the final
 /// lot sizes.
+use itertools::Itertools;
 use std::iter::FromIterator;
 
 use cgmath::{Vector2, vec2};
@@ -65,6 +66,7 @@ pub struct LotPoly {
 /// Struct with data about a single lot.
 #[derive(Serialize, Deserialize)]
 pub struct Lot {
+    nucleus: Point<f64>,
     bounds: Polygon<f64>,
 }
 
@@ -118,9 +120,13 @@ impl LotPoly {
         let nuclei: Vec<Point<f64>> = Self::create_lot_nuclei(
             poly, connections, settings
         );
-        let lot_polygons = Self::create_lot_polygons(nuclei, poly);
+        let lot_polygons = Self::create_lot_polygons(nuclei.clone(), poly);
 
-        lot_polygons.map(|poly| Lot::new(poly.clone()))
+        let mut lots = vec!();
+        for (&nucleus, poly) in nuclei.iter().zip_eq(lot_polygons.iter()) {
+            lots.push(Lot::new(nucleus, poly.clone()));
+        }
+        lots
     }
 
     fn create_lot_nuclei(
@@ -191,8 +197,9 @@ impl LotPoly {
 }
 
 impl Lot {
-    fn new(poly: Polygon<f64>) -> Lot {
+    fn new(nucleus: Point<f64>, poly: Polygon<f64>) -> Lot {
         Lot {
+            nucleus,
             bounds: poly
         }
     }
