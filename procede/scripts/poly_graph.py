@@ -30,11 +30,14 @@ def discover_poly(path: Path):
     def recurse(entry: ty.Dict[str, ty.Any]):
         # Recognize polygons by their inner member 'exterior'.
         for k, v in entry.items():
-            if k == 'exterior':
+            if k == 'exterior' and isinstance(v, list):
                 yield Poly(v)
-            else:
-                if isinstance(v, dict):
-                    yield from recurse(v)
+            elif isinstance(v, dict):
+                yield from recurse(v)
+            elif isinstance(v, list):
+                for item in v:
+                    if isinstance(item, dict):
+                        yield from recurse(item)
 
     yield from recurse(data)
 
