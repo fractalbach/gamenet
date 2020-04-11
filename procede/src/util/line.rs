@@ -54,7 +54,7 @@ where T: CoordinateType + BaseNum + Float + BaseFloat + FromPrimitive
     ///
     /// Will be normalized.
     fn dir(&self) -> Vector2<T> {
-        self.end_point().to_vec() - self.start_point().to_vec().normalize()
+        (self.end_point().to_vec() - self.start_point().to_vec()).normalize()
     }
 
     fn length2(&self) -> T {
