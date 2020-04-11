@@ -1,4 +1,5 @@
 mod builder;
+mod lot;
 mod map;
 mod open_dir;
 mod plan;
