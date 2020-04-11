@@ -32,7 +32,11 @@ impl Delaunay {
         let corner = rect.top_left() - rect.midpoint();
         let radius = (corner.x.powi(2) + corner.y.powi(2)).sqrt();
 
-        Delaunay::with_center(radius, center.to_point())
+        let mut delaunay = Delaunay::with_center(radius, center.to_point());
+        for point in points {
+            delaunay.add_point(point);
+        }
+        delaunay
     }
 
     pub fn add_point(&mut self, point: Point<f64>) {
