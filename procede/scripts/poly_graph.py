@@ -23,6 +23,15 @@ class Poly:
             graph.add_edge(a, b)
 
 
+class Point:
+    def __init__(self, data: dict) -> None:
+        self.x = data['x']
+        self.y = data['y']
+
+    def add(self, graph: nx.Graph) -> None:
+        graph.add_node(uuid4(), pos=(self.x, self.y))
+
+
 def discover_poly(path: Path):
     with path.open() as f:
         data = json.load(f)
@@ -32,6 +41,9 @@ def discover_poly(path: Path):
         for k, v in entry.items():
             if k == 'exterior' and isinstance(v, list):
                 yield Poly(v)
+            if k == 'y' and 'x' in entry:
+                yield Point(entry)
+                break
             elif isinstance(v, dict):
                 yield from recurse(v)
             elif isinstance(v, list):
@@ -45,8 +57,8 @@ def discover_poly(path: Path):
 def graph_poly(path: Path):
     graph = nx.Graph()
 
-    for poly in discover_poly(path):
-        poly.add(graph)
+    for obj in discover_poly(path):
+        obj.add(graph)
 
     nx.draw(
         graph,
