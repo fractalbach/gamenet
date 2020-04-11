@@ -1,5 +1,6 @@
 use cgmath::{Vector2, vec2};
 use geo_types::{CoordinateType, Point};
+use quad::{Spatial, Rect};
 
 
 pub trait PointOps<T: CoordinateType> {

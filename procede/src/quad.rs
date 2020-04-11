@@ -599,6 +599,15 @@ impl Rect {
         r
     }
 
+    pub fn from_point_vec(points: Vec<Vector2<f64>>) -> Rect {
+        assert!(!points.is_empty());
+        let mut bounds = Rect::null_at(points[0]);
+        for &point in points.iter().skip(1) {
+            bounds.expand_to_include(point);
+        }
+        bounds
+    }
+
     pub fn from_point_and_size(point: Vector2<f64>, size: Vector2<f64>) -> Rect {
         assert!(size.x > 0.0);
         assert!(size.y > 0.0);
@@ -821,6 +830,13 @@ impl Rect {
             // _ x
             Rect::from_point_and_size((self.minimums + half), half),
         ]
+    }
+
+    pub fn expanded(&self, margin: f64) -> Rect {
+        Rect::from_min_max(
+            vec2(self.minimums.x - margin, self.minimums.y - margin),
+            vec2(self.maximums.x + margin, self.maximums.y + margin)
+        )
     }
 }  // Rect
 

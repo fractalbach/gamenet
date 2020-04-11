@@ -13,6 +13,8 @@ use util::point::PointOps;
 
 /// Additional utility operations for Polygon.
 pub trait PolyOps<T: CoordinateType> {
+    /// Creates a new Polygon with a passed exterior.
+    fn from_exterior(exterior: Vec<Point<T>>) -> Polygon<T>;
 
     /// Split polygon into two between two vertices.
     ///
@@ -56,6 +58,13 @@ where
     geo::LineString<T>: geo::prelude::EuclideanLength<T>,
     geo::Polygon<T>: geo::prelude::Area<T>,
 {
+    fn from_exterior(exterior: Vec<Point<T>>) -> Polygon<T> {
+        Polygon::new(
+            LineString::from(exterior),
+            vec!(),
+        )
+    }
+
     fn split(&self, mut i0: usize, mut i1: usize) -> (Polygon<T>, Polygon<T>) {
         debug_assert_ne!(i0, i1);
         debug_assert!(i1 < self.exterior().num_coords());

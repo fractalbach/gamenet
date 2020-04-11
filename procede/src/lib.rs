@@ -51,6 +51,7 @@
 
 extern crate assert_approx_eq;
 extern crate cgmath;
+extern crate delaunay2d;
 extern crate fnv;
 extern crate geo;
 extern crate geo_booleanop;
@@ -62,12 +63,12 @@ extern crate noise;
 extern crate num_traits;
 extern crate serde;
 extern crate serde_json;
-extern crate voronoi;
 extern crate wasm_bindgen;
 
 #[macro_use]
 mod test_util;
 
+mod delaunay;
 mod pop;
 mod quad;
 mod river;

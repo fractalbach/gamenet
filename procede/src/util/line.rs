@@ -1,5 +1,5 @@
 use num_traits::{Float, FromPrimitive};
-use cgmath::{Vector2, vec2, BaseNum, BaseFloat};
+use cgmath::{Vector2, vec2, BaseNum, BaseFloat, InnerSpace};
 use cgmath::MetricSpace;
 use geo_types::{Line, LineString, Coordinate, CoordinateType, Point};
 
@@ -52,9 +52,9 @@ where T: CoordinateType + BaseNum + Float + BaseFloat + FromPrimitive
 
     /// Gets direction vector from line.
     ///
-    /// Will _not_ be normalized.
+    /// Will be normalized.
     fn dir(&self) -> Vector2<T> {
-        self.end_point().to_vec() - self.start_point().to_vec()
+        self.end_point().to_vec() - self.start_point().to_vec().normalize()
     }
 
     fn length2(&self) -> T {
