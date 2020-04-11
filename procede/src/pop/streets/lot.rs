@@ -133,6 +133,14 @@ impl LotPoly {
     fn create_lot_nuclei(
         poly: &Polygon<f64>, connections: &Vec<bool>, settings: &LotSettings
     ) -> Vec<Point<f64>> {
+        debug_assert!(
+            poly.exterior().num_coords() - 1 == connections.len(),
+            "Connections vec length must match the number of polygon \
+            exterior edges. Got {} and {}",
+            poly.exterior().num_coords() - 1,
+            connections.len()
+        );
+
         // Produce quad-map to store lot centers in.
         let bounds = poly.aabb();
         let mut map: QuadMap<Vector2<f64>> = QuadMap::default(bounds);
