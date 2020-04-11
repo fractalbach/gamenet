@@ -142,7 +142,7 @@ impl LotPoly {
             );
             let right = edge.right();  // Right-side normal vec.
             let edge_len = edge.length();
-            let n_lot_faces = (settings.width / edge_len) as i32;
+            let n_lot_faces = (edge_len / settings.width) as i32;
             if n_lot_faces < 1 {
                 continue;
             }
@@ -221,6 +221,7 @@ mod tests {
             cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
         };
         let poly = LotPoly::new(poly, connections, &settings);
+        assert_gt!(poly.lots.len(), 4);
 
         serialize_to(&poly, "lot_division.json");
     }
