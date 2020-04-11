@@ -376,7 +376,7 @@ mod tests {
     use serde_json;
 
     use tectonic::{TectonicLayer, TectonicInfo};
-    use test_util::test_out;
+    use test_util::serialize_to;
     use river::major::*;
     use river::river_graph::Node;
 
@@ -462,9 +462,7 @@ mod tests {
         assert_gt!(region.graph.len(), 0);
 
         // Serialize graph.
-        let s = serde_json::to_string_pretty(&region).unwrap();
-        fs::write(test_out("test_region_graph.json"), &s)
-            .expect("Unable to write");
+        serialize_to(&region, "test_region_graph.json");
     }
 
     #[test]

@@ -1,6 +1,7 @@
 //! Module containing utility macros and functions for use in tests.
 
 use std::fs as fs;
+use serde::Serialize;
 
 const TEST_OUT_DIR: &str = "target/test_out/";
 
@@ -163,4 +164,13 @@ macro_rules! assert_is_not {
 pub fn test_out(f_name: &str) -> String {
     fs::create_dir_all(TEST_OUT_DIR).ok();
     TEST_OUT_DIR.to_owned() + f_name
+}
+
+pub fn serialize_to<T: Serialize>(obj: &T, f_name: &str) {
+    let s = serde_json::to_string_pretty(obj).expect(
+        "Unable to serialize object."
+    );
+    fs::write(test_out(f_name), &s).expect(
+        "Unable to write"
+    );
 }
