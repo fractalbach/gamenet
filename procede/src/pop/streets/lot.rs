@@ -16,6 +16,7 @@ use std::iter::FromIterator;
 use cgmath::{Vector2, vec2};
 use geo_booleanop::boolean::BooleanOp;
 use geo_types::{Polygon, Point, Line};
+use geo::contains::Contains;
 use serde::{Deserialize, Serialize};
 
 use delaunay;
@@ -177,6 +178,9 @@ impl LotPoly {
         if nuclei.is_empty() {
             return vec!()
         }
+        debug_assert!(nuclei.iter().all(|nucleus|{
+            bounding_poly.contains(nucleus)
+        }));
         let delaunay = delaunay::Delaunay::from_points(nuclei, 50.);
         let unclipped_polygons = delaunay.voronoi_polygons();
         let mut lot_polygons = vec!();
