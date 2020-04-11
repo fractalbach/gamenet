@@ -170,9 +170,26 @@ impl LotPoly {
             for face in faces.lines() {
                 let midpoint = face.midpoint();
                 let lot_center = midpoint.to_vec() + nuclei_offset;
+
+                // Check nucleus is not too close to another.
                 if map.nearest(lot_center, settings.width).is_some() {
                     continue;
                 }
+
+                // Check nucleus is within polygon.
+                // (Weird poly shapes are possible.)
+                if !poly.contains(&lot_center.to_point()) {
+                    continue;
+                }
+
+                // Check lot has enough space behind the nucleus.
+                if !poly.contains(
+                    &(midpoint.to_vec() + nuclei_offset * 2.).to_point()
+                ) {
+                    continue;
+                }
+
+                // Add nucleus.
                 map.insert(lot_center);
                 nuclei.push(lot_center.to_point());
             }
@@ -248,5 +265,27 @@ mod tests {
         assert_gt!(poly.lots.len(), 4);
 
         serialize_to(&poly, "lot_division.json");
+    }
+
+    #[test]
+    fn test_lot_division_with_concave_side() {
+        let poly = polygon![
+            (x: -104., y: 95.),
+            (x: 204., y: 101.),
+            (x: 200., y: -40.),
+            (x: 20., y: 35.),
+            (x: -100., y: -10.),
+        ];
+        let connections = vec!(true, true, true, true, true);
+        let settings = LotSettings {
+            width: 16.,
+            depth: 20.,
+            division_fn: &|poly: &LotPoly| false,  // Don't divide.
+            cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
+        };
+        let poly = LotPoly::new(poly, connections, &settings);
+        assert_gt!(poly.lots.len(), 4);
+
+        serialize_to(&poly, "lot_division_concave.json");
     }
 }
