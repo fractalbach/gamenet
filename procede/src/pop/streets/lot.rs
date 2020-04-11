@@ -224,10 +224,10 @@ mod tests {
     #[test]
     fn test_simple_lot_division() {
         let poly = polygon![
-            (x: -100., y: -10.),
-            (x: 200., y: -40.),
-            (x: 204., y: 101.),
             (x: -104., y: 95.),
+            (x: 204., y: 101.),
+            (x: 200., y: -40.),
+            (x: -100., y: -10.),
         ];
         let connections = vec!(true, true, true, true);
         let settings = LotSettings {
