@@ -288,4 +288,27 @@ mod tests {
 
         serialize_to(&poly, "lot_division_concave.json");
     }
+
+    #[test]
+    fn test_lot_division_with_rounded_poly() {
+        let poly = polygon![
+            (x: -104., y: 95.),
+            (x: 89., y: 154.),
+            (x: 204., y: 101.),
+            (x: 200., y: -40.),
+            (x: 20., y: -75.),
+            (x: -100., y: -10.),
+        ];
+        let connections = vec!(true, true, true, true, true, true);
+        let settings = LotSettings {
+            width: 16.,
+            depth: 20.,
+            division_fn: &|poly: &LotPoly| false,  // Don't divide.
+            cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
+        };
+        let poly = LotPoly::new(poly, connections, &settings);
+        assert_gt!(poly.lots.len(), 4);
+
+        serialize_to(&poly, "lot_division_rounded.json");
+    }
 }
