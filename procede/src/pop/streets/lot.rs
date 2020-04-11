@@ -141,15 +141,20 @@ impl LotPoly {
                 poly.exterior()[i + 1],
             );
             let right = edge.right();  // Right-side normal vec.
+            let nuclei_offset = right * settings.depth / 2.;  // from face.
+
+            // Split bounding polygon edge into lot faces.
             let edge_len = edge.length();
             let n_lot_faces = (edge_len / settings.width) as i32;
             if n_lot_faces < 1 {
                 continue;
             }
             let faces = edge.divide(n_lot_faces);
+
+            // Add lot nucleus for each lot face if there is room.
             for face in faces.lines() {
                 let midpoint = face.midpoint();
-                let lot_center = midpoint.to_vec() + right * settings.depth;
+                let lot_center = midpoint.to_vec() + nuclei_offset;
                 if map.nearest(lot_center, settings.width).is_some() {
                     continue;
                 }
