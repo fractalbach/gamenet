@@ -311,4 +311,25 @@ mod tests {
 
         serialize_to(&poly, "lot_division_rounded.json");
     }
+
+    #[test]
+    fn test_lot_division_with_unconnected_edge() {
+        let poly = polygon![
+            (x: -104., y: 155.),
+            (x: 204., y: 55.),
+            (x: 200., y: -40.),
+            (x: -100., y: -10.),
+        ];
+        let connections = vec!(true, true, true, false);
+        let settings = LotSettings {
+            width: 16.,
+            depth: 20.,
+            division_fn: &|poly: &LotPoly| false,  // Don't divide.
+            cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
+        };
+        let poly = LotPoly::new(poly, connections, &settings);
+        assert_gt!(poly.lots.len(), 4);
+
+        serialize_to(&poly, "lot_division_unconnected_edge.json");
+    }
 }
