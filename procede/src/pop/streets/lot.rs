@@ -46,7 +46,6 @@ use util::vec::VecMap;
 pub struct LotSettings<'a> {
     pub width: f64,
     pub depth: f64,
-    pub division_fn: &'a Fn(&LotPoly) -> bool,
     pub cost_mod_fn: &'a Fn(Vector2<f64>, Vector2<f64>) -> f64,
     // As const settings are required, they should be added here.
 }
@@ -75,13 +74,6 @@ pub struct LotPolyIterator<'a> {
     lot_poly: &'a LotPoly,
     i: i8,
     sub_iter: Option<Box<LotPolyIterator<'a>>>,
-}
-
-pub struct LotPolyMutIterator<'a> {
-    lot_poly: &'a mut LotPoly,
-    divided: bool,
-    i: i8,
-    sub_iter: Option<Box<LotPolyMutIterator<'a>>>,
 }
 
 
@@ -345,7 +337,6 @@ mod tests {
         let settings = LotSettings {
             width: 16.,
             depth: 20.,
-            division_fn: &|poly: &LotPoly| false,  // Don't divide.
             cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
         };
         let poly = LotPoly::new(poly, connections, &settings);
@@ -367,7 +358,6 @@ mod tests {
         let settings = LotSettings {
             width: 16.,
             depth: 20.,
-            division_fn: &|poly: &LotPoly| false,  // Don't divide.
             cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
         };
         let poly = LotPoly::new(poly, connections, &settings);
@@ -390,7 +380,6 @@ mod tests {
         let settings = LotSettings {
             width: 16.,
             depth: 20.,
-            division_fn: &|poly: &LotPoly| false,  // Don't divide.
             cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
         };
         let poly = LotPoly::new(poly, connections, &settings);
@@ -411,7 +400,6 @@ mod tests {
         let settings = LotSettings {
             width: 16.,
             depth: 20.,
-            division_fn: &|poly: &LotPoly| false,  // Don't divide.
             cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
         };
         let poly = LotPoly::new(poly, connections, &settings);
@@ -443,7 +431,6 @@ mod tests {
         let settings = LotSettings {
             width: 16.,
             depth: 20.,
-            division_fn: &|poly: &LotPoly| false,  // Don't divide.
             cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
         };
         let mut poly = LotPoly::new(poly, connections, &settings);
@@ -458,19 +445,19 @@ mod tests {
     #[test]
     fn test_multiple_polygon_division() {
         let poly = polygon![
-                (x: -312., y: -20.),
-                (x: -240., y: 90.),
-                (x: -120., y: 150.),
-                (x: 0., y: 180.),
-                (x: 90., y: 150.),
-                (x: 180., y: 30.),
-                (x: 210., y: -30.),
-                (x: 150., y: -15.),
-                (x: 60., y: 0.),
-                (x: -30., y: 0.),
-                (x: -105., y: 0.),
-                (x: -210., y: 0.),
-            ];
+            (x: -312., y: -20.),
+            (x: -240., y: 90.),
+            (x: -120., y: 150.),
+            (x: 0., y: 180.),
+            (x: 90., y: 150.),
+            (x: 180., y: 30.),
+            (x: 210., y: -30.),
+            (x: 150., y: -15.),
+            (x: 60., y: 0.),
+            (x: -30., y: 0.),
+            (x: -105., y: 0.),
+            (x: -210., y: 0.),
+        ];
         let connections = vec!(
             false, false, false, false, false, false,
             true, true, true, true, true, true,
@@ -478,7 +465,6 @@ mod tests {
         let settings = LotSettings {
             width: 16.,
             depth: 20.,
-            division_fn: &|poly: &LotPoly| false,  // Don't divide.
             cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
         };
         let mut poly = LotPoly::new(poly, connections, &settings);
@@ -489,5 +475,4 @@ mod tests {
 
         serialize_to(&poly, "lot_polygon_division2.json");
     }
-
 }
