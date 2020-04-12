@@ -71,6 +71,19 @@ pub struct Lot {
     bounds: Polygon<f64>,
 }
 
+pub struct LotPolyIterator<'a> {
+    lot_poly: &'a LotPoly,
+    i: i8,
+    sub_iter: Option<Box<LotPolyIterator<'a>>>,
+}
+
+pub struct LotPolyMutIterator<'a> {
+    lot_poly: &'a mut LotPoly,
+    divided: bool,
+    i: i8,
+    sub_iter: Option<Box<LotPolyMutIterator<'a>>>,
+}
+
 
 // --------------------------------------------------------------------
 
@@ -92,21 +105,14 @@ impl LotPoly {
     ) -> LotPoly {
         // Produce initial lot distribution.
         let lots = Self::create_lots(&poly, &connections, settings);
-        let mut lot_poly = LotPoly {
+        LotPoly {
             poly,
             connections,
             width: settings.width,
             depth: settings.depth,
             lots,
             sub_poly: vec!(),
-        };
-
-        // Subdivide polygon if appropriate.
-        if (settings.division_fn)(&lot_poly) {
-            lot_poly.divide(settings);
         }
-
-        lot_poly
     }
 
     /// Create lots for a given polygon and other data.
@@ -136,7 +142,7 @@ impl LotPoly {
         debug_assert!(
             poly.exterior().num_coords() - 1 == connections.len(),
             "Connections vec length must match the number of polygon \
-            exterior edges. Got {} and {}",
+            exterior edges. Got {} edges and connections len {}.",
             poly.exterior().num_coords() - 1,
             connections.len()
         );
@@ -220,8 +226,45 @@ impl LotPoly {
     }
 
     /// Divides a lot polygon into two.
-    fn divide(&mut self, settings: &LotSettings) {
-        // TODO
+    pub fn divide(&mut self, settings: &LotSettings) {
+        self.lots.clear();
+        let ((poly_a, poly_b), (i0, i1)) = self.poly.halve();
+        let mut a_conn = Vec::with_capacity(poly_a.exterior().num_coords());
+        let mut b_conn = Vec::with_capacity(poly_b.exterior().num_coords());
+        for &conn_state in self.connections.iter().skip(i1) {
+            a_conn.push(conn_state);
+        }
+        for &conn_state in self.connections.iter().take(i0) {
+            a_conn.push(conn_state);
+        }
+        a_conn.push(true);
+        for &conn_state in self.connections.iter().skip(i0).take(i1 - i0) {
+            b_conn.push(conn_state);
+        }
+        b_conn.push(true);
+
+        // Produce sub-poly.
+        self.sub_poly = vec![
+            LotPoly::new(poly_a, a_conn, settings),
+            LotPoly::new(poly_b, b_conn, settings),
+        ]
+    }
+
+    pub fn n_lots(&self) -> usize {
+        if !self.sub_poly.is_empty() {
+            debug_assert!(self.lots.is_empty());
+            self.sub_poly[0].n_lots() + self.sub_poly[1].n_lots()
+        } else {
+            self.lots.len()
+        }
+    }
+
+    pub fn is_divided(&self) -> bool {
+        !self.sub_poly.is_empty()
+    }
+
+    pub fn recurse(&self) -> LotPolyIterator {
+        LotPolyIterator::new(self)
     }
 }
 
@@ -231,6 +274,50 @@ impl Lot {
             nucleus,
             bounds: poly
         }
+    }
+}
+
+impl<'a> LotPolyIterator<'a> {
+    fn new(lot_poly: &'a LotPoly) -> LotPolyIterator<'a> {
+        LotPolyIterator {
+            lot_poly,
+            i: 0,
+            sub_iter: None
+        }
+    }
+}
+
+impl<'a> Iterator for LotPolyIterator<'a> {
+    type Item = &'a LotPoly;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i == 0 {
+            self.i += 1;
+            return Some(self.lot_poly)
+        }
+        while self.i < 3 {
+            if self.sub_iter.is_none() {
+                if self.lot_poly.is_divided() {
+                    self.sub_iter = Some(Box::new(LotPolyIterator::new(
+                        &self.lot_poly.sub_poly[(self.i - 1) as usize]
+                    )));
+                } else {
+                    self.i = 3;
+                    return None;
+                }
+            }
+            let next = self.sub_iter.as_mut().unwrap().next();
+            match next {
+                Some(lot_poly) => {
+                    return Some(lot_poly)
+                },
+                None => {
+                    self.i += 1;
+                    self.sub_iter = None;
+                }
+            }
+        }
+        None  // i == 3.
     }
 }
 
@@ -332,4 +419,75 @@ mod tests {
 
         serialize_to(&poly, "lot_division_unconnected_edge.json");
     }
+
+    #[test]
+    fn test_polygon_division() {
+        let poly = polygon![
+            (x: -104., y: -10.),
+            (x: -80., y: 30.),
+            (x: -40., y: 50.),
+            (x: -00., y: 60.),
+            (x: 30., y: 50.),
+            (x: 60., y: 10.),
+            (x: 70., y: -10.),
+            (x: 50., y: -5.),
+            (x: 20., y: 0.),
+            (x: -10., y: 0.),
+            (x: -35., y: 0.),
+            (x: -70., y: 0.),
+        ];
+        let connections = vec!(
+            false, false, false, false, false, false,
+            true, true, true, true, true, true,
+        );
+        let settings = LotSettings {
+            width: 16.,
+            depth: 20.,
+            division_fn: &|poly: &LotPoly| false,  // Don't divide.
+            cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
+        };
+        let mut poly = LotPoly::new(poly, connections, &settings);
+        let n0 = poly.n_lots();
+        poly.divide(&settings);
+        let n1 = poly.n_lots();
+        assert_gt!(n1, n0);
+
+        serialize_to(&poly, "lot_polygon_division.json");
+    }
+
+    #[test]
+    fn test_multiple_polygon_division() {
+        let poly = polygon![
+                (x: -312., y: -20.),
+                (x: -240., y: 90.),
+                (x: -120., y: 150.),
+                (x: 0., y: 180.),
+                (x: 90., y: 150.),
+                (x: 180., y: 30.),
+                (x: 210., y: -30.),
+                (x: 150., y: -15.),
+                (x: 60., y: 0.),
+                (x: -30., y: 0.),
+                (x: -105., y: 0.),
+                (x: -210., y: 0.),
+            ];
+        let connections = vec!(
+            false, false, false, false, false, false,
+            true, true, true, true, true, true,
+        );
+        let settings = LotSettings {
+            width: 16.,
+            depth: 20.,
+            division_fn: &|poly: &LotPoly| false,  // Don't divide.
+            cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
+        };
+        let mut poly = LotPoly::new(poly, connections, &settings);
+        let n0 = poly.n_lots();
+        poly.divide(&settings);
+        let n1 = poly.n_lots();
+        assert_gt!(n1, n0);
+
+        serialize_to(&poly, "lot_polygon_division2.json");
+    }
+
 }
