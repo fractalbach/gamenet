@@ -36,20 +36,20 @@ def discover_poly(path: Path):
     with path.open() as f:
         data = json.load(f)
 
-    def recurse(entry: ty.Dict[str, ty.Any]):
-        # Recognize polygons by their inner member 'exterior'.
-        for k, v in entry.items():
-            if k == 'exterior' and isinstance(v, list):
-                yield Poly(v)
-            if k == 'y' and 'x' in entry:
-                yield Point(entry)
-                break
-            elif isinstance(v, dict):
-                yield from recurse(v)
-            elif isinstance(v, list):
-                for item in v:
-                    if isinstance(item, dict):
-                        yield from recurse(item)
+    def recurse(obj: ty.Any):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                # Recognize polygons by their inner member 'exterior'.
+                if k == 'exterior' and isinstance(v, list):
+                    yield Poly(v)
+                elif k == 'y' and 'x' in obj:
+                    yield Point(obj)
+                    break
+                else:
+                    yield from recurse(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                yield from recurse(item)
 
     yield from recurse(data)
 
