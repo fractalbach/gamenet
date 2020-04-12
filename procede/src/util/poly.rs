@@ -28,7 +28,7 @@ pub trait PolyOps<T: CoordinateType> {
     /// Does not support polygons that have interior edges (gaps).
     ///
     /// By default, limits sample points to 32.
-    fn halve(&self) -> (Polygon<T>, Polygon<T>);
+    fn halve(&self) -> ((Polygon<T>, Polygon<T>), (usize, usize));
 
     /// Split polygon into two, preferring pieces that are rounder
     /// rather than thinner.
@@ -45,7 +45,9 @@ pub trait PolyOps<T: CoordinateType> {
     ///             i += 1
     ///     return i
     /// ```
-    fn halve_with_samples(&self, samples: usize) -> (Polygon<T>, Polygon<T>);
+    fn halve_with_samples(
+        &self, samples: usize
+    ) -> ((Polygon<T>, Polygon<T>), (usize, usize));
 
     /// Gets exterior perimeter length.
     fn perimeter(&self) -> T;
@@ -109,19 +111,27 @@ where
         return (a, b);
     }
 
-    fn halve(&self) -> (Polygon<T>, Polygon<T>) {
+    fn halve(&self) -> ((Polygon<T>, Polygon<T>), (usize, usize)) {
         // A maximum of 32 points are sampled. (496 iterations).
         return self.halve_with_samples(32);
     }
 
-    fn halve_with_samples(&self, max_samples: usize) -> (Polygon<T>, Polygon<T>) {
+    /// Finds the shortest 'cut' between two vertices that divides the
+    /// polygon evenly, and splits the polygon into two.
+    ///
+    /// # Return
+    /// * (Polygon A, PolygonB) - Resulting halves of polygon.
+    /// * (index 0, index 1) - Indices at the ends of the 'cut' line.
+    fn halve_with_samples(
+        &self, max_samples: usize
+    ) -> ((Polygon<T>, Polygon<T>), (usize, usize)) {
         let mut min_result: T = T::from_f64(f64::INFINITY).unwrap();
         let mut min_i0: usize = usize::MAX;
         let mut min_i1: usize = usize::MAX;
         // Iterate over all unique pairings of points, finding the
         // pairing that has the smallest perimeter to area ratio squared
         // for both resulting polygons.
-        let n_points = self.exterior().num_coords();
+        let n_points = self.exterior().num_coords() - 1;
         let decimation = 1 + n_points / max_samples;
         for i0 in (0..n_points).step_by(decimation) {
             for i1 in ((i0 + 1)..n_points).step_by(decimation) {
@@ -141,7 +151,7 @@ where
 
         debug_assert!(min_i0 != usize::MAX);
         debug_assert!(min_i1 != usize::MAX);
-        return self.split(min_i0, min_i1);
+        return (self.split(min_i0, min_i1), (min_i0, min_i1));
     }
 
     fn perimeter(&self) -> T {
@@ -307,7 +317,7 @@ mod tests {
             vec![],
         );
 
-        let (a, b) = original.halve();
+        let (a, b) = original.halve().0;
 
         assert_eq!(a.exterior().num_coords(), 6);
         assert_eq!(b.exterior().num_coords(), 6);
