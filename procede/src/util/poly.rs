@@ -65,9 +65,19 @@ where
         )
     }
 
+    /// Splits polygon into two.
+    ///
+    /// Split results in a new edge being created between the i0 and i1
+    /// vertices of the original polygon.
+    ///
+    /// The first vertex in the exterior of each created polygon is the
+    /// first vertex after the edge splitting the two created polygons,
+    /// from a clockwise-winding order perspective. This allows vertices
+    /// to be added to the 'split' edge by appending them to the exterior
+    /// LineString before the final 'closing' vertex.
     fn split(&self, mut i0: usize, mut i1: usize) -> (Polygon<T>, Polygon<T>) {
         debug_assert_ne!(i0, i1);
-        debug_assert!(i1 < self.exterior().num_coords());
+        debug_assert!(i1 < self.exterior().num_coords() - 1);
         debug_assert_eq!(self.interiors().len(), 0);
 
         if i1 < i0 {
@@ -79,18 +89,18 @@ where
         let mut b_points = vec!();
 
         // Add first half of poly A.
-        for point in self.exterior().points_iter().take(i0 + 1) {
+        for point in self.exterior().points_iter().skip(i1) {
+            a_points.push(point);
+        }
+
+        // Add second half of poly A.
+        for point in self.exterior().points_iter().skip(1).take(i0) {
             a_points.push(point);
         }
 
         // Add poly B.
         for point in self.exterior().points_iter().skip(i0).take(i1 - i0 + 1) {
             b_points.push(point);
-        }
-
-        // Add second half of poly B.
-        for point in self.exterior().points_iter().skip(i1) {
-            a_points.push(point);
         }
 
         let a = Polygon::new(LineString::from(a_points), vec!());
@@ -181,12 +191,17 @@ mod tests {
 
         let (a, b) = original.split(0, 2);
 
+        assert_eq!(a.exterior().num_coords(), 4);
+        assert_eq!(b.exterior().num_coords(), 4);
+
         // Check A.
-        assert_vec2_near!(a.exterior()[0], coord!(0., 0.));
-        assert_vec2_near!(a.exterior()[1], coord!(1., 1.));
-        assert_vec2_near!(a.exterior()[2], coord!(1., 0.));
+        // Should start at i1 and continue to i0.
+        assert_vec2_near!(a.exterior()[0], coord!(1., 1.));
+        assert_vec2_near!(a.exterior()[1], coord!(1., 0.));
+        assert_vec2_near!(a.exterior()[2], coord!(0., 0.));
 
         // Check B.
+        // Should start at i0 and continue to i1.
         assert_vec2_near!(b.exterior()[0], coord!(0., 0.));
         assert_vec2_near!(b.exterior()[1], coord!(0., 1.));
         assert_vec2_near!(b.exterior()[2], coord!(1., 1.));
@@ -207,12 +222,17 @@ mod tests {
 
         let (a, b) = original.split(1, 3);
 
+        assert_eq!(a.exterior().num_coords(), 4);
+        assert_eq!(b.exterior().num_coords(), 4);
+
         // Check A.
-        assert_vec2_near!(a.exterior()[0], coord!(0., 0.));
-        assert_vec2_near!(a.exterior()[1], coord!(0., 1.));
-        assert_vec2_near!(a.exterior()[2], coord!(1., 0.));
+        // Should start at i1 and continue to i0.
+        assert_vec2_near!(a.exterior()[0], coord!(1., 0.));
+        assert_vec2_near!(a.exterior()[1], coord!(0., 0.));
+        assert_vec2_near!(a.exterior()[2], coord!(0., 1.));
 
         // Check B.
+        // Should start at i0 and continue to i1.
         assert_vec2_near!(b.exterior()[0], coord!(0., 1.));
         assert_vec2_near!(b.exterior()[1], coord!(1., 1.));
         assert_vec2_near!(b.exterior()[2], coord!(1., 0.));
@@ -235,13 +255,18 @@ mod tests {
 
         let (a, b) = original.split(1, 4);
 
+        assert_eq!(a.exterior().num_coords(), 5);
+        assert_eq!(b.exterior().num_coords(), 5);
+
         // Check A.
-        assert_vec2_near!(a.exterior()[0], coord!(0., 0.));
-        assert_vec2_near!(a.exterior()[1], coord!(-0.5, 0.5));
-        assert_vec2_near!(a.exterior()[2], coord!(1.5, 0.5));
-        assert_vec2_near!(a.exterior()[3], coord!(1., 0.));
+        // Should start at i1 and continue to i0.
+        assert_vec2_near!(a.exterior()[0], coord!(1.5, 0.5));
+        assert_vec2_near!(a.exterior()[1], coord!(1., 0.));
+        assert_vec2_near!(a.exterior()[2], coord!(0., 0.));
+        assert_vec2_near!(a.exterior()[3], coord!(-0.5, 0.5));
 
         // Check B.
+        // Should start at i0 and continue to i1.
         assert_vec2_near!(b.exterior()[0], coord!(-0.5, 1.));
         assert_vec2_near!(b.exterior()[1], coord!(0., 1.));
         assert_vec2_near!(b.exterior()[2], coord!(1., 1.));
@@ -283,6 +308,9 @@ mod tests {
         );
 
         let (a, b) = original.halve();
+
+        assert_eq!(a.exterior().num_coords(), 6);
+        assert_eq!(b.exterior().num_coords(), 6);
 
         // Check A.
         assert_vec2_near!(a.exterior()[0], coord!(0., 0.));
