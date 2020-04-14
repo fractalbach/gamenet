@@ -51,10 +51,11 @@ pub struct EdgeId(ItemId);
 /// More complex components are managed by the TownPlan struct.
 #[derive(Serialize)]
 pub struct TownMap {
+    #[serde(skip_serializing)]
+    graph: Graph<usize, usize>,
     nodes: QuadMap<Node>,
     edges: QuadMap<Edge>,
     obstacles: QuadMap<ObstacleLine>,
-    value_map: TensorField,
     // 3do?
 
     settings: TownMapSettings,
@@ -126,7 +127,6 @@ impl TownMap {
             nodes: QuadMap::default(Self::DEFAULT_SHAPE),
             edges: QuadMap::default(Self::DEFAULT_SHAPE),
             obstacles: QuadMap::default(Self::DEFAULT_SHAPE),
-            value_map: TensorField::new(Self::DEFAULT_SHAPE),
             settings,
         }
     }
@@ -279,10 +279,6 @@ impl TownMap {
 
     pub fn edge(&self, id: EdgeId) -> &Edge {
         &self.edges[id.0]
-    }
-
-    pub fn value_map(&self) -> &TensorField {
-        &self.value_map
     }
 }
 
