@@ -5,7 +5,8 @@ use geo_types::{Polygon, Line, Point, LineString};
 use delaunay2d::Delaunay2D;
 
 use quad::Rect;
-use util::point::{PointOps, VecOps};
+use util::point::PointOps;
+use util::vec2::VecOps;
 use itertools::max;
 use util::PolyOps;
 use util::vec::VecMap;

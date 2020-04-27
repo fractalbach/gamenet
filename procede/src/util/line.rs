@@ -3,7 +3,8 @@ use cgmath::{Vector2, vec2, BaseNum, BaseFloat, InnerSpace};
 use cgmath::MetricSpace;
 use geo_types::{Line, LineString, Coordinate, CoordinateType, Point};
 
-use util::point::{PointOps, VecOps};
+use util::point::PointOps;
+use util::vec2::VecOps;
 
 pub trait LineOps<T: CoordinateType + BaseNum + Float + BaseFloat> {
     fn divide(&self, n: i32) -> LineString<T>;

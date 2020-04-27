@@ -12,6 +12,7 @@ use quad::{QuadMap, Rect, Spatial, ItemId};
 use cgmath::{Vector2, vec2, Rotation, Rotation2, Basis2, Rad};
 use cgmath::InnerSpace;
 use cgmath::MetricSpace;
+use petgraph::{Graph};
 use serde::{Deserialize, Serialize};
 
 use pop::streets::builder::Builder;
@@ -124,6 +125,7 @@ impl TownMap {
     /// StreetMap
     pub fn new(settings: TownMapSettings) -> TownMap {
         TownMap {
+            graph: Graph::new(),
             nodes: QuadMap::default(Self::DEFAULT_SHAPE),
             edges: QuadMap::default(Self::DEFAULT_SHAPE),
             obstacles: QuadMap::default(Self::DEFAULT_SHAPE),

@@ -61,6 +61,7 @@ extern crate lru_cache;
 extern crate lyon_geom;
 extern crate noise;
 extern crate num_traits;
+extern crate petgraph;
 extern crate serde;
 extern crate serde_json;
 extern crate wasm_bindgen;

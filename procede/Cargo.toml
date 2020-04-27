@@ -18,6 +18,7 @@ lru-cache = "0.1.2"
 lyon_geom = "0.14.1"
 noise = "0.5.1"
 num-traits = "0.2"
+petgraph = "0.5.0"
 serde = { version = "1.0.101", features = ["derive"] }
 serde_json = "1.0.41"
 smallvec = "0.6.10"
