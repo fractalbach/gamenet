@@ -5,6 +5,7 @@ use cgmath::{Basis3, Rotation, Vector2, Vector3, vec2, vec3};
 use cgmath::InnerSpace;
 use lru_cache::LruCache;
 
+use layer::{Layer, Height};
 use voronoi3::*;
 use surface::Surface;
 use util::{hash_indices, vec2arr};
@@ -315,6 +316,14 @@ impl TectonicLayer {
         }
 
         v
+    }
+}
+
+impl Layer for TectonicLayer {
+    type Result = TectonicInfo;
+
+    pub fn sample(&self, v: Vector3<f64>) -> Self::Result {
+        return self.height()
     }
 }
 

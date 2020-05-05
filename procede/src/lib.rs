@@ -70,6 +70,7 @@ extern crate wasm_bindgen;
 mod test_util;
 
 mod delaunay;
+mod layer;
 mod pop;
 mod quad;
 mod river;
