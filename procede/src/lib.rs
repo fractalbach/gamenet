@@ -64,6 +64,7 @@ extern crate num_traits;
 extern crate petgraph;
 extern crate serde;
 extern crate serde_json;
+extern crate thread_local;
 extern crate wasm_bindgen;
 
 #[macro_use]

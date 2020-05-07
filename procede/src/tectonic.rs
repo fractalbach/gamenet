@@ -9,6 +9,7 @@ use layer::{Layer, Height};
 use voronoi3::*;
 use surface::Surface;
 use util::{hash_indices, vec2arr};
+use util::cache::InteriorCache;
 use noise::{Perlin, Fbm, NoiseFn, Seedable};
 
 
@@ -20,7 +21,7 @@ use noise::{Perlin, Fbm, NoiseFn, Seedable};
 pub struct TectonicLayer {
     pub seed: u32,
     pub surface: Surface,
-    cache: LruCache<Vector3<i64>, Plate>,
+    cache: InteriorCache<Vector3<i64>, Plate>,
     h_noise: Fbm,
     x_motion_noise: Fbm,
     y_motion_noise: Fbm,
@@ -83,7 +84,7 @@ impl TectonicLayer {
                 ),
                 Self::DEFAULT_RADIUS,
             ),
-            cache: LruCache::new(Self::DEFAULT_CACHE_SIZE),
+            cache: InteriorCache::new(Self::DEFAULT_CACHE_SIZE),
             h_noise: Fbm::new().set_seed(seed),
             x_motion_noise: Fbm::new().set_seed(seed + 100),
             y_motion_noise: Fbm::new().set_seed(seed + 200),
@@ -111,7 +112,7 @@ impl TectonicLayer {
     ///
     /// # Return
     /// TectonicInfo with height and plate info for the passed position.
-    pub fn height(&mut self, v: Vector3<f64>) -> TectonicInfo {
+    pub fn height(&self, v: Vector3<f64>) -> TectonicInfo {
         let adj_pos = self.adjust_pos(v);
         let near_result = self.surface.near4(adj_pos);
 
@@ -137,7 +138,7 @@ impl TectonicLayer {
                 let plate = self.plate(
                     near_result.regions[i],
                     near_result.points[i]
-                ).unwrap();
+                );
                 plate_base_height = plate.base_height;
                 plate_motion = plate.motion;
             }
@@ -211,18 +212,14 @@ impl TectonicLayer {
 
     /// Get Plate for the specified direction from planet center.
     fn plate(
-            &mut self,
+            &self,
             indices: Vector3<i64>,
             nucleus: Vector3<f64>
-    ) -> Option<&mut Plate> {
-        if self.cache.contains_key(&indices) {
-            return self.cache.get_mut(&indices);
-        }
-
-        let plate = Plate::new(self.seed, nucleus, indices, &self);
-        self.cache.insert(indices, plate);
-
-        self.cache.get_mut(&indices)
+    ) -> Plate {
+        self.cache.get(
+            &indices,
+            || Plate::new(self.seed, nucleus, indices, &self)
+        ).as_ref().clone()
     }
 
     /// Get ridge height of two plates
@@ -319,14 +316,6 @@ impl TectonicLayer {
     }
 }
 
-impl Layer for TectonicLayer {
-    type Result = TectonicInfo;
-
-    pub fn sample(&self, v: Vector3<f64>) -> Self::Result {
-        return self.height()
-    }
-}
-
 
 // --------------------------------------------------------------------
 
@@ -379,12 +368,12 @@ impl Plate {
 /// # Return
 /// Sqrt-scaled value.
 fn sign_safe_sqrt(x: f64) -> f64 {
-    if x == 0.0 {
-        return 0.0;
+    return if x == 0.0 {
+        0.0
     } else if x > 0.0 {
-        return x.sqrt();
+        x.sqrt()
     } else {
-        return -((-x).sqrt());
+        -((-x).sqrt())
     }
 }
 
@@ -403,16 +392,16 @@ mod tests {
 
     #[test]
     fn test_plate_motion_differs() {
-        let mut tectonic = TectonicLayer::new(1);
+        let tectonic = TectonicLayer::new(1);
         let motion1 = tectonic.plate(
             vec3(1, 2, -3), vec3(1.0, 2.0, -3.0)
-        ).unwrap().motion;
+        ).motion;
         let motion2 = tectonic.plate(
             vec3(1, 2, 3), vec3(1.0, 2.0, 3.0)
-        ).unwrap().motion;
+        ).motion;
         let motion3 = tectonic.plate(
             vec3(-1, -2, -3), vec3(-1.0, -2.0, 3.0)
-        ).unwrap().motion;
+        ).motion;
 
         assert_ne!(motion1, motion2);
         assert_ne!(motion1, motion3);
@@ -420,20 +409,20 @@ mod tests {
 
     #[test]
     fn test_plate_motion_is_consistent() {
-        let mut tectonic = TectonicLayer::new(1);
+        let tectonic = TectonicLayer::new(1);
         let motion1 = tectonic.plate(
             vec3(1, 2, 3), vec3(1.0, 2.0, 3.0)
-        ).unwrap().motion;
+        ).motion;
         let motion2 = tectonic.plate(
             vec3(1, 2, 3), vec3(1.0, 2.0, 3.0)
-        ).unwrap().motion;
+        ).motion;
 
         assert_eq!(motion1, motion2);
     }
 
     #[test]
     fn test_result_info_is_consistent() {
-        let mut tectonic = TectonicLayer::new(1);
+        let tectonic = TectonicLayer::new(1);
         let v = vec3(-2.0, -2.0, -2.0);
         let info_a: TectonicInfo = tectonic.height(v);
         let info_b: TectonicInfo = tectonic.height(v);
@@ -444,7 +433,7 @@ mod tests {
 
     #[test]
     fn test_raw_v_produces_accurate_result() {
-        let mut tectonic = TectonicLayer::new(1);
+        let tectonic = TectonicLayer::new(1);
         let mod_v = tectonic.adjust_pos(vec3(1.0, 1.0, 1.0));
         let raw_v = tectonic.raw_v(mod_v);
 

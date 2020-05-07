@@ -1,14 +1,15 @@
 use std::f64;
 use std::collections::{VecDeque, HashSet, HashMap};
+use std::sync::Arc;
 use std::usize;
 
 use cgmath::{Vector2, Vector3, vec2, vec3};
 use cgmath::InnerSpace;
-use lru_cache::LruCache;
 use serde::Serialize;
 
 use tectonic::{TectonicLayer, TectonicInfo};
 use util::{hash_indices, sphere_uv_vec, TangentPlane};
+use util::cache::InteriorCache;
 use river::common::RiverInfo;
 use river::hex::HexGraph;
 use river::river_graph::{RiverGraph, Mouth, Node, NearRiverInfo, RiverSettings};
@@ -30,7 +31,7 @@ use river::segment::Segment;
 /// a RiverInfo struct instance for that position.
 pub struct RiverLayer {
     seed: u32,
-    region_cache: LruCache<Vector3<i64>, Region>,
+    region_cache: InteriorCache<Vector3<i64>, Region>,
 }
 
 /// River region.
@@ -59,7 +60,7 @@ impl RiverLayer {
     fn new(seed: u32) -> RiverLayer {
         RiverLayer {
             seed,
-            region_cache: LruCache::new(Self::REGION_CACHE_SIZE),
+            region_cache: InteriorCache::new(Self::REGION_CACHE_SIZE),
         }
     }
 
@@ -76,7 +77,7 @@ impl RiverLayer {
     /// # Returns
     /// RiverInfo containing height and related information.
     pub fn height(
-        &mut self,
+        &self,
         v: Vector3<f64>,
         tectonic_info: TectonicInfo,
         tectonic: &mut TectonicLayer,
@@ -99,19 +100,16 @@ impl RiverLayer {
     /// # Returns
     /// Mutable Region reference.
     fn region(
-        &mut self,
+        &self,
         v: Vector3<f64>,
         tectonic_info: TectonicInfo,
         tectonic: &mut TectonicLayer,
-    ) -> &mut Region {
+    ) -> Arc<Region> {
         let indices: Vector3<i64> = tectonic_info.indices;
-        if !self.region_cache.contains_key(&indices) {
+        self.region_cache.get(&indices, ||{
             let region_hash = hash_indices(self.seed, indices);
-            let region = Region::new(region_hash, tectonic, tectonic_info);
-            self.region_cache.insert(indices, region);
-        }
-        let region = self.region_cache.get_mut(&indices).unwrap();
-        region
+            Region::new(region_hash, tectonic, tectonic_info.clone())
+        })
     }
 }
 
@@ -462,7 +460,7 @@ mod tests {
         assert_gt!(region.graph.len(), 0);
 
         // Serialize graph.
-        serialize_to(&region, "test_region_graph.json");
+        serialize_to(&*region, "test_region_graph.json");
     }
 
     #[test]

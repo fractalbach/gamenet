@@ -51,9 +51,9 @@ use util::vec2::VecOps;
 // }
 
 fn neighbors(
-    graph: &mut Ungraph<Vector2<f64>, f64>,
+    graph: &mut UnGraph<Vector2<f64>, f64>,
     node: NodeIndex,
-    map: &mut QuadMap<vector2<f64>>,
+    map: &mut QuadMap<Vector2<f64>>,
     preferred_dir: &Vec<Vector2<f64>>,
     samples: u32,
 ) {
