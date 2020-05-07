@@ -323,11 +323,11 @@ mod tests {
         assert_eq!(b.exterior().num_coords(), 6);
 
         // Check A.
-        assert_vec2_near!(a.exterior()[0], coord!(0., 0.));
-        assert_vec2_near!(a.exterior()[1], coord!(-0.5, 0.5));
-        assert_vec2_near!(a.exterior()[2], coord!(0., 1.));
-        assert_vec2_near!(a.exterior()[3], coord!(0.5, 1.));
-        assert_vec2_near!(a.exterior()[4], coord!(0.5, 0.));
+        assert_vec2_near!(a.exterior()[0], coord!(0.5, 0.));
+        assert_vec2_near!(a.exterior()[1], coord!(0., 0.));
+        assert_vec2_near!(a.exterior()[2], coord!(-0.5, 0.5));
+        assert_vec2_near!(a.exterior()[3], coord!(0., 1.));
+        assert_vec2_near!(a.exterior()[4], coord!(0.5, 1.));
 
         // Check B.
         assert_vec2_near!(b.exterior()[0], coord!(0.5, 1.));
