@@ -144,7 +144,7 @@ where W: Fn(Vector2<f64>, Vector2<f64>) -> Option<f64> {
     }
 
     /// Finds best path from A to B indices.
-    fn astar(&mut self, start: NodeIndex, dest: NodeIndex) -> Vec<(NodeRef, f64)> {
+    fn astar(&self, start: NodeIndex, dest: NodeIndex) -> Vec<(NodeRef, f64)> {
         let grid_result = self.grid_astar(start, dest);
         let elisions = self.find_elisions(&grid_result);
         Self::elide(&grid_result, &elisions)
@@ -195,7 +195,7 @@ where W: Fn(Vector2<f64>, Vector2<f64>) -> Option<f64> {
     }
 
     fn grid_astar(
-        &mut self, start: NodeIndex, dest: NodeIndex
+        &self, start: NodeIndex, dest: NodeIndex
     ) -> Vec<(NodeRef, f64)> {
         // Create collections.
         let mut frontier: BinaryHeap<FrontierItem> =
