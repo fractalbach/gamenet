@@ -4,7 +4,7 @@
 //! algorithm by being able to add nodes and edges to the graph, as the
 //! graph is explored.
 
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::{BinaryHeap, HashMap, HashSet, LinkedList};
 use std::f64::{consts, INFINITY};
 use std::hash::{Hash, Hasher};
 use std::ops::Index;
@@ -25,6 +25,7 @@ use std::cmp::Ordering::Equal;
 use itertools::{rev, min, max};
 use util::astar::NodeRef::Graph;
 use std::iter::FromIterator;
+use serde_json::ser::CharEscape::LineFeed;
 
 
 struct DynAstar<'a, W: Fn(Vector2<f64>, Vector2<f64>) -> Option<f64>> {
@@ -91,7 +92,7 @@ where
 {
     let mut astar_data = DynAstar::new(graph, bounds, weight, step);
     let node_references = astar_data.astar(start, dest);
-    node_references.map(|&reference| astar_data.pos(reference))
+    node_references.map(|&(reference, _)| astar_data.pos(reference))
 }
 
 impl<'a, W> DynAstar<'a, W>
@@ -142,10 +143,60 @@ where W: Fn(Vector2<f64>, Vector2<f64>) -> Option<f64> {
         map
     }
 
-    /// Finds best path from A to B indices, optionally adding new nodes.
-    fn astar(
+    /// Finds best path from A to B indices.
+    fn astar(&mut self, start: NodeIndex, dest: NodeIndex) -> Vec<(NodeRef, f64)> {
+        let grid_result = self.grid_astar(start, dest);
+        let elisions = self.find_elisions(&grid_result);
+        Self::elide(&grid_result, &elisions)
+        // grid_result
+    }
+
+    /// Locate nodes to be removed from route in post-processing.
+    fn find_elisions(&self, nodes: &Vec<(NodeRef, f64)>) -> Vec<usize> {
+        // Remove nodes that do not reduce path weight.
+        let mut elisions = vec!();
+        let mut previous = 0;
+        for examined in 1..(nodes.len() - 1) {
+            let next = examined + 1;
+            let (previous_node, previous_cost) = nodes[previous];
+            let (next_node, next_cost) = nodes[next];
+            let previous_pos = self.pos(previous_node);
+            let next_pos = self.pos(next_node);
+            let current_weight = next_cost - previous_cost;
+            let potential_weight =
+                self.edge_weight(previous_pos, next_pos).unwrap_or(INFINITY);
+
+            // If route could be improved by eliding examined node, do so.
+            if current_weight >= potential_weight {
+                elisions.push(examined);
+            } else {
+                previous = examined;
+            }
+        }
+        elisions
+    }
+
+    fn elide(
+        nodes: &Vec<(NodeRef, f64)>, elisions: &Vec<usize>
+    ) -> Vec<(NodeRef, f64)> {
+        if elisions.is_empty() {
+            return nodes.clone();
+        }
+        let mut elisions_i = 0;
+        let mut result = vec!();
+        for (i, &node) in nodes.iter().enumerate() {
+            if elisions_i < elisions.len() && i == elisions[elisions_i] {
+                elisions_i += 1;
+            } else {
+                result.push(node);
+            }
+        }
+        result
+    }
+
+    fn grid_astar(
         &mut self, start: NodeIndex, dest: NodeIndex
-    ) -> Vec<NodeRef> {
+    ) -> Vec<(NodeRef, f64)> {
         // Create collections.
         let mut frontier: BinaryHeap<FrontierItem> =
             BinaryHeap::with_capacity(self.graph.node_count());
@@ -186,21 +237,33 @@ where W: Fn(Vector2<f64>, Vector2<f64>) -> Option<f64> {
         }
 
         // Unpack route taken.
-        if !previous_nodes.contains_key(&NodeRef::Graph(dest)) {
-            return vec!();
-        }
+        Self::unpack_route(
+            &previous_nodes,
+            &costs,
+            NodeRef::Graph(start),
+            NodeRef::Graph(dest)
+        )
+    }
+
+    fn unpack_route(
+        previous: &HashMap<NodeRef, NodeRef>,
+        costs: &HashMap<NodeRef, f64>,
+        start: NodeRef,
+        dest: NodeRef
+    ) -> Vec<(NodeRef, f64)> {
         let mut route = vec!();
-        {
-            let mut current = NodeRef::Graph(dest);
-            loop {
-                route.push(current);
-                if current == NodeRef::Graph(start) {
-                    break;
-                }
-                current = previous_nodes[&current];
-            }
-            route.reverse()
+        if !previous.contains_key(&dest) {
+            return route;
         }
+        let mut current = dest;
+        loop {
+            route.push((current, costs[&current]));
+            if current == start {
+                break;
+            }
+            current = previous[&current];
+        }
+        route.reverse();
         route
     }
 
@@ -416,11 +479,18 @@ mod tests {
     fn test_dyn_astar_adjusted_weight_path() {
         let mut graph = UnGraph::new_undirected();
         let start = graph.add_node(vec2(100.0, 0.0));
-        let dest = graph.add_node(vec2(100.0, 100.0));
+        let dest = graph.add_node(vec2(100.0, 200.0));
         let path = dyn_astar(
             &mut graph,
             Rect::centered_with_radius(vec2(0., 0.), 1000.),
-            |a, b| Some(a.distance(b) + b.x.abs()),
+            |a, b| {
+                let distance = a.distance(b);
+                if distance < 50. {
+                    Some(a.distance(b) * (1. + b.x.abs() / 10.))
+                } else {
+                    None
+                }
+            },
             start,
             dest,
             10.,
