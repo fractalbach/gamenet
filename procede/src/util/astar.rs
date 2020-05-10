@@ -330,16 +330,23 @@ where W: Fn(Vector2<f64>, Vector2<f64>) -> Option<f64> {
             },
             NodeRef::Grid(indices) => {
                 vec!(
-                    NodeRef::Grid(vec2(indices.x, indices.y + 1)),  // North.
-                    NodeRef::Grid(vec2(indices.x + 1, indices.y)),  // East.
-                    NodeRef::Grid(vec2(indices.x, indices.y - 1)),  // South.
-                    NodeRef::Grid(vec2(indices.x - 1, indices.y)),  // West.
-                    NodeRef::Grid(vec2(indices.x + 1, indices.y + 1)),  // North-west.
-                    NodeRef::Grid(vec2(indices.x + 1, indices.y - 1)),  // South-west.
-                    NodeRef::Grid(vec2(indices.x - 1, indices.y - 1)),  // South-east.
-                    NodeRef::Grid(vec2(indices.x - 1, indices.y + 1)),  // North-east.
-                    // TODO: North-north-west, etc.
-                )
+                    vec2(indices.x, indices.y + 1),  // North.
+                    vec2(indices.x + 1, indices.y),  // East.
+                    vec2(indices.x, indices.y - 1),  // South.
+                    vec2(indices.x - 1, indices.y),  // West.
+                    vec2(indices.x + 1, indices.y + 1),  // Northeast.
+                    vec2(indices.x + 1, indices.y - 1),  // Southeast.
+                    vec2(indices.x - 1, indices.y - 1),  // Southwest.
+                    vec2(indices.x - 1, indices.y + 1),  // Northwest.
+                    vec2(indices.x + 1, indices.y + 2),  // North-northeast.
+                    vec2(indices.x + 2, indices.y + 1),  // East-northeast.
+                    vec2(indices.x + 2, indices.y - 1),  // East-southeast.
+                    vec2(indices.x + 1, indices.y - 2),  // South-southeast.
+                    vec2(indices.x - 1, indices.y - 2),  // South-southwest.
+                    vec2(indices.x - 2, indices.y - 1),  // West-southwest.
+                    vec2(indices.x - 2, indices.y + 1),  // West-northwest.
+                    vec2(indices.x - 1, indices.y + 2),  // North-northwest.
+                ).map(|&indices| NodeRef::Grid(indices))
             }
         });
         let mut result = vec!();
@@ -479,14 +486,15 @@ mod tests {
     fn test_dyn_astar_adjusted_weight_path() {
         let mut graph = UnGraph::new_undirected();
         let start = graph.add_node(vec2(100.0, 0.0));
-        let dest = graph.add_node(vec2(100.0, 200.0));
+        let dest = graph.add_node(vec2(100.0, 150.0));
         let path = dyn_astar(
             &mut graph,
             Rect::centered_with_radius(vec2(0., 0.), 1000.),
             |a, b| {
                 let distance = a.distance(b);
+                let mean_x = (a.x + b.x) / 2.;
                 if distance < 50. {
-                    Some(a.distance(b) * (1. + b.x.abs() / 10.))
+                    Some(a.distance(b) * (1. + mean_x.abs() / 10.))
                 } else {
                     None
                 }
