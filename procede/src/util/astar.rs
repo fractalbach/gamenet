@@ -4,9 +4,12 @@
 //! algorithm by being able to add nodes and edges to the graph, as the
 //! graph is explored.
 
+use std::cmp::Ordering;
+use std::cmp::Ordering::Equal;
 use std::collections::{BinaryHeap, HashMap, HashSet, LinkedList};
 use std::f64::{consts, INFINITY};
 use std::hash::{Hash, Hasher};
+use std::iter::FromIterator;
 use std::ops::Index;
 
 use cgmath::{Vector2, vec2, InnerSpace, MetricSpace};
@@ -19,13 +22,6 @@ use util::cw_angle_pos;
 use util::line::LineOps;
 use util::vec::VecMap;
 use util::vec2::{VecOps, ToVec2};
-use num_traits::real::Real;
-use std::cmp::Ordering;
-use std::cmp::Ordering::Equal;
-use itertools::{rev, min, max};
-use util::astar::NodeRef::Graph;
-use std::iter::FromIterator;
-use serde_json::ser::CharEscape::LineFeed;
 
 
 struct DynAstar<'a, W: Fn(Vector2<f64>, Vector2<f64>) -> Option<f64>> {
