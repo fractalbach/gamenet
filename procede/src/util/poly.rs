@@ -8,7 +8,7 @@ use geo::algorithm::euclidean_length::EuclideanLength;
 use geo::algorithm::area::Area;
 
 use quad::{Rect, Spatial};
-use util::point::PointOps;
+use util::vec2::{ToVec2};
 
 
 /// Additional utility operations for Polygon.

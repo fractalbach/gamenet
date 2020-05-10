@@ -50,7 +50,7 @@
 //!
 
 extern crate assert_approx_eq;
-extern crate cgmath;
+#[macro_use] extern crate cgmath;
 extern crate delaunay2d;
 extern crate fnv;
 extern crate geo;

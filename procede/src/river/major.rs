@@ -460,7 +460,7 @@ mod tests {
         assert_gt!(region.graph.len(), 0);
 
         // Serialize graph.
-        serialize_to(&*region, "test_region_graph.json");
+        serialize_to(region.as_ref(), "test_region_graph.json");
     }
 
     #[test]

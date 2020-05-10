@@ -3,8 +3,9 @@ use cgmath::{Vector2, vec2, BaseNum, BaseFloat, InnerSpace};
 use cgmath::MetricSpace;
 use geo_types::{Line, LineString, Coordinate, CoordinateType, Point};
 
-use util::point::PointOps;
-use util::vec2::VecOps;
+use quad::{Spatial, Rect};
+use util::vec2::{VecOps, ToVec2};
+use geo::algorithm::intersects::Intersects;
 
 pub trait LineOps<T: CoordinateType + BaseNum + Float + BaseFloat> {
     fn divide(&self, n: i32) -> LineString<T>;
@@ -14,6 +15,8 @@ pub trait LineOps<T: CoordinateType + BaseNum + Float + BaseFloat> {
     fn length2(&self) -> T;
     fn length(&self) -> T;
     fn midpoint(&self) -> Point<T>;
+    fn joins(&self, other: &Self) -> bool;
+    fn crosses(&self, other: &Self) -> bool;
 }
 
 
@@ -73,6 +76,28 @@ where T: CoordinateType + BaseNum + Float + BaseFloat + FromPrimitive
         ) / T::from_f64(2.).unwrap();
         v.to_point()
     }
+
+    /// Checks if line crosses another.
+    ///
+    /// Unlike intersects() this function does not consider lines
+    /// with a common start/end point to be intersecting.
+    fn crosses(&self, other: &Self) -> bool {
+        !self.joins(other) && self.intersects(other)
+    }
+
+    /// Tests if line shares a vertex with another.
+    fn joins(&self, other: &Self) -> bool {
+        relative_eq!(self.start.to_vec(), other.start.to_vec()) ||
+        relative_eq!(self.start.to_vec(), other.end.to_vec()) ||
+        relative_eq!(self.end.to_vec(), other.start.to_vec()) ||
+        relative_eq!(self.end.to_vec(), other.end.to_vec())
+    }
+}
+
+impl Spatial for Line<f64> {
+    fn aabb(&self) -> Rect {
+        Rect::from_points(self.start.to_vec(), self.end.to_vec())
+    }
 }
 
 
@@ -100,5 +125,19 @@ mod tests {
         let midpoint = original.midpoint();
         assert_approx_eq!(midpoint.x(), 0.5);
         assert_approx_eq!(midpoint.y(), 1.5);
+    }
+
+    #[test]
+    fn test_lines_joined_by_vertex_are_not_crossing() {
+        let a = Line::new((1.0, 1.0), (0.0, 0.0));
+        let b = Line::new((1.0, 1.0), (2.0, 0.0));
+        assert!(!a.crosses(&b));
+    }
+
+    #[test]
+    fn test_crosses() {
+        let a = Line::new((0.0, 0.0), (1.0, 1.0));
+        let b = Line::new((0.0, 1.0), (1.0, 0.0));
+        assert!(a.crosses(&b));
     }
 }

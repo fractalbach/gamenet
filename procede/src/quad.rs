@@ -289,6 +289,21 @@ impl<T> QuadMap<T> {
         Option::Some((nearest, rect, id, d))
     }
 
+    pub fn query_radius(
+        &self, uv: Vector2<f64>, r: f64
+    ) -> Vec<(&T, Rect, ItemId, f64)> where T: ::std::fmt::Debug {
+        let query_res = self.query(Rect::centered_with_radius(uv, r));
+        let r2 = r * r;
+        let mut result = vec!();
+        for (item, &rect, id) in query_res {
+            let d2 = rect.midpoint().distance2(uv);
+            if d2 < r2 {
+                result.push((item, rect, id, d2.sqrt()));
+            }
+        }
+        result
+    }
+
     /// Attempts to remove the item with id `item_id` from the tree.  If that
     /// item was present, it returns a tuple of (element, bounding-box)
     pub fn remove(&mut self, item_id: ItemId) -> Option<(T, Rect)> {
@@ -936,5 +951,27 @@ mod tests {
         map.insert(vec2(1000.0, 0.0));
 
         assert!(map.nearest(vec2(200.0, 200.0), 220.0).is_none());
+    }
+
+    #[test]
+    fn test_radius_query_when_none_nearby() {
+        let mut map = QuadMap::default(
+            Rect::centered_with_radius(vec2(0.0, 0.0), 2000.0)
+        );
+
+        map.insert(vec2(-500.0, -500.0));
+
+        assert!(map.nearest(vec2(200.0, 200.0), 220.0).is_none());
+    }
+
+    #[test]
+    fn test_radius_query_when_one_nearby() {
+        let mut map = QuadMap::default(
+            Rect::centered_with_radius(vec2(0.0, 0.0), 2000.0)
+        );
+
+        map.insert(vec2(-500.0, -500.0));
+
+        assert!(map.nearest(vec2(-400.0, -400.0), 220.0).is_some());
     }
 }

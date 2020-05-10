@@ -23,9 +23,8 @@ use delaunay;
 use quad::{QuadMap, Rect, Spatial};
 use util::poly::PolyOps;
 use util::line::LineOps;
-use util::point::PointOps;
 use util::vec::VecMap;
-use util::vec2::VecOps;
+use util::vec2::{VecOps, ToVec2};
 
 
 /// Settings used in lot generation.
