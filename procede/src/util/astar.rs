@@ -15,7 +15,7 @@ use std::ops::Index;
 use cgmath::{Vector2, vec2, InnerSpace, MetricSpace};
 use geo::Line;
 use petgraph::graph::{UnGraph, NodeIndex};
-use petgraph::visit::{IntoNeighbors, IntoEdges, Visitable, EdgeRef};
+use petgraph::visit::{Visitable, EdgeRef};
 
 use quad::{QuadMap, ItemId, Rect, Spatial};
 use util::cw_angle_pos;
@@ -147,49 +147,6 @@ where W: Fn(Vector2<f64>, Vector2<f64>) -> Option<f64> {
         // grid_result
     }
 
-    /// Locate nodes to be removed from route in post-processing.
-    fn find_elisions(&self, nodes: &Vec<(NodeRef, f64)>) -> Vec<usize> {
-        // Remove nodes that do not reduce path weight.
-        let mut elisions = vec!();
-        let mut previous = 0;
-        for examined in 1..(nodes.len() - 1) {
-            let next = examined + 1;
-            let (previous_node, previous_cost) = nodes[previous];
-            let (next_node, next_cost) = nodes[next];
-            let previous_pos = self.pos(previous_node);
-            let next_pos = self.pos(next_node);
-            let current_weight = next_cost - previous_cost;
-            let potential_weight =
-                self.edge_weight(previous_pos, next_pos).unwrap_or(INFINITY);
-
-            // If route could be improved by eliding examined node, do so.
-            if current_weight >= potential_weight {
-                elisions.push(examined);
-            } else {
-                previous = examined;
-            }
-        }
-        elisions
-    }
-
-    fn elide(
-        nodes: &Vec<(NodeRef, f64)>, elisions: &Vec<usize>
-    ) -> Vec<(NodeRef, f64)> {
-        if elisions.is_empty() {
-            return nodes.clone();
-        }
-        let mut elisions_i = 0;
-        let mut result = vec!();
-        for (i, &node) in nodes.iter().enumerate() {
-            if elisions_i < elisions.len() && i == elisions[elisions_i] {
-                elisions_i += 1;
-            } else {
-                result.push(node);
-            }
-        }
-        result
-    }
-
     fn grid_astar(
         &self, start: NodeIndex, dest: NodeIndex
     ) -> Vec<(NodeRef, f64)> {
@@ -241,6 +198,55 @@ where W: Fn(Vector2<f64>, Vector2<f64>) -> Option<f64> {
         )
     }
 
+    // Internal utilities.
+
+    /// Locate nodes to be removed from route in post-processing.
+    fn find_elisions(&self, nodes: &Vec<(NodeRef, f64)>) -> Vec<usize> {
+        if nodes.is_empty() {
+            return vec!();
+        }
+
+        // Remove nodes that do not reduce path weight.
+        let mut elisions = vec!();
+        let mut previous = 0;
+        for examined in 1..(nodes.len() - 1) {
+            let next = examined + 1;
+            let (previous_node, previous_cost) = nodes[previous];
+            let (next_node, next_cost) = nodes[next];
+            let previous_pos = self.pos(previous_node);
+            let next_pos = self.pos(next_node);
+            let current_weight = next_cost - previous_cost;
+            let potential_weight =
+                self.edge_weight(previous_pos, next_pos).unwrap_or(INFINITY);
+
+            // If route could be improved by eliding examined node, do so.
+            if current_weight >= potential_weight {
+                elisions.push(examined);
+            } else {
+                previous = examined;
+            }
+        }
+        elisions
+    }
+
+    fn elide(
+        nodes: &Vec<(NodeRef, f64)>, elisions: &Vec<usize>
+    ) -> Vec<(NodeRef, f64)> {
+        if elisions.is_empty() {
+            return nodes.clone();
+        }
+        let mut elisions_i = 0;
+        let mut result = vec!();
+        for (i, &node) in nodes.iter().enumerate() {
+            if elisions_i < elisions.len() && i == elisions[elisions_i] {
+                elisions_i += 1;
+            } else {
+                result.push(node);
+            }
+        }
+        result
+    }
+
     fn unpack_route(
         previous: &HashMap<NodeRef, NodeRef>,
         costs: &HashMap<NodeRef, f64>,
@@ -277,6 +283,7 @@ where W: Fn(Vector2<f64>, Vector2<f64>) -> Option<f64> {
         if distance < floor { floor } else { distance }
     }
 
+    /// Gets position of passed NodeRef.
     fn pos(&self, node: NodeRef) -> Vector2<f64> {
         match node {
             NodeRef::Graph(index) => self.graph[index],
@@ -303,48 +310,7 @@ where W: Fn(Vector2<f64>, Vector2<f64>) -> Option<f64> {
         }
 
         // Collect grid node neighbors.
-        nodes.append(&mut match node {
-            NodeRef::Graph(index) => {
-                let step_pos = self.pos(node) / self.step;
-                let min_indices = vec2(step_pos.x as i32, step_pos.y as i32);
-                let other_x = if step_pos.x < 0. {
-                    min_indices.x - 1
-                } else {
-                    min_indices.x + 1
-                };
-                let other_y = if step_pos.y < 0. {
-                    min_indices.y - 1
-                } else {
-                    min_indices.y + 1
-                };
-                vec!(
-                    NodeRef::Grid(vec2(min_indices.x, min_indices.y)),
-                    NodeRef::Grid(vec2(min_indices.x, other_y)),
-                    NodeRef::Grid(vec2(other_x, min_indices.y)),
-                    NodeRef::Grid(vec2(other_x, other_y)),
-                )
-            },
-            NodeRef::Grid(indices) => {
-                vec!(
-                    vec2(indices.x, indices.y + 1),  // North.
-                    vec2(indices.x + 1, indices.y),  // East.
-                    vec2(indices.x, indices.y - 1),  // South.
-                    vec2(indices.x - 1, indices.y),  // West.
-                    vec2(indices.x + 1, indices.y + 1),  // Northeast.
-                    vec2(indices.x + 1, indices.y - 1),  // Southeast.
-                    vec2(indices.x - 1, indices.y - 1),  // Southwest.
-                    vec2(indices.x - 1, indices.y + 1),  // Northwest.
-                    vec2(indices.x + 1, indices.y + 2),  // North-northeast.
-                    vec2(indices.x + 2, indices.y + 1),  // East-northeast.
-                    vec2(indices.x + 2, indices.y - 1),  // East-southeast.
-                    vec2(indices.x + 1, indices.y - 2),  // South-southeast.
-                    vec2(indices.x - 1, indices.y - 2),  // South-southwest.
-                    vec2(indices.x - 2, indices.y - 1),  // West-southwest.
-                    vec2(indices.x - 2, indices.y + 1),  // West-northwest.
-                    vec2(indices.x - 1, indices.y + 2),  // North-northwest.
-                ).map(|&indices| NodeRef::Grid(indices))
-            }
-        });
+        nodes.append(&mut self.grid_neighbors(node));
         let mut result = vec!();
         for node in nodes {
             match self.edge_weight(pos, self.pos(node)) {
@@ -370,7 +336,55 @@ where W: Fn(Vector2<f64>, Vector2<f64>) -> Option<f64> {
         result
     }
 
-    // Internal utilities.
+    fn grid_neighbors(&self, node: NodeRef) -> Vec<NodeRef> {
+        match node {
+            NodeRef::Graph(_) => self.position_grid_neighbors(self.pos(node)),
+            NodeRef::Grid(indices) => self.grid_indices_neighbors(indices)
+        }
+    }
+
+    fn grid_indices_neighbors(&self, indices: Vector2<i32>) -> Vec<NodeRef> {
+        vec!(
+            vec2(indices.x, indices.y + 1),  // North.
+            vec2(indices.x + 1, indices.y),  // East.
+            vec2(indices.x, indices.y - 1),  // South.
+            vec2(indices.x - 1, indices.y),  // West.
+            vec2(indices.x + 1, indices.y + 1),  // Northeast.
+            vec2(indices.x + 1, indices.y - 1),  // Southeast.
+            vec2(indices.x - 1, indices.y - 1),  // Southwest.
+            vec2(indices.x - 1, indices.y + 1),  // Northwest.
+            vec2(indices.x + 1, indices.y + 2),  // North-northeast.
+            vec2(indices.x + 2, indices.y + 1),  // East-northeast.
+            vec2(indices.x + 2, indices.y - 1),  // East-southeast.
+            vec2(indices.x + 1, indices.y - 2),  // South-southeast.
+            vec2(indices.x - 1, indices.y - 2),  // South-southwest.
+            vec2(indices.x - 2, indices.y - 1),  // West-southwest.
+            vec2(indices.x - 2, indices.y + 1),  // West-northwest.
+            vec2(indices.x - 1, indices.y + 2),  // North-northwest.
+        ).map(|&indices| NodeRef::Grid(indices))
+    }
+
+    fn position_grid_neighbors(&self, pos: Vector2<f64>) -> Vec<NodeRef> {
+        let relative_pos = pos - self.node_map.bounding_box().midpoint();
+        let step_pos = relative_pos / self.step;
+        let min_indices = vec2(step_pos.x as i32, step_pos.y as i32);
+        let other_x = if step_pos.x < 0. {
+            min_indices.x - 1
+        } else {
+            min_indices.x + 1
+        };
+        let other_y = if step_pos.y < 0. {
+            min_indices.y - 1
+        } else {
+            min_indices.y + 1
+        };
+        vec!(
+            NodeRef::Grid(vec2(min_indices.x, min_indices.y)),
+            NodeRef::Grid(vec2(min_indices.x, other_y)),
+            NodeRef::Grid(vec2(other_x, min_indices.y)),
+            NodeRef::Grid(vec2(other_x, other_y)),
+        )
+    }
 
     /// Returns < 0 if no connection can be made.
     fn edge_weight(&self, a: Vector2<f64>, b: Vector2<f64>) -> Option<f64> {
@@ -599,6 +613,36 @@ mod tests {
 
         assert_gt!(path.len(), 0);
         assert_vec2_near!(path.last().unwrap(), graph[dest]);
+    }
+
+    #[test]
+    fn test_dyn_astar_border_division_case_with_offset_origin() {
+        let mut graph = UnGraph::new_undirected();
+        let start_pos = vec2(-0., 60.);
+        let dest_pos = vec2(-10., 0.);
+        let start_index = graph.add_node(start_pos);
+        let dest_index = graph.add_node(dest_pos);
+        let mut path = dyn_astar(
+            &graph,
+            Rect::centered_with_radius(vec2(250., 250.), 1000.),
+            |a, b| {
+                // if [a, b].iter().any(|v| !self.poly.contains(&v.to_point())) {
+                //     return None;
+                // }
+                let distance = a.distance(b);
+                if distance > 25. {
+                    None
+                } else {
+                    Some(distance * 1.5)
+                }
+            },
+            start_index,
+            dest_index,
+            2.,
+        );
+        serialize_to(&path, "dyn_astar_poly_border_path.json");
+        assert_gt!(path.len(), 0);
+        assert_vec2_near!(path.last().unwrap(), graph[dest_index]);
     }
 
     #[test]

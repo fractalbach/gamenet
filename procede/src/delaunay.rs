@@ -27,7 +27,7 @@ impl Delaunay {
         let point_vectors = points.map(|point| {
             point.to_vec()
         });
-        let rect = Rect::from_point_vec(point_vectors).expanded(margin);
+        let rect = Rect::from_point_vec(point_vectors).expand_by(margin);
         let center = rect.midpoint();
         let corner = rect.top_left() - rect.midpoint();
         let radius = (corner.x.powi(2) + corner.y.powi(2)).sqrt();

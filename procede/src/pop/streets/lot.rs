@@ -13,18 +13,21 @@
 use itertools::Itertools;
 use std::iter::FromIterator;
 
-use cgmath::{Vector2, vec2};
+use cgmath::{Vector2, vec2, MetricSpace};
 use geo_booleanop::boolean::BooleanOp;
-use geo_types::{Polygon, Point, Line};
+use geo_types::{Polygon, Point, Line, LineString};
 use geo::contains::Contains;
+use petgraph::graph::UnGraph;
 use serde::{Deserialize, Serialize};
 
 use delaunay;
 use quad::{QuadMap, Rect, Spatial};
-use util::poly::PolyOps;
+use util::astar::dyn_astar;
 use util::line::LineOps;
+use util::poly::PolyOps;
 use util::vec::VecMap;
 use util::vec2::{VecOps, ToVec2};
+use pop::streets::poly::Poly;
 
 
 /// Settings used in lot generation.
@@ -47,6 +50,8 @@ pub struct LotSettings<'a> {
     pub width: f64,
     pub depth: f64,
     pub cost_mod_fn: &'a Fn(Vector2<f64>, Vector2<f64>) -> f64,
+    pub pathfinding_step: f64,
+    pub max_edge_len: f64,
     // As const settings are required, they should be added here.
 }
 
@@ -211,26 +216,110 @@ impl LotPoly {
 
     /// Divides a lot polygon into two.
     pub fn divide(&self, settings: &LotSettings) -> (LotPoly, LotPoly) {
-        let ((poly_a, poly_b), (i0, i1)) = self.poly.halve();
+        let ((poly_a, poly_b), (i0, i1), n_border_nodes) =
+            self.divide_geometry(settings);
         let mut a_conn = Vec::with_capacity(poly_a.exterior().num_coords());
         let mut b_conn = Vec::with_capacity(poly_b.exterior().num_coords());
+
+        // Determine number of added vertices along the border.
+
+
+        // Produce A poly connections vec.
         for &conn_state in self.connections.iter().skip(i1) {
             a_conn.push(conn_state);
         }
         for &conn_state in self.connections.iter().take(i0) {
             a_conn.push(conn_state);
         }
-        a_conn.push(true);
+        for _ in 0..(n_border_nodes + 1) {
+            a_conn.push(true);
+        }
+
+        // Produce B poly connections vec.
         for &conn_state in self.connections.iter().skip(i0).take(i1 - i0) {
             b_conn.push(conn_state);
         }
-        b_conn.push(true);
+        for _ in 0..(n_border_nodes + 1) {
+            b_conn.push(true);
+        }
 
         // Produce sub-poly.
         (
             LotPoly::new(poly_a, a_conn, settings),
             LotPoly::new(poly_b, b_conn, settings),
         )
+    }
+
+    /// Divides Lot poly geometry into two, producing new nodes as
+    /// required along the split edge.
+    ///
+    /// # Parameters
+    /// * settings - LotSettings.
+    ///
+    /// # Return
+    /// * (Poly A, Poly B)
+    /// * (Split index A, Split index B)
+    /// * Number of added vertices along border.
+    ///     (Excludes start and end vertex of border).
+    fn divide_geometry(
+        &self, settings: &LotSettings
+    ) -> ((Polygon<f64>, Polygon<f64>), (usize, usize), usize) {
+        // Do initial polygon division.
+        let ((poly_a, poly_b), (i0, i1)) = self.poly.halve();
+
+        // Produce path nodes which will form the new boundary between
+        let mut graph = UnGraph::new_undirected();
+        let start_pos = self.poly.exterior()[i0].to_vec();
+        let dest_pos = self.poly.exterior()[i1].to_vec();
+        let start_index = graph.add_node(start_pos);
+        let dest_index = graph.add_node(dest_pos);
+        let mut border_points = dyn_astar(
+            &graph,
+            self.poly.aabb().expand_by(100.),
+            |a, b| {
+                // if [a, b].iter().any(|v| !self.poly.contains(&v.to_point())) {
+                //     return None;
+                // }
+                let distance = a.distance(b);
+                if distance > settings.max_edge_len {
+                    None
+                } else {
+                    let modifier = (settings.cost_mod_fn)(a, b);
+                    Some(distance * modifier * 1.5)
+                }
+            },
+            start_index,
+            dest_index,
+            settings.pathfinding_step,
+        );
+        debug_assert!(
+            border_points.len() >= 2,
+            "At least two border points must be found."
+        );
+
+        // Trim first and last point of border, since they should
+        // already be present in the polygon.
+        let mut border_points = Vec::from_iter(
+            (1..(border_points.len() - 1)).map(|i| border_points[i])
+        );
+
+        // Produce new exteriors for polygons A and B.
+        // A
+        let mut a_exterior = Vec::from_iter(poly_a.exterior().points_iter());
+        a_exterior.pop();
+        a_exterior.extend(border_points.iter().map(|v| v.to_point()));
+
+        // B
+        border_points.reverse();
+        let mut b_exterior = Vec::from_iter(poly_b.exterior().points_iter());
+        b_exterior.pop();
+        b_exterior.extend(border_points.iter().map(|v| v.to_point()));
+
+        // Produce Polygons.
+        let poly_a = Polygon::new(LineString::from(a_exterior), vec!());
+        let poly_b = Polygon::new(LineString::from(b_exterior), vec!());
+
+        ((poly_a, poly_b), (i0, i1), border_points.len())
     }
 
     pub fn divide_all(
@@ -276,8 +365,20 @@ mod tests {
     use std::f64;
 
     use pop::streets::lot::{LotPoly, LotSettings};
-    use cgmath::Vector2;
+    use cgmath::{Vector2, vec2};
     use test_util::serialize_to;
+    use geo_types::{Polygon, LineString};
+    use util::vec::VecMap;
+    use util::vec2::VecOps;
+
+    const TEST_SETTINGS: LotSettings = LotSettings {
+        width: 16.,
+        depth: 20.,
+        cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
+        pathfinding_step: 8.,
+        max_edge_len: 50.,
+    };
+
 
     #[test]
     fn test_simple_lot_division() {
@@ -288,12 +389,7 @@ mod tests {
             (x: -100., y: -10.),
         ];
         let connections = vec!(true, true, true, true);
-        let settings = LotSettings {
-            width: 16.,
-            depth: 20.,
-            cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
-        };
-        let poly = LotPoly::new(poly, connections, &settings);
+        let poly = LotPoly::new(poly, connections, &TEST_SETTINGS);
         assert_gt!(poly.lots.len(), 4);
 
         serialize_to(&poly, "lot_division.json");
@@ -309,12 +405,7 @@ mod tests {
             (x: -100., y: -10.),
         ];
         let connections = vec!(true, true, true, true, true);
-        let settings = LotSettings {
-            width: 16.,
-            depth: 20.,
-            cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
-        };
-        let poly = LotPoly::new(poly, connections, &settings);
+        let poly = LotPoly::new(poly, connections, &TEST_SETTINGS);
         assert_gt!(poly.lots.len(), 4);
 
         serialize_to(&poly, "lot_division_concave.json");
@@ -331,12 +422,7 @@ mod tests {
             (x: -100., y: -10.),
         ];
         let connections = vec!(true, true, true, true, true, true);
-        let settings = LotSettings {
-            width: 16.,
-            depth: 20.,
-            cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
-        };
-        let poly = LotPoly::new(poly, connections, &settings);
+        let poly = LotPoly::new(poly, connections, &TEST_SETTINGS);
         assert_gt!(poly.lots.len(), 4);
 
         serialize_to(&poly, "lot_division_rounded.json");
@@ -351,12 +437,7 @@ mod tests {
             (x: -100., y: -10.),
         ];
         let connections = vec!(true, true, true, false);
-        let settings = LotSettings {
-            width: 16.,
-            depth: 20.,
-            cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
-        };
-        let poly = LotPoly::new(poly, connections, &settings);
+        let poly = LotPoly::new(poly, connections, &TEST_SETTINGS);
         assert_gt!(poly.lots.len(), 4);
 
         serialize_to(&poly, "lot_division_unconnected_edge.json");
@@ -382,14 +463,9 @@ mod tests {
             false, false, false, false, false, false,
             true, true, true, true, true, true,
         );
-        let settings = LotSettings {
-            width: 16.,
-            depth: 20.,
-            cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
-        };
-        let mut poly = LotPoly::new(poly, connections, &settings);
+        let mut poly = LotPoly::new(poly, connections, &TEST_SETTINGS);
         let n0 = poly.n_lots();
-        let (a, b) = poly.divide(&settings);
+        let (a, b) = poly.divide(&TEST_SETTINGS);
         let n1 = a.n_lots() + b.n_lots();
         assert_gt!(n1, n0);
 
@@ -416,20 +492,51 @@ mod tests {
             false, false, false, false, false, false,
             true, true, true, true, true, true,
         );
-        let settings = LotSettings {
-            width: 16.,
-            depth: 20.,
-            cost_mod_fn: &|a: Vector2<f64>, b: Vector2<f64>| 1.,
-        };
-        let mut polygons = vec![LotPoly::new(poly, connections, &settings)];
+        let mut polygons =
+            vec![LotPoly::new(poly, connections, &TEST_SETTINGS)];
         let mut n = polygons[0].n_lots();
         for i in 0..3 {
-            polygons = LotPoly::divide_all(&polygons, &settings);
+            polygons = LotPoly::divide_all(&polygons, &TEST_SETTINGS);
             let new_n = LotPoly::total_lots(&polygons);
             assert_gt!(new_n, n);
             n = new_n;
         }
 
         serialize_to(&polygons, "lot_polygon_division2.json");
+    }
+
+    #[test]
+    fn test_multiple_polygon_division3() {
+        let scale = 1.5;
+        let vertices = vec![
+            vec2(-312., -20.),
+            vec2(-240., 90.),
+            vec2(-120., 150.),
+            vec2(0., 180.),
+            vec2(90., 150.),
+            vec2(180., 30.),
+            vec2(210., -30.),
+            vec2(150., -15.),
+            vec2(60., 0.),
+            vec2(-30., 0.),
+            vec2(-105., 0.),
+            vec2(-210., 0.),
+        ].map(|v| (v * scale).to_point());
+        let poly = Polygon::new(LineString::from(vertices), vec!());
+        let connections = vec!(
+            false, false, false, false, false, false,
+            true, true, true, true, true, true,
+        );
+        let mut polygons =
+            vec![LotPoly::new(poly, connections, &TEST_SETTINGS)];
+        let mut n = polygons[0].n_lots();
+        for i in 0..4 {
+            polygons = LotPoly::divide_all(&polygons, &TEST_SETTINGS);
+            let new_n = LotPoly::total_lots(&polygons);
+            assert_gt!(new_n, n);
+            n = new_n;
+        }
+
+        serialize_to(&polygons, "lot_polygon_division3.json");
     }
 }

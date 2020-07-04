@@ -847,7 +847,7 @@ impl Rect {
         ]
     }
 
-    pub fn expanded(&self, margin: f64) -> Rect {
+    pub fn expand_by(&self, margin: f64) -> Rect {
         Rect::from_min_max(
             vec2(self.minimums.x - margin, self.minimums.y - margin),
             vec2(self.maximums.x + margin, self.maximums.y + margin)
