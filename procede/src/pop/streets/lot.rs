@@ -215,6 +215,14 @@ impl LotPoly {
     }
 
     /// Divides a lot polygon into two.
+    ///
+    /// # Parameters
+    /// * settings - LotSettings to apply to new polygons produced
+    ///             via subdivision.
+    ///
+    /// # Return
+    /// Tuple containing both polygons produced from the subdivision of
+    /// the original polygon.
     pub fn divide(&self, settings: &LotSettings) -> (LotPoly, LotPoly) {
         let ((poly_a, poly_b), (i0, i1), n_border_nodes) =
             self.divide_geometry(settings);
@@ -322,6 +330,16 @@ impl LotPoly {
         ((poly_a, poly_b), (i0, i1), border_points.len())
     }
 
+    /// Utility function sub-dividing all polygons in the passed vector.
+    ///
+    /// # Parameters
+    /// * polygons - Vec of lot polygons to divide.
+    /// * settings - Settings to use for all new polygons created
+    ///             via subdivision.
+    ///
+    /// # Return
+    /// Vec of lot polygons produced via subdivision of the
+    /// passed polygons.
     pub fn divide_all(
         polygons: &Vec<LotPoly>, settings: &LotSettings
     ) -> Vec<LotPoly> {
@@ -334,6 +352,14 @@ impl LotPoly {
         result
     }
 
+    /// Utility function returning number of lots in all
+    /// passed polygons.
+    ///
+    /// # Parameters
+    /// * polygons - Vec of polygons containing lots to be counted.
+    ///
+    /// # Return
+    /// Total number of lots in all passed polygons.
     pub fn total_lots(polygons: &Vec<LotPoly>) -> usize {
         let mut sum = 0;
         for poly in polygons {
@@ -342,6 +368,7 @@ impl LotPoly {
         sum
     }
 
+    /// Returns number of lots in a polygon.
     pub fn n_lots(&self) -> usize {
         self.lots.len()
     }
